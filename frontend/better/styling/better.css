@@ -24,7 +24,8 @@ body {
 
 @media (max-width: 40em) {
   body {
-    padding: 2.5rem 0.75rem 3rem;
+    /* Room for the round button of the theme panel, which stays in the top right corner */
+    padding: 4rem 0.75rem 3rem;
     font-size: 0.8em;
   }
 }
