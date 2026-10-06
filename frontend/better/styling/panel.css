@@ -1,0 +1,160 @@
+/**
+ * Theme panel: the round button in the top right corner and the box it opens
+ *
+ * Built by theme-panel.js. The sizes are in rem, so the panel keeps its size when the text size option changes
+ * only through the root font size, like the rest of the page.
+ */
+.panel {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 1000;
+  font-size: 0.875rem;
+  font-weight: 400;
+  text-align: left;
+}
+
+.panel-button {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  color: var(--text);
+  background: var(--surface);
+  border: 0.0625rem solid var(--border);
+  border-radius: 9999px;
+  box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+}
+
+.panel-button:hover,
+.panel-button[aria-expanded="true"] {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.panel-box {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  box-sizing: border-box;
+  width: 18rem;
+  max-width: calc(100vw - 2rem);
+  max-height: calc(100vh - 5rem);
+  padding: 1rem;
+  overflow-y: auto;
+  color: var(--text);
+  background: var(--surface);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.18);
+}
+
+.panel-box[hidden] {
+  display: none;
+}
+
+.panel-title {
+  margin: 0.9rem 0 0.4rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.panel-title:first-child {
+  margin-top: 0;
+}
+
+.panel-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.375rem;
+}
+
+.panel-options.two {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.panel-options.four {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.panel-option {
+  padding: 0.4rem 0.5rem;
+  font: inherit;
+  font-size: 0.8125rem;
+  color: var(--text);
+  background: var(--surface-muted);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-button);
+  cursor: pointer;
+}
+
+.panel-option:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.panel-option[aria-checked="true"],
+.panel-option[aria-pressed="true"] {
+  color: var(--on-primary);
+  background: var(--primary);
+  border-color: transparent;
+}
+
+.panel-colors {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.5rem;
+}
+
+.panel-color {
+  position: relative;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 9999px;
+  cursor: pointer;
+}
+
+.panel-color[aria-checked="true"],
+.panel-radius[aria-checked="true"] {
+  box-shadow:
+    0 0 0 0.125rem var(--surface),
+    0 0 0 0.25rem var(--primary);
+}
+
+.panel-color[aria-checked="true"]::after {
+  content: "\2713";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--on-primary);
+}
+
+.panel-radii {
+  display: flex;
+  gap: 0.375rem;
+}
+
+.panel-radius {
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  background: var(--surface-muted);
+  border: 0.0625rem solid var(--border);
+  cursor: pointer;
+}
+
+@media (forced-colors: active) {
+  .panel-color {
+    forced-color-adjust: none;
+  }
+}

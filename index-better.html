@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<link rel="shortcut icon" href="favicon.ico">
+	<link rel="manifest" href="manifest.webmanifest">
+	<link rel="apple-touch-icon" href="images/icon-192.png">
+	<meta name="theme-color" content="#000000">
+	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+	<meta charset="UTF-8" />
+	<script src="frontend/better/javascript/theme.js"></script>
+	<script src="frontend/better/javascript/accessibility.js"></script>
+	<script src="frontend/better/javascript/font.js"></script>
+	<script src="frontend/better/javascript/i18n.js"></script>
+	<script src="speedtest.js"></script>
+	<script src="frontend/better/javascript/colors.js"></script>
+	<script src="frontend/better/javascript/meter.js"></script>
+	<script src="frontend/better/javascript/test-history.js"></script>
+	<script>
+		//LIST OF TEST SERVERS. Leave empty if you're doing a standalone installation. See documentation for details
+		var SPEEDTEST_SERVERS = [
+			/*{	//this server doesn't actually exist, remove it
+				name:"Example Server 1", //user friendly name for the server
+				server:"//test1.mydomain.com/", //URL to the server. // at the beginning will be replaced with http:// or https:// automatically
+				dlURL:"backend/garbage.php",  //path to download test on this server (garbage.php or replacement)
+				ulURL:"backend/empty.php",  //path to upload test on this server (empty.php or replacement)
+				pingURL:"backend/empty.php",  //path to ping/jitter test on this server (empty.php or replacement)
+				getIpURL:"backend/getIP.php"  //path to getIP on this server (getIP.php or replacement)
+			},
+			{	//this server doesn't actually exist, remove it
+				name:"Example Server 2", //user friendly name for the server
+				server:"//test2.example.com/", //URL to the server. // at the beginning will be replaced with http:// or https:// automatically
+				dlURL:"garbage.php",  //path to download test on this server (garbage.php or replacement)
+				ulURL:"empty.php",  //path to upload test on this server (empty.php or replacement)
+				pingURL:"empty.php",  //path to ping/jitter test on this server (empty.php or replacement)
+				getIpURL:"getIP.php"  //path to getIP on this server (getIP.php or replacement)
+			}*/
+			//add other servers here, comma separated
+		];
+
+		//INITIALIZE SPEEDTEST
+		var s = new Speedtest(); //create speed test object
+		s.setParameter("telemetry_level", "basic"); //enable basic telemetry (for results sharing)
+	</script>
+	<link rel="stylesheet" href="frontend/better/styling/tokens.css">
+	<link rel="stylesheet" href="frontend/better/styling/better.css">
+	<link rel="stylesheet" href="frontend/better/styling/contrast.css">
+	<link rel="stylesheet" href="frontend/better/styling/panel.css">
+	<title>LibreSpeed</title>
+</head>
+
+<body onload="LibreSpeedI18n.ready.then(initServers)">
+	<div id="loading" class="visible">
+		<p id="message"><span class="loadCircle"></span><span data-i18n="classic.selecting">Selecting a server...</span></p>
+	</div>
+	<div id="testWrapper" class="hidden">
+		<button id="startStopBtn" onclick="startStop()" data-i18n="classic.start">Start</button><br />
+		<div id="connArea" class="conn" role="radiogroup" aria-label="Number of connections" data-i18n-attr="aria-label:conn.aria">
+			<span class="conn-seg">
+				<button type="button" role="radio" data-conn="single" aria-checked="false" onclick="setConnMode('single')" title="Single connection: one in each direction, what a regular download achieves" data-i18n="conn.single" data-i18n-attr="title:conn.single-title">Single</button>
+				<button type="button" role="radio" data-conn="multi" aria-checked="true" onclick="setConnMode('multi')" title="Multiple connections: 6 for the download and 3 for the upload, the full capacity of the link" data-i18n="conn.multi" data-i18n-attr="title:conn.multi-title">Multiple</button>
+			</span>
+		</div>
+		<div id="serverArea">
+			<span data-i18n="classic.server">Server:</span> <select id="server" onchange="s.setSelectedServer(SPEEDTEST_SERVERS[this.value])"></select>
+		</div>
+		<div id="test">
+			<div class="testGroup">
+				<div class="testArea">
+					<div class="testName" data-i18n="metric.download">Download</div>
+					<canvas id="dlMeter" class="meter"></canvas>
+					<div id="dlText" class="meterText"></div>
+					<div class="unit">Mbit/s</div>
+					<div class="sub"><span data-i18n="metric.ping">Ping</span> <span id="pingText">--</span> ms</div>
+				</div>
+				<div class="testArea">
+					<div class="testName" data-i18n="metric.upload">Upload</div>
+					<canvas id="ulMeter" class="meter"></canvas>
+					<div id="ulText" class="meterText"></div>
+					<div class="unit">Mbit/s</div>
+					<div class="sub"><span data-i18n="metric.jitter">Jitter</span> <span id="jitText">--</span> ms</div>
+				</div>
+			</div>
+			<div id="ipArea">
+				<div id="ipCard" class="ip-card" style="display:none">
+					<div id="ipAddr" class="ip-address"></div>
+					<div id="ipIsp" class="ip-isp"></div>
+				</div>
+			</div>
+		</div>
+		<div id="historySection" style="display:none">
+			<div class="history-heading">
+				<h3>
+					<button type="button" id="historyToggle" aria-expanded="true" aria-controls="historyList"><span data-i18n="history.title">Test history</span> <span class="history-caret" aria-hidden="true"></span></button>
+				</h3>
+				<button type="button" id="historyClear" data-i18n="history.clear">Clear history</button>
+			</div>
+			<div id="historyList"></div>
+		</div>
+		<div class="footer">
+			<a href="stability-better.html" data-i18n="classic.stability" onclick="location.href='stability-better.html'+location.search;return false;">Stability Test</a>
+			<a href="#" data-i18n="classic.privacy" onclick="I('privacyPolicy').style.display='';return false;">Privacy</a>
+			<a href="https://github.com/librespeed/speedtest" target="_blank" rel="noopener" data-i18n="classic.source">Source code</a>
+			<p class="poweredby"><a href="https://librespeed.org/" target="_blank" rel="noopener">Powered by LibreSpeed</a></p>
+		</div>
+	</div>
+	<div id="privacyPolicy" style="display:none">
+		<button type="button" class="privacy-close" aria-label="Close" title="Close" data-i18n-attr="aria-label:dialog.close,title:dialog.close" onclick="I('privacyPolicy').style.display='none'">&times;</button>
+		<h2 data-i18n="privacy.title">Privacy Policy</h2>
+		<p data-i18n="privacy.telemetry">This HTML5 speed test server is configured with telemetry enabled.</p>
+		<h4 data-i18n="privacy.collect-title">What data we collect</h4>
+		<p data-i18n="privacy.collect-intro">At the end of the test, the following data is collected and stored:</p>
+		<ul>
+			<li data-i18n="privacy.item.test-id">Test ID</li>
+			<li data-i18n="privacy.item.time">Time of testing</li>
+			<li data-i18n="privacy.item.results">Test results (download and upload speed, ping and jitter)</li>
+			<li data-i18n="privacy.item.ip">IP address</li>
+			<li data-i18n="privacy.item.isp">ISP information</li>
+			<li data-i18n="privacy.item.location">Approximate location (inferred from IP address, not GPS)</li>
+			<li data-i18n="privacy.item.locale">User agent and browser locale</li>
+			<li data-i18n="privacy.item.log">Test log (contains no personal information)</li>
+		</ul>
+		<h4 data-i18n="privacy.use-title">How we use the data</h4>
+		<p data-i18n="privacy.use-intro">Data collected through this service is used to:</p>
+		<ul>
+			<li data-i18n="privacy.use.share">Allow sharing of test results (sharable image for forums, etc.)</li>
+			<li data-i18n="privacy.use.improve">To improve the service offered to you (for instance, to detect problems on our side)</li>
+		</ul>
+		<p data-i18n="privacy.no-disclosure">No personal information is disclosed to third parties.</p>
+		<h4 data-i18n="privacy.consent-title">Your consent</h4>
+		<p data-i18n="privacy.consent">By starting the test, you consent to the terms of this privacy policy.</p>
+		<h4 data-i18n="privacy.removal-title">Data removal</h4>
+		<p>
+			<span data-i18n="privacy.removal">If you want to have your information deleted, you need to provide either the ID of the test or your IP address. This is the only way to identify your data, without this information we won't be able to comply with your request.</span><br /><br />
+			<span data-i18n="privacy.contact">Contact this email address for all deletion requests:</span>
+			<a href="mailto:PUT@YOUR_EMAIL.HERE">TO BE FILLED BY DEVELOPER</a>.
+		</p>
+		<div class="closePrivacyPolicy">
+			<a href="#" data-i18n="dialog.close" onclick="I('privacyPolicy').style.display='none';return false;">Close</a>
+		</div>
+	</div>
+	<script src="frontend/better/javascript/index.js"></script>
+	<script src="frontend/better/javascript/theme-panel.js"></script>
+</body>
+
+</html>

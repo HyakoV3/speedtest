@@ -1,0 +1,98 @@
+/**
+ * High contrast for the better pages: black background, white text and yellow accents
+ *
+ * Turned on by the "high-contrast" class on <html> (see accessibility.js). The components use the tokens of
+ * tokens.css, so most of it is only a new set of tokens. The selector is more specific than the ones of the
+ * light and dark schemes, so it wins over the theme and the brand color.
+ */
+html.high-contrast[data-theme] {
+  color-scheme: dark;
+  --bg: #000000;
+  --surface: #000000;
+  --surface-muted: #1a1a1a;
+  --border: #facc15;
+  --text: #ffffff;
+  --muted: #fde68a;
+  --primary: #facc15;
+  --primary-subtle: #2a2400;
+  --on-primary: #000000;
+  --secondary: #ffffff;
+  --meter-track: #ffffff66;
+  --great: #4ade80;
+  --good: #a3e635;
+  --poor: #fb923c;
+  --bad: #ff6b6b;
+}
+
+html.high-contrast body {
+  background: #000000;
+}
+
+html.high-contrast a,
+html.high-contrast .footer a {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+html.high-contrast #startStopBtn,
+html.high-contrast #startBtn,
+html.high-contrast #resetBtn {
+  background: #000000;
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+html.high-contrast #startStopBtn:hover,
+html.high-contrast #startBtn:hover,
+html.high-contrast #resetBtn:hover,
+html.high-contrast #startStopBtn.running,
+html.high-contrast #startBtn.running {
+  color: #000000;
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+html.high-contrast #durationSelect,
+html.high-contrast #targetSelect,
+html.high-contrast #server {
+  color: var(--primary);
+  background-color: #000000;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23facc15'/%3E%3C/svg%3E");
+}
+
+html.high-contrast .history-date,
+html.high-contrast .history-metrics,
+html.high-contrast .history-icon,
+html.high-contrast .ip-card,
+html.high-contrast .ip-isp,
+html.high-contrast .conn,
+html.high-contrast div.testArea .sub {
+  opacity: 1;
+}
+
+html.high-contrast .history-header:hover {
+  background: var(--primary-subtle);
+}
+
+html.high-contrast #privacyPolicy {
+  border: 0.125rem solid var(--primary);
+  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.85);
+}
+
+html.high-contrast :focus-visible {
+  outline: 0.1875rem solid var(--primary);
+}
+
+html.high-contrast span.loadCircle {
+  border-color: #ffffff66;
+  border-top-color: var(--primary);
+}
+
+html.high-contrast .history-image {
+  filter: invert(1);
+}
+
+/* The mode and the brand color have no effect with high contrast */
+html.high-contrast .panel-appearance {
+  display: none;
+}

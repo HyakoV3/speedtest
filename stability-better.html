@@ -1,0 +1,158 @@
+<!doctype html>
+<html>
+  <head>
+    <link rel="shortcut icon" href="favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta charset="UTF-8" />
+    <script src="frontend/better/javascript/theme.js"></script>
+    <script src="frontend/better/javascript/accessibility.js"></script>
+    <script src="frontend/better/javascript/font.js"></script>
+    <script src="frontend/better/javascript/i18n.js"></script>
+    <script src="frontend/better/javascript/colors.js"></script>
+    <script src="frontend/better/javascript/test-history.js"></script>
+    <script src="frontend/better/javascript/stability-tools.js"></script>
+    <script src="frontend/better/javascript/chart-styles.js"></script>
+    <title>LibreSpeed - Stability Test</title>
+    <link rel="stylesheet" href="frontend/better/styling/tokens.css" />
+    <link rel="stylesheet" href="frontend/better/styling/better.css" />
+    <link rel="stylesheet" href="frontend/better/styling/contrast.css" />
+    <link rel="stylesheet" href="frontend/better/styling/panel.css" />
+  </head>
+  <body>
+    <div id="controls">
+      <select id="durationSelect" aria-label="Duration" data-i18n-attr="aria-label:stability.duration">
+        <option value="60" data-i18n="stability.60-seconds">60 Seconds</option>
+        <option value="90" data-i18n="stability.90-seconds">90 Seconds</option>
+        <option value="120" data-i18n="stability.2-minutes">2 Minutes</option>
+        <option value="180" data-i18n="stability.3-minutes">3 Minutes</option>
+        <option value="300" data-i18n="stability.5-minutes">5 Minutes</option>
+      </select>
+      <div id="startBtn" class="disabled finding" onclick="startStop()" role="button" tabindex="0" aria-disabled="true"></div>
+      <div id="resetBtn" onclick="resetTest()" role="button" tabindex="0" data-i18n="stability.reset">Reset</div>
+    </div>
+
+    <div id="serverArea" style="display: none">
+      <span data-i18n="stability.server">Server:</span>
+      <select id="server" onchange="onServerChange(this.value)"></select>
+    </div>
+
+    <div id="test">
+      <div class="testGroup">
+        <div class="testArea2">
+          <div class="testName" data-i18n="stability.current">Current</div>
+          <div id="statCurrent" class="meterText accent"></div>
+          <div class="unit">ms</div>
+        </div>
+        <div class="testArea2">
+          <div class="testName" data-i18n="stability.average">Average</div>
+          <div id="statAvg" class="meterText accent"></div>
+          <div class="unit">ms</div>
+        </div>
+        <div class="testArea2">
+          <div class="testName" data-i18n="metric.jitter">Jitter</div>
+          <div id="statJitter" class="meterText accent"></div>
+          <div class="unit">ms</div>
+        </div>
+      </div>
+      <div class="testGroup">
+        <div class="testArea2">
+          <div class="testName" data-i18n="stability.min">Min</div>
+          <div id="statMin" class="meterText"></div>
+          <div class="unit">ms</div>
+        </div>
+        <div class="testArea2">
+          <div class="testName" data-i18n="stability.max">Max</div>
+          <div id="statMax" class="meterText"></div>
+          <div class="unit">ms</div>
+        </div>
+        <div class="testArea2 wide">
+          <div class="testName" data-i18n="stability.failed">Failed Requests</div>
+          <div id="statLoss" class="meterText"></div>
+          <div class="unit">%</div>
+        </div>
+        <div class="testArea2">
+          <div class="testName" data-i18n="stability.elapsed">Elapsed</div>
+          <div id="statElapsed" class="meterText">00:00</div>
+          <div class="unit"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="chartContainer">
+      <canvas id="pingChart"></canvas>
+      <div id="rating" class="none" role="status" aria-live="polite">--</div>
+    </div>
+
+    <div id="optionalControls">
+      <label>
+        <span data-i18n="stability.alert">Alert threshold:</span>
+        <input type="range" id="alertThreshold" min="0" max="500" step="10" value="0" oninput="updateThreshold(this.value)" />
+        <span id="thresholdValue" data-i18n="stability.off">Off</span>
+      </label>
+      <button id="downloadCsvBtn" onclick="downloadCsv()" data-i18n="stability.download-csv">Download CSV</button>
+    </div>
+
+    <div id="historySection" style="display: none">
+      <div class="history-heading">
+        <h3>
+          <button type="button" id="historyToggle" aria-expanded="true" aria-controls="historyList">
+            <span data-i18n="history.title">Test history</span> <span class="history-caret" aria-hidden="true"></span>
+          </button>
+        </h3>
+        <button type="button" id="historyClear" data-i18n="history.clear">Clear history</button>
+      </div>
+      <div id="historyList"></div>
+    </div>
+
+    <div class="footer">
+      <a href="index-better.html" data-i18n="stability.back" onclick="location.href='index-better.html'+location.search;return false;">Speed Test</a>
+      <a href="#" data-i18n="classic.privacy" onclick="document.getElementById('privacyPolicy').style.display='';return false;">Privacy</a>
+      <a href="https://github.com/librespeed/speedtest" target="_blank" rel="noopener" data-i18n="stability.source">Source code</a>
+      <p class="poweredby"><a href="https://librespeed.org/" target="_blank" rel="noopener">Powered by LibreSpeed</a></p>
+    </div>
+
+    <div id="privacyPolicy" style="display: none">
+      <button type="button" class="privacy-close" aria-label="Close" title="Close" data-i18n-attr="aria-label:dialog.close,title:dialog.close" onclick="document.getElementById('privacyPolicy').style.display='none'">&times;</button>
+      <h2 data-i18n="privacy.title">Privacy Policy</h2>
+      <p data-i18n="privacy.telemetry">This HTML5 speed test server is configured with telemetry enabled.</p>
+      <h4 data-i18n="privacy.collect-title">What data we collect</h4>
+      <p data-i18n="privacy.collect-intro">At the end of the test, the following data is collected and stored:</p>
+      <ul>
+        <li data-i18n="privacy.item.test-id">Test ID</li>
+        <li data-i18n="privacy.item.time">Time of testing</li>
+        <li data-i18n="privacy.item.results">Test results (download and upload speed, ping and jitter)</li>
+        <li data-i18n="privacy.item.ip">IP address</li>
+        <li data-i18n="privacy.item.isp">ISP information</li>
+        <li data-i18n="privacy.item.location">Approximate location (inferred from IP address, not GPS)</li>
+        <li data-i18n="privacy.item.locale">User agent and browser locale</li>
+        <li data-i18n="privacy.item.log">Test log (contains no personal information)</li>
+      </ul>
+      <h4 data-i18n="privacy.use-title">How we use the data</h4>
+      <p data-i18n="privacy.use-intro">Data collected through this service is used to:</p>
+      <ul>
+        <li data-i18n="privacy.use.share">Allow sharing of test results (sharable image for forums, etc.)</li>
+        <li data-i18n="privacy.use.improve">To improve the service offered to you (for instance, to detect problems on our side)</li>
+      </ul>
+      <p data-i18n="privacy.no-disclosure">No personal information is disclosed to third parties.</p>
+      <h4 data-i18n="privacy.consent-title">Your consent</h4>
+      <p data-i18n="privacy.consent">By starting the test, you consent to the terms of this privacy policy.</p>
+      <h4 data-i18n="privacy.removal-title">Data removal</h4>
+      <p>
+        <span data-i18n="privacy.removal">If you want to have your information deleted, you need to provide either the ID of the test or your IP address. This is the only way to identify your data, without this information we won't be able to comply with your request.</span><br /><br />
+        <span data-i18n="privacy.contact">Contact this email address for all deletion requests:</span>
+        <a href="mailto:PUT@YOUR_EMAIL.HERE">TO BE FILLED BY DEVELOPER</a>.
+      </p>
+      <div class="closePrivacyPolicy">
+        <a href="#" data-i18n="dialog.close" onclick="document.getElementById('privacyPolicy').style.display='none';return false;">Close</a>
+      </div>
+    </div>
+
+    <script>
+      // Server configuration (same pattern as index.html)
+      // Set this to a different URL to load the server list from another location.
+      var SPEEDTEST_SERVERS = "server-list.json";
+    </script>
+    <script src="frontend/better/javascript/stability.js"></script>
+    <script src="frontend/better/javascript/theme-panel.js"></script>
+  </body>
+</html>
