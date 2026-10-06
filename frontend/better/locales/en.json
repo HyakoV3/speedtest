@@ -29,7 +29,6 @@
   "classic.selecting": "Selecting a server...",
   "classic.no-servers": "No servers available",
   "classic.privacy": "Privacy",
-  "classic.server": "Server:",
   "classic.test-id": "Test ID:",
   "classic.stability": "Stability Test",
   "classic.source": "Source code",
@@ -126,6 +125,7 @@
   "color.fuchsia": "Fuchsia",
   "color.coral": "Coral",
   "stability.select-target": "Select a target",
+  "classic.sponsor": "Sponsor:",
   "stability.server-aria": "Server",
   "stability.target": "Target"
 }

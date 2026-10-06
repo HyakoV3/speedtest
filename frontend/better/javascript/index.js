@@ -21,6 +21,11 @@ function format(value) {
   return value.toFixed(0);
 }
 
+function selectServer(index) {
+  s.setSelectedServer(SPEEDTEST_SERVERS[index]);
+  showSponsor(SPEEDTEST_SERVERS[index]);
+}
+
 // SERVER AUTO SELECTION
 function initServers() {
   if (SPEEDTEST_SERVERS.length == 0) {
@@ -67,6 +72,7 @@ function initServers() {
       }
       // With a single server there is nothing to choose
       if (I("server").options.length < 2) I("serverArea").style.display = "none";
+      showSponsor(server);
       I("testWrapper").className = "visible";
       initUI();
     });

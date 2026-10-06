@@ -185,6 +185,24 @@ div.hidden {
   margin-top: 1.25em;
 }
 
+/* The sponsor of the selected server, under the server list */
+p.sponsor {
+  min-height: 1.5em;
+  margin: 0.5em 0 0;
+  font-size: 0.9em;
+  color: var(--muted);
+  text-align: center;
+}
+
+p.sponsor a {
+  color: inherit;
+}
+
+/* No blank line under the target row when there is nothing to show */
+#targetArea + p.sponsor:empty {
+  display: none;
+}
+
 /* Meters (index) and numbers (both pages) */
 #test {
   margin: 1em 0;

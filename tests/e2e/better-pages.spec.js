@@ -287,3 +287,92 @@ test("speed test: a single server is not offered as a choice", async ({ page }) 
   await expect(page.locator("#testWrapper")).toHaveClass(/visible/);
   await expect(page.locator("#serverArea")).toBeHidden();
 });
+
+test("speed test: the sponsor of the selected server shows under the list", async ({ page }) => {
+  await page.route("**/server-list.json*", route =>
+    route.fulfill({
+      json: [
+        {
+          name: "Alpha, Testland",
+          server: "/backend",
+          dlURL: "garbage.php",
+          ulURL: "empty.php",
+          pingURL: "empty.php",
+          getIpURL: "getIP.php",
+          sponsorName: "Alpha Hosting",
+          sponsorURL: "https://alpha.example"
+        },
+        {
+          name: "Beta, Testland",
+          server: "/backend",
+          dlURL: "garbage.php",
+          ulURL: "empty.php",
+          pingURL: "empty.php",
+          getIpURL: "getIP.php",
+          sponsorName: "Beta Net"
+        },
+        {
+          name: "Gamma, Testland",
+          server: "/backend",
+          dlURL: "garbage.php",
+          ulURL: "empty.php",
+          pingURL: "empty.php",
+          getIpURL: "getIP.php"
+        }
+      ]
+    })
+  );
+  await page.route("**/backend/empty.php*", route =>
+    route.fulfill({ body: "", headers: { "Access-Control-Allow-Origin": "*" } })
+  );
+  await page.goto(`${staticRepositoryUrl}/index-better.html`);
+  await expect(page.locator("#testWrapper")).toHaveClass(/visible/);
+  await page.locator("#server").selectOption({ label: "Alpha, Testland" });
+  await expect(page.locator("#sponsor")).toHaveText("Sponsor: Alpha Hosting");
+  await expect(page.locator("#sponsor a")).toHaveAttribute("href", "https://alpha.example");
+  await page.locator("#server").selectOption({ label: "Beta, Testland" });
+  await expect(page.locator("#sponsor")).toHaveText("Sponsor: Beta Net");
+  await expect(page.locator("#sponsor a")).toHaveCount(0);
+  await page.locator("#server").selectOption({ label: "Gamma, Testland" });
+  await expect(page.locator("#sponsor")).toHaveText("");
+});
+
+test("stability: the sponsor shows under the target row only for a LibreSpeed server", async ({ page }) => {
+  const server = (name, extra) => ({
+    name,
+    server: "/backend",
+    dlURL: "garbage.php",
+    ulURL: "empty.php",
+    pingURL: "empty.php",
+    getIpURL: "getIP.php",
+    ...extra
+  });
+  await page.route("**/server-list.json*", route =>
+    route.fulfill({
+      json: [
+        server("Alpha, Testland", { sponsorName: "Alpha Hosting", sponsorURL: "https://alpha.example" }),
+        server("Beta, Testland")
+      ]
+    })
+  );
+  await page.route("**/backend/empty.php*", route =>
+    route.fulfill({ body: "", headers: { "Access-Control-Allow-Origin": "*" } })
+  );
+  await page.goto(`${staticRepositoryUrl}/stability-better.html`);
+  await expect(page.locator("#sponsor")).toBeHidden();
+  await page.locator("#targetSelect").selectOption({ label: "LibreSpeed server" });
+  await page.locator("#server").selectOption({ label: "Alpha, Testland" });
+  await expect(page.locator("#sponsor")).toHaveText("Sponsor: Alpha Hosting");
+  await expect(page.locator("#sponsor a")).toHaveAttribute("href", "https://alpha.example");
+
+  // Centered under the selects
+  const sponsor = await page.locator("#sponsor").boundingBox();
+  const viewport = page.viewportSize();
+  expect(Math.abs(sponsor.x + sponsor.width / 2 - viewport.width / 2)).toBeLessThan(10);
+
+  await page.locator("#server").selectOption({ label: "Beta, Testland" });
+  await expect(page.locator("#sponsor")).toBeHidden();
+  await page.locator("#server").selectOption({ label: "Alpha, Testland" });
+  await page.locator("#targetSelect").selectOption({ label: "Google" });
+  await expect(page.locator("#sponsor")).toBeHidden();
+});

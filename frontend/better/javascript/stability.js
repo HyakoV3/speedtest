@@ -163,7 +163,9 @@ function onServerChange(index) {
 // The server list only matters once the target is a LibreSpeed server, and only when there is something to choose
 function updateServerAreaVisibility() {
   var choosable = serverDiscoveryPending || I("server").options.length > 1;
-  I("serverArea").style.display = I("targetSelect").value === "libre" && choosable ? "" : "none";
+  var libre = I("targetSelect").value === "libre";
+  I("serverArea").style.display = libre && choosable ? "" : "none";
+  showSponsor(libre ? selectedServer : null);
 }
 
 // An external target does not need the server of the page

@@ -14,6 +14,7 @@
 	<script src="frontend/better/javascript/i18n.js"></script>
 	<script src="speedtest.js"></script>
 	<script src="frontend/better/javascript/colors.js"></script>
+	<script src="frontend/better/javascript/sponsor.js"></script>
 	<script src="frontend/better/javascript/meter.js"></script>
 	<script src="frontend/better/javascript/test-history.js"></script>
 	<script>
@@ -44,8 +45,9 @@
 			</span>
 		</div>
 		<div id="serverArea">
-			<select id="server" aria-label="Server" data-i18n-attr="aria-label:stability.server-aria" onchange="s.setSelectedServer(SPEEDTEST_SERVERS[this.value])"></select>
+			<select id="server" aria-label="Server" data-i18n-attr="aria-label:stability.server-aria" onchange="selectServer(this.value)"></select>
 		</div>
+		<p id="sponsor" class="sponsor"></p>
 		<div id="test">
 			<div class="testGroup">
 				<div class="testArea">

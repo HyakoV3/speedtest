@@ -2,7 +2,6 @@
   "classic.selecting": "Selecionando um servidor...",
   "classic.no-servers": "Nenhum servidor disponível",
   "classic.privacy": "Privacidade",
-  "classic.server": "Servidor:",
   "classic.stability": "Teste de estabilidade",
   "classic.source": "Código-fonte",
   "classic.start": "Iniciar",
@@ -126,6 +125,7 @@
   "color.fuchsia": "Fúcsia",
   "color.coral": "Coral",
   "stability.select-target": "Selecione um alvo",
+  "classic.sponsor": "Patrocinador:",
   "stability.server-aria": "Servidor",
   "stability.target": "Alvo"
 }
