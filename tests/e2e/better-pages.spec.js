@@ -9,7 +9,25 @@ const pages = [
 
 async function open(page, path, query = "") {
   // The stability page reads the server list, an empty one means the local server
-  await page.route("**/server-list.json*", route => route.fulfill({ json: [] }));
+  await page.route("**/server-list.json*", route =>
+    route.fulfill({
+      json: path.startsWith("/index")
+        ? [
+            {
+              name: "local",
+              server: "/backend",
+              dlURL: "garbage.php",
+              ulURL: "empty.php",
+              pingURL: "empty.php",
+              getIpURL: "getIP.php"
+            }
+          ]
+        : []
+    })
+  );
+  await page.route("**/backend/empty.php*", route =>
+    route.fulfill({ body: "", headers: { "Access-Control-Allow-Origin": "*" } })
+  );
   await page.goto(`${staticRepositoryUrl}${path}${query}`);
   await expect(page.locator(".panel-button")).toBeVisible();
 }
@@ -147,13 +165,36 @@ test("the stability page changes the chart style from the panel and keeps it", a
   await expect(page.getByRole("radio", { name: "Bands" })).toHaveAttribute("aria-checked", "true");
 });
 
-test("the speed test page keeps the server list of the original page", async ({ page }) => {
-  await page.route("**/server-list.json*", route => route.fulfill({ json: [] }));
+test("the speed test page shows the server list like the modern design", async ({ page }) => {
+  await page.route("**/server-list.json*", route =>
+    route.fulfill({
+      json: [
+        {
+          name: "Alpha, Testland",
+          server: "/backend",
+          dlURL: "garbage.php",
+          ulURL: "empty.php",
+          pingURL: "empty.php",
+          getIpURL: "getIP.php"
+        },
+        {
+          name: "Beta, Testland",
+          server: "/backend",
+          dlURL: "garbage.php",
+          ulURL: "empty.php",
+          pingURL: "empty.php",
+          getIpURL: "getIP.php"
+        }
+      ]
+    })
+  );
+  await page.route("**/backend/empty.php*", route =>
+    route.fulfill({ body: "", headers: { "Access-Control-Allow-Origin": "*" } })
+  );
   await page.goto(`${staticRepositoryUrl}/index-better.html`);
-  await expect(page.locator("#serverArea")).toBeHidden();
-  const source = await page.evaluate(() => fetch("index-better.html").then(response => response.text()));
-  expect(source).toContain("var SPEEDTEST_SERVERS = [");
-  expect(source).toContain('id="server"');
+  await expect(page.locator("#testWrapper")).toHaveClass(/visible/);
+  await expect(page.locator("#serverArea")).toBeVisible();
+  await expect(page.locator("#server option")).toHaveText(["Alpha, Testland", "Beta, Testland"]);
 });
 
 test("an external target can be tested when no server is reachable", async ({ page }) => {
