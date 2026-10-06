@@ -47,14 +47,6 @@ select {
   color: var(--text);
 }
 
-#server {
-  font-size: 1em;
-  padding: 0.2em 0.5em;
-  background: var(--surface);
-  border: 0.0625rem solid var(--border);
-  border-radius: var(--radius-button);
-}
-
 /* Loading message and page visibility */
 #loading {
   text-align: center;
@@ -185,7 +177,11 @@ div.hidden {
 }
 
 #serverArea {
-  margin-top: 1em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75em;
+  margin-top: 1.25em;
 }
 
 /* Meters (index) and numbers (both pages) */
@@ -680,7 +676,7 @@ div.closePrivacyPolicy a {
 }
 
 #durationSelect,
-#targetSelect {
+#server {
   box-sizing: border-box;
   height: 3.5em;
   margin-right: 0.5em;
@@ -698,8 +694,23 @@ div.closePrivacyPolicy a {
 }
 
 #durationSelect:hover,
-#targetSelect:hover {
+#server:hover {
   border-color: var(--primary);
+}
+
+/* The server list is wider than the duration list and keeps its place when the page is narrow */
+#server {
+  width: 100%;
+  min-width: 14em;
+  max-width: 28em;
+  margin-right: 0;
+  font-size: 1.05em;
+  text-align: left;
+}
+
+#server:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 #resetBtn {
