@@ -53,6 +53,7 @@ html.high-contrast #startBtn.running {
 }
 
 html.high-contrast #durationSelect,
+html.high-contrast #targetSelect,
 html.high-contrast #server {
   color: var(--primary);
   background-color: #000000;

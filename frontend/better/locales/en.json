@@ -124,5 +124,6 @@
   "color.emerald": "Emerald",
   "color.orange": "Orange",
   "color.fuchsia": "Fuchsia",
-  "color.coral": "Coral"
+  "color.coral": "Coral",
+  "stability.target": "Target"
 }

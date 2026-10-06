@@ -161,8 +161,9 @@ function onServerChange(index) {
   updateStartButtonState();
 }
 
+// An external target does not need the server of the page
 function canStartTest() {
-  return localServerReady;
+  return !!I("targetSelect").value || localServerReady;
 }
 
 function updateStartButtonState() {
@@ -190,8 +191,13 @@ function abortTest() {
 }
 
 function workerSettings() {
-  var settings = { duration: parseInt(I("durationSelect").value, 10), ping_allowPerformanceApi: true };
-  if (selectedServer) {
+  var externalTarget = I("targetSelect").value;
+  var settings = {
+    duration: parseInt(I("durationSelect").value, 10),
+    ping_allowPerformanceApi: true,
+    url_ping_external: externalTarget
+  };
+  if (!externalTarget && selectedServer) {
     settings.url_ping = joinServerUrl(selectedServer.server, selectedServer.pingURL);
     settings.mpot = true;
   }
@@ -223,6 +229,7 @@ function startTest() {
   button.className = "running";
   button.textContent = t("classic.abort", "Abort");
   I("durationSelect").disabled = true;
+  I("targetSelect").disabled = true;
   I("server").disabled = true;
   var currentWorker = new Worker("stability_worker.js?r=" + Math.random());
   worker = currentWorker;
@@ -239,6 +246,7 @@ function stopTest() {
   running = false;
   I("startBtn").className = "";
   I("durationSelect").disabled = false;
+  I("targetSelect").disabled = false;
   I("server").disabled = false;
   updateStartButtonState();
   if (updater) {

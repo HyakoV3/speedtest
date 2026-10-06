@@ -155,3 +155,19 @@ test("the speed test page keeps the server list of the original page", async ({ 
   expect(source).toContain("var SPEEDTEST_SERVERS = [");
   expect(source).toContain('id="server"');
 });
+
+test("an external target can be tested when no server is reachable", async ({ page }) => {
+  await page.route("**/server-list.json*", route =>
+    route.fulfill({
+      json: [{ name: "Unreachable", server: "http://127.0.0.1:1/", pingURL: "empty.php", dlURL: "garbage.php" }]
+    })
+  );
+  await page.goto(`${staticRepositoryUrl}/stability-better.html`);
+  await expect(page.locator("#startBtn")).toHaveAttribute("aria-disabled", "true");
+  await expect(page.locator("#startBtn")).toHaveAttribute("title", "No reachable local server found");
+
+  await page.locator("#targetSelect").selectOption({ label: "Google" });
+  await expect(page.locator("#startBtn")).toHaveAttribute("aria-disabled", "false");
+  await page.locator("#targetSelect").selectOption({ label: "Local Server" });
+  await expect(page.locator("#startBtn")).toHaveAttribute("aria-disabled", "true");
+});
