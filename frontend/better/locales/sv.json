@@ -36,7 +36,7 @@
   "classic.start": "Starta",
   "classic.abort": "Avbryt",
   "stability.back": "Hastighetstest",
-  "stability.local": "Lokal server",
+  "stability.local": "LibreSpeed-server",
   "stability.finding": "Söker...",
   "stability.reset": "Återställ",
   "stability.server": "Server:",

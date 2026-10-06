@@ -36,7 +36,7 @@
   "privacy.removal": "Si quieres que se eliminen tus datos, debes indicar el ID de la prueba o tu dirección IP. Es la única forma de identificar tus datos; sin esa información no podremos atender tu solicitud.",
   "privacy.contact": "Usa este correo para todas las solicitudes de eliminación:",
   "stability.back": "Prueba de velocidad",
-  "stability.local": "Servidor local",
+  "stability.local": "Servidor LibreSpeed",
   "stability.finding": "Buscando...",
   "stability.reset": "Reiniciar",
   "stability.server": "Servidor:",
@@ -125,5 +125,7 @@
   "color.orange": "Naranja",
   "color.fuchsia": "Fucsia",
   "color.coral": "Coral",
+  "stability.select-target": "Seleccione un objetivo",
+  "stability.server-aria": "Servidor",
   "stability.target": "Objetivo"
 }

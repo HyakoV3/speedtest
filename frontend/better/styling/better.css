@@ -672,6 +672,24 @@ div.closePrivacyPolicy a {
 }
 
 /* Stability page */
+/* Second row of the stability page: the target, and next to it the server once the target is a LibreSpeed server */
+#targetArea {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75em;
+  margin: 0 auto 1em;
+}
+
+#targetArea #serverArea {
+  margin-top: 0;
+}
+
+#targetArea #targetSelect {
+  margin-right: 0;
+}
+
 #controls {
   margin: 0 auto 1em;
 }

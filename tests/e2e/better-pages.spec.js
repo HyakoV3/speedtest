@@ -205,10 +205,85 @@ test("an external target can be tested when no server is reachable", async ({ pa
   );
   await page.goto(`${staticRepositoryUrl}/stability-better.html`);
   await expect(page.locator("#startBtn")).toHaveAttribute("aria-disabled", "true");
+  await expect(page.locator("#startBtn")).toHaveAttribute("title", "Select a target");
+
+  await page.locator("#targetSelect").selectOption({ label: "LibreSpeed server" });
   await expect(page.locator("#startBtn")).toHaveAttribute("title", "No reachable local server found");
 
   await page.locator("#targetSelect").selectOption({ label: "Google" });
   await expect(page.locator("#startBtn")).toHaveAttribute("aria-disabled", "false");
-  await page.locator("#targetSelect").selectOption({ label: "Local Server" });
+  await page.locator("#targetSelect").selectOption({ label: "LibreSpeed server" });
   await expect(page.locator("#startBtn")).toHaveAttribute("aria-disabled", "true");
+});
+
+// Stability page: the target row and the server that shows up next to it
+async function mockServers(page, names) {
+  await page.route("**/server-list.json*", route =>
+    route.fulfill({
+      json: names.map(name => ({
+        name,
+        server: "/backend",
+        dlURL: "garbage.php",
+        ulURL: "empty.php",
+        pingURL: "empty.php",
+        getIpURL: "getIP.php"
+      }))
+    })
+  );
+  await page.route("**/backend/empty.php*", route =>
+    route.fulfill({ body: "", headers: { "Access-Control-Allow-Origin": "*" } })
+  );
+}
+
+test("stability: nothing is chosen at first and the server is hidden", async ({ page }) => {
+  await mockServers(page, ["Alpha, Testland", "Beta, Testland"]);
+  await page.goto(`${staticRepositoryUrl}/stability-better.html`);
+  await expect(page.locator("#targetSelect")).toHaveValue("");
+  await expect(page.locator("#targetSelect option:checked")).toHaveText("Select a target");
+  await expect(page.locator("#serverArea")).toBeHidden();
+  await expect(page.locator("#startBtn")).toHaveAttribute("aria-disabled", "true");
+  await expect(page.locator("#startBtn")).toHaveAttribute("title", "Select a target");
+});
+
+test("stability: the server shows up next to the target when LibreSpeed is chosen", async ({ page }) => {
+  await mockServers(page, ["Alpha, Testland", "Beta, Testland"]);
+  await page.goto(`${staticRepositoryUrl}/stability-better.html`);
+  await page.locator("#targetSelect").selectOption({ label: "LibreSpeed server" });
+  await expect(page.locator("#serverArea")).toBeVisible();
+  await expect(page.locator("#server option")).toHaveText(["Alpha, Testland", "Beta, Testland"]);
+  await expect(page.locator("#startBtn")).toHaveAttribute("aria-disabled", "false");
+
+  // Same row as the target, below the row with the duration, Start and Reset
+  const target = await page.locator("#targetSelect").boundingBox();
+  const server = await page.locator("#server").boundingBox();
+  const start = await page.locator("#startBtn").boundingBox();
+  expect(Math.abs(target.y - server.y)).toBeLessThan(8);
+  expect(target.y).toBeGreaterThan(start.y + start.height - 1);
+});
+
+test("stability: an external target hides the server again", async ({ page }) => {
+  await mockServers(page, ["Alpha, Testland", "Beta, Testland"]);
+  await page.goto(`${staticRepositoryUrl}/stability-better.html`);
+  await page.locator("#targetSelect").selectOption({ label: "LibreSpeed server" });
+  await expect(page.locator("#serverArea")).toBeVisible();
+  for (const name of ["Google", "Cloudflare", "Apple"]) {
+    await page.locator("#targetSelect").selectOption({ label: name });
+    await expect(page.locator("#serverArea")).toBeHidden();
+    await expect(page.locator("#startBtn")).toHaveAttribute("aria-disabled", "false");
+  }
+});
+
+test("stability: a single server is not offered as a choice", async ({ page }) => {
+  await mockServers(page, ["Only, Testland"]);
+  await page.goto(`${staticRepositoryUrl}/stability-better.html`);
+  await page.locator("#targetSelect").selectOption({ label: "LibreSpeed server" });
+  await expect(page.locator("#startBtn")).toHaveAttribute("aria-disabled", "false");
+  await expect(page.locator("#serverArea")).toBeHidden();
+});
+
+test("speed test: a single server is not offered as a choice", async ({ page }) => {
+  await mockServers(page, ["Only, Testland"]);
+  await page.goto(`${staticRepositoryUrl}/index-better.html`);
+  await expect(page.locator("#testWrapper")).toHaveClass(/visible/);
+  await expect(page.locator("#serverArea")).toBeHidden();
 });

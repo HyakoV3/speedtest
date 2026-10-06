@@ -65,6 +65,8 @@ function initServers() {
         if (indexed[i].server === server) option.selected = true;
         I("server").appendChild(option);
       }
+      // With a single server there is nothing to choose
+      if (I("server").options.length < 2) I("serverArea").style.display = "none";
       I("testWrapper").className = "visible";
       initUI();
     });

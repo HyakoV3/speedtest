@@ -36,7 +36,7 @@
   "classic.start": "Start",
   "classic.abort": "Abort",
   "stability.back": "Speed Test",
-  "stability.local": "Local Server",
+  "stability.local": "LibreSpeed server",
   "stability.finding": "Finding...",
   "stability.reset": "Reset",
   "stability.server": "Server:",
@@ -125,5 +125,7 @@
   "color.orange": "Orange",
   "color.fuchsia": "Fuchsia",
   "color.coral": "Coral",
+  "stability.select-target": "Select a target",
+  "stability.server-aria": "Server",
   "stability.target": "Target"
 }

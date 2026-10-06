@@ -44,7 +44,7 @@
 			</span>
 		</div>
 		<div id="serverArea">
-			<span data-i18n="classic.server">Server:</span> <select id="server" onchange="s.setSelectedServer(SPEEDTEST_SERVERS[this.value])"></select>
+			<select id="server" aria-label="Server" data-i18n-attr="aria-label:stability.server-aria" onchange="s.setSelectedServer(SPEEDTEST_SERVERS[this.value])"></select>
 		</div>
 		<div id="test">
 			<div class="testGroup">

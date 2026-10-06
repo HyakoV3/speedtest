@@ -27,19 +27,21 @@
         <option value="180" data-i18n="stability.3-minutes">3 Minutes</option>
         <option value="300" data-i18n="stability.5-minutes">5 Minutes</option>
       </select>
-      <select id="targetSelect" aria-label="Target" data-i18n-attr="aria-label:stability.target" onchange="updateStartButtonState()">
-        <option value="" data-i18n="stability.local">Local Server</option>
-        <option value="https://www.google.com/generate_204">Google</option>
-        <option value="https://www.cloudflare.com/cdn-cgi/trace">Cloudflare</option>
-        <option value="https://www.apple.com/library/test/success.html">Apple</option>
-      </select>
       <div id="startBtn" class="disabled finding" onclick="startStop()" role="button" tabindex="0" aria-disabled="true"></div>
       <div id="resetBtn" onclick="resetTest()" role="button" tabindex="0" data-i18n="stability.reset">Reset</div>
     </div>
 
-    <div id="serverArea" style="display: none">
-      <span data-i18n="stability.server">Server:</span>
-      <select id="server" onchange="onServerChange(this.value)"></select>
+    <div id="targetArea">
+      <select id="targetSelect" aria-label="Target" data-i18n-attr="aria-label:stability.target" onchange="updateStartButtonState()">
+        <option value="" selected disabled hidden data-i18n="stability.select-target">Select a target</option>
+        <option value="libre" data-i18n="stability.local">LibreSpeed server</option>
+        <option value="https://www.google.com/generate_204">Google</option>
+        <option value="https://www.cloudflare.com/cdn-cgi/trace">Cloudflare</option>
+        <option value="https://www.apple.com/library/test/success.html">Apple</option>
+      </select>
+      <div id="serverArea" style="display: none">
+        <select id="server" aria-label="Server" data-i18n-attr="aria-label:stability.server-aria" onchange="onServerChange(this.value)"></select>
+      </div>
     </div>
 
     <div id="test">

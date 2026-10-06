@@ -105,7 +105,6 @@ function pingServer(server, callback) {
 
 // Ping every server and select the closest one
 function discoverServers() {
-  I("serverArea").style.display = "";
   serverDiscoveryPending = true;
   I("server").disabled = true;
   var pending = document.createElement("option");
@@ -161,9 +160,16 @@ function onServerChange(index) {
   updateStartButtonState();
 }
 
+// The server list only matters once the target is a LibreSpeed server, and only when there is something to choose
+function updateServerAreaVisibility() {
+  var choosable = serverDiscoveryPending || I("server").options.length > 1;
+  I("serverArea").style.display = I("targetSelect").value === "libre" && choosable ? "" : "none";
+}
+
 // An external target does not need the server of the page
 function canStartTest() {
-  return !!I("targetSelect").value || localServerReady;
+  var target = I("targetSelect").value;
+  return target === "libre" ? localServerReady : !!target;
 }
 
 function updateStartButtonState() {
@@ -174,9 +180,11 @@ function updateStartButtonState() {
   button.setAttribute("aria-disabled", canStart ? "false" : "true");
   button.textContent = serverDiscoveryPending ? t("stability.finding", "Finding...") : t("classic.start", "Start");
   if (canStart) button.removeAttribute("title");
+  else if (!I("targetSelect").value) button.title = t("stability.select-target", "Select a target");
   else if (serverDiscoveryPending) button.title = t("stability.finding-server", "Finding best server...");
   else button.title = t("stability.no-server", "No reachable local server found");
   I("server").disabled = !localServerReady || serverDiscoveryPending;
+  updateServerAreaVisibility();
 }
 
 // Start/Stop
@@ -191,7 +199,7 @@ function abortTest() {
 }
 
 function workerSettings() {
-  var externalTarget = I("targetSelect").value;
+  var externalTarget = I("targetSelect").value === "libre" ? "" : I("targetSelect").value;
   var settings = {
     duration: parseInt(I("durationSelect").value, 10),
     ping_allowPerformanceApi: true,
