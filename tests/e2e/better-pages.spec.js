@@ -376,3 +376,21 @@ test("stability: the sponsor shows under the target row only for a LibreSpeed se
   await page.locator("#targetSelect").selectOption({ label: "Google" });
   await expect(page.locator("#sponsor")).toBeHidden();
 });
+
+for (const { name, path } of [
+  { name: "speed test", path: "/index-better.html" },
+  { name: "stability", path: "/stability-better.html" }
+]) {
+  test(`${name}: the logo, the title and the tagline of the modern design show on top`, async ({ page }) => {
+    await page.goto(`${staticRepositoryUrl}${path}`);
+    await expect(page.locator("header.brand .brand-logo")).toHaveAttribute("src", "frontend/images/logo.svg");
+    await expect(page.locator("header.brand h1")).toHaveText("Free and Open Source Speedtest.");
+    await expect(page.locator("header.brand .tagline")).toHaveText("No Flash, No Java, No Websockets, No Bullsh*t");
+    await expect(page.locator('link[rel="shortcut icon"]')).toHaveAttribute("href", "frontend/images/favicon.svg");
+    const logo = await page.locator("header.brand .brand-logo").evaluate(image => image.naturalWidth);
+    expect(logo).toBeGreaterThan(0);
+
+    await page.goto(`${staticRepositoryUrl}${path}?lang=pt`);
+    await expect(page.locator("header.brand h1")).toHaveText("Teste de velocidade livre e de código aberto.");
+  });
+}

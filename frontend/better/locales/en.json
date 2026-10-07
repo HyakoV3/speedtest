@@ -127,5 +127,7 @@
   "stability.select-target": "Select a target",
   "classic.sponsor": "Sponsor:",
   "stability.server-aria": "Server",
+  "brand.title": "Free and Open Source Speedtest.",
+  "brand.tagline": "No Flash, No Java, No Websockets, No Bullsh*t",
   "stability.target": "Target"
 }

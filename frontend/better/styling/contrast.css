@@ -28,6 +28,11 @@ html.high-contrast body {
   background: #000000;
 }
 
+/* The page is black in both schemes, so the logo keeps its light letters */
+html.high-contrast[data-theme] header.brand .brand-logo {
+  filter: none;
+}
+
 html.high-contrast a,
 html.high-contrast .footer a {
   color: var(--primary);

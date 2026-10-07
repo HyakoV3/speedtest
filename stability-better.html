@@ -1,7 +1,7 @@
 <!doctype html>
 <html>
   <head>
-    <link rel="shortcut icon" href="favicon.ico" />
+    <link rel="shortcut icon" href="frontend/images/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <meta charset="UTF-8" />
     <script src="frontend/better/javascript/theme.js"></script>
@@ -20,6 +20,11 @@
     <link rel="stylesheet" href="frontend/better/styling/panel.css" />
   </head>
   <body>
+    <header class="brand">
+      <img class="brand-logo" src="frontend/images/logo.svg" alt="LibreSpeed" />
+      <h1 data-i18n="brand.title">Free and Open Source Speedtest.</h1>
+      <p class="tagline" data-i18n="brand.tagline">No Flash, No Java, No Websockets, No Bullsh*t</p>
+    </header>
     <div id="controls">
       <select id="durationSelect" aria-label="Duration" data-i18n-attr="aria-label:stability.duration">
         <option value="60" data-i18n="stability.60-seconds">60 Seconds</option>

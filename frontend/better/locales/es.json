@@ -127,5 +127,7 @@
   "stability.select-target": "Seleccione un objetivo",
   "classic.sponsor": "Patrocinador:",
   "stability.server-aria": "Servidor",
+  "brand.title": "Test de velocidad libre y de código abierto.",
+  "brand.tagline": "Sin Flash, sin Java, sin Websockets, sin tonterías",
   "stability.target": "Objetivo"
 }

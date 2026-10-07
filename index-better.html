@@ -2,7 +2,7 @@
 <html>
 
 <head>
-	<link rel="shortcut icon" href="favicon.ico">
+	<link rel="shortcut icon" href="frontend/images/favicon.svg">
 	<link rel="manifest" href="manifest.webmanifest">
 	<link rel="apple-touch-icon" href="images/icon-192.png">
 	<meta name="theme-color" content="#000000">
@@ -33,6 +33,11 @@
 </head>
 
 <body onload="LibreSpeedI18n.ready.then(initServers)">
+	<header class="brand">
+		<img class="brand-logo" src="frontend/images/logo.svg" alt="LibreSpeed">
+		<h1 data-i18n="brand.title">Free and Open Source Speedtest.</h1>
+		<p class="tagline" data-i18n="brand.tagline">No Flash, No Java, No Websockets, No Bullsh*t</p>
+	</header>
 	<div id="loading" class="visible">
 		<p id="message"><span class="loadCircle"></span><span data-i18n="classic.selecting">Selecting a server...</span></p>
 	</div>

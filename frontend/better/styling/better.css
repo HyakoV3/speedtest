@@ -92,6 +92,35 @@ div.hidden {
   margin-inline: auto;
 }
 
+/* The logo, the title and the tagline of the modern design, above the page */
+header.brand {
+  margin: 0 auto 1.5em;
+  text-align: center;
+}
+
+header.brand .brand-logo {
+  width: 9.5em;
+  height: auto;
+}
+
+/* The logo is made for a dark background, so it is turned around in the light scheme */
+:root:not([data-theme="dark"]) header.brand .brand-logo {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+header.brand h1 {
+  margin: 0.6em 0 0.2em;
+  font-size: 1.5em;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+header.brand .tagline {
+  margin: 0;
+  font-size: 0.95em;
+  color: var(--muted);
+}
+
 /* Buttons */
 #startStopBtn,
 #startBtn,
