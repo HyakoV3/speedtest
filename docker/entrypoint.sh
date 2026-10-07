@@ -125,7 +125,8 @@ if [[ "$MODE" == "frontend" || "$MODE" == "dual" ||  "$MODE" == "standalone" ]];
     TITLE_ESCAPED=$(sed_escape "$TITLE_HTML_ESCAPED")
     sed -i "s/<title>LibreSpeed<\\/title>/<title>$TITLE_ESCAPED<\\/title>/g; s/<h1>LibreSpeed<\\/h1>/<h1>$TITLE_ESCAPED<\\/h1>/g" /var/www/html/index-classic.html
     sed -i "s/<title>LibreSpeed<\\/title>/<title>$TITLE_ESCAPED<\\/title>/g" /var/www/html/index.html
-    sed -i "s/<title>LibreSpeed<\\/title>/<title>$TITLE_ESCAPED<\\/title>/g" /var/www/html/index-better.html
+    sed -i "s/<title>LibreSpeed - Free and Open Source Speedtest<\\/title>/<title>$TITLE_ESCAPED - Free and Open Source Speedtest<\\/title>/g" /var/www/html/index-better.html
+    sed -i "s/<title>LibreSpeed - Stability Test<\\/title>/<title>$TITLE_ESCAPED - Stability Test<\\/title>/g" /var/www/html/stability-better.html
     # The better pages keep their translated heading unless TITLE is something other than the default
     if [ "$TITLE_ONE_LINE" != "LibreSpeed" ]; then
       sed -i "s/<h1 data-i18n=\"brand.title\">Free and Open Source Speedtest\\.<\\/h1>/<h1>$TITLE_ESCAPED<\\/h1>/g" /var/www/html/index-better.html /var/www/html/stability-better.html

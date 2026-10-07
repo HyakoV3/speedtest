@@ -6,12 +6,14 @@
 	<link rel="manifest" href="manifest.webmanifest">
 	<link rel="apple-touch-icon" href="images/icon-192.png">
 	<meta name="theme-color" content="#000000">
+	<meta name="description" content="Free and Open Source Speedtest. Run it right now in your browser, or self-host on a PHP, Golang, Rust or Node server. License: LGPL.">
 	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
 	<meta charset="UTF-8" />
 	<script src="frontend/better/javascript/theme.js"></script>
 	<script src="frontend/better/javascript/accessibility.js"></script>
 	<script src="frontend/better/javascript/font.js"></script>
 	<script src="frontend/better/javascript/i18n.js"></script>
+	<script src="frontend/better/javascript/consent.js"></script>
 	<script src="speedtest.js"></script>
 	<script src="frontend/better/javascript/colors.js"></script>
 	<script src="frontend/better/javascript/sponsor.js"></script>
@@ -29,7 +31,7 @@
 	<link rel="stylesheet" href="frontend/better/styling/better.css">
 	<link rel="stylesheet" href="frontend/better/styling/contrast.css">
 	<link rel="stylesheet" href="frontend/better/styling/panel.css">
-	<title>LibreSpeed</title>
+	<title>LibreSpeed - Free and Open Source Speedtest</title>
 </head>
 
 <body onload="LibreSpeedI18n.ready.then(initServers)">
@@ -93,6 +95,11 @@
 			<p class="poweredby"><a href="https://librespeed.org/" target="_blank" rel="noopener">Powered by LibreSpeed</a></p>
 		</div>
 	</div>
+	<dialog id="shareDialog" class="share-dialog">
+		<button type="button" class="privacy-close" aria-label="Close" title="Close" data-i18n-attr="aria-label:dialog.close,title:dialog.close" onclick="I('shareDialog').close()">&times;</button>
+		<img id="shareImage" alt="Test results in graphical form" data-i18n-attr="alt:share.image-alt" />
+		<button id="shareCopy" type="button" data-i18n="share.copy">Copy link</button>
+	</dialog>
 	<div id="privacyPolicy" style="display:none">
 		<button type="button" class="privacy-close" aria-label="Close" title="Close" data-i18n-attr="aria-label:dialog.close,title:dialog.close" onclick="I('privacyPolicy').style.display='none'">&times;</button>
 		<h2 data-i18n="privacy.title">Privacy Policy</h2>

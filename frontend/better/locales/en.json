@@ -129,5 +129,14 @@
   "stability.server-aria": "Server",
   "brand.title": "Free and Open Source Speedtest.",
   "brand.tagline": "No Flash, No Java, No Websockets, No Bullsh*t",
+  "consent.text": "By starting the test you agree to our privacy policy.",
+  "consent.read": "Read the privacy policy",
+  "consent.accept": "Accept and start",
+  "consent.cancel": "Cancel",
+  "share.button": "Share results",
+  "share.copy": "Copy link",
+  "share.copied": "Copied!",
+  "share.image-alt": "Test results in graphical form",
+  "share.stability-text": "LibreSpeed stability test, {time}: {rating}. Average {avg} ms, jitter {jitter} ms, min {min} ms, max {max} ms, failed requests {loss}%.",
   "stability.target": "Target"
 }

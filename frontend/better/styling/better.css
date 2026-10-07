@@ -391,7 +391,8 @@ div.testArea .sub {
 #historyClear,
 .history-copy,
 .history-csv,
-#downloadCsvBtn {
+#downloadCsvBtn,
+#shareCopy {
   font: inherit;
   color: var(--muted);
   background: none;
@@ -437,6 +438,59 @@ div.testArea .sub {
   border-top: 0.0625rem solid var(--border);
 }
 
+/* A panel is a bar of one part (the header) or of two (the header and the share icon) */
+.history-bar {
+  display: flex;
+  align-items: stretch;
+  background: var(--surface);
+}
+
+.history-bar > .history-header {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+}
+
+.history-share-btn {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 3.2em;
+  padding: 0 0.9em;
+  font: inherit;
+  color: var(--muted);
+  background: var(--surface);
+  border: 0;
+  border-left: 0.0625rem solid var(--border);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.history-share-btn:hover,
+.history-share-btn:focus-visible {
+  color: var(--on-primary);
+  background: var(--primary);
+}
+
+.history-share-btn.done {
+  color: var(--great);
+}
+
+.history-share-btn.done:hover {
+  color: var(--on-primary);
+}
+
+.history-share-btn.done svg {
+  display: none;
+}
+
+.history-share-btn.done::before {
+  content: "\2713";
+  font-size: 1.1em;
+}
+
 .history-header {
   display: flex;
   align-items: center;
@@ -458,7 +512,7 @@ div.testArea .sub {
   background: var(--primary-subtle);
 }
 
-.history-panel.open > .history-header {
+.history-panel.open .history-bar > .history-header {
   color: var(--primary);
 }
 
@@ -574,7 +628,8 @@ div.testArea .sub {
 }
 
 .history-csv:hover,
-#downloadCsvBtn:hover {
+#downloadCsvBtn:hover,
+#shareCopy:hover {
   color: var(--on-primary);
   background: var(--primary);
 }
@@ -685,7 +740,8 @@ html:not([data-footer]) .footer .poweredby a::before {
   box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.6);
 }
 
-#privacyPolicy .privacy-close {
+#privacyPolicy .privacy-close,
+.share-dialog .privacy-close {
   position: sticky;
   top: 0;
   float: right;
@@ -703,7 +759,8 @@ html:not([data-footer]) .footer .poweredby a::before {
   cursor: pointer;
 }
 
-#privacyPolicy .privacy-close:hover {
+#privacyPolicy .privacy-close:hover,
+.share-dialog .privacy-close:hover {
   color: var(--primary);
   border-color: var(--primary);
 }
@@ -902,4 +959,77 @@ div.closePrivacyPolicy a {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Share results of the speed test: the button under the numbers and the picture of the result */
+.share-dialog,
+.consent-dialog {
+  box-sizing: border-box;
+  max-width: min(32em, 92vw);
+  padding: 1em;
+  color: var(--text);
+  text-align: center;
+  background: var(--surface);
+  border: 0;
+  border-radius: var(--radius-card);
+}
+
+.share-dialog::backdrop,
+.consent-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.share-dialog img#shareImage {
+  display: block;
+  max-width: 100%;
+  margin: 0 auto 1em;
+}
+
+#shareCopy {
+  padding: 0.5em 1.2em;
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+/* The privacy consent that is asked before the first test when the server has telemetry */
+.consent-dialog h2 {
+  margin: 0 0 0.5em;
+  font-size: 1.2em;
+}
+
+.consent-dialog p {
+  margin: 0 0 0.75em;
+}
+
+.consent-read {
+  display: inline-block;
+  margin-bottom: 1em;
+  font-size: 0.9em;
+}
+
+.consent-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5em;
+  justify-content: center;
+}
+
+.consent-actions button {
+  padding: 0.6em 1.4em;
+  font: inherit;
+  cursor: pointer;
+  border-radius: var(--radius-button);
+  transition: all 0.2s;
+}
+
+.consent-cancel {
+  color: var(--muted);
+  background: none;
+  border: 0.0625rem solid var(--border);
+}
+
+.consent-accept {
+  color: var(--on-primary);
+  background: var(--primary);
+  border: 0.0625rem solid var(--primary);
 }

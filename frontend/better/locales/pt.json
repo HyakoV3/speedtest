@@ -129,5 +129,14 @@
   "stability.server-aria": "Servidor",
   "brand.title": "Teste de velocidade livre e de código aberto.",
   "brand.tagline": "Sem Flash, sem Java, sem Websockets, sem enrolação",
+  "consent.text": "Ao iniciar o teste você concorda com a nossa política de privacidade.",
+  "consent.read": "Ler a política de privacidade",
+  "consent.accept": "Aceitar e iniciar",
+  "consent.cancel": "Cancelar",
+  "share.button": "Compartilhar resultados",
+  "share.copy": "Copiar link",
+  "share.copied": "Copiado!",
+  "share.image-alt": "Resultados do teste em forma gráfica",
+  "share.stability-text": "Teste de estabilidade do LibreSpeed, {time}: {rating}. Média {avg} ms, jitter {jitter} ms, mín {min} ms, máx {max} ms, requisições com falha {loss}%.",
   "stability.target": "Alvo"
 }

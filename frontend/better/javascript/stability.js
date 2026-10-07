@@ -192,7 +192,7 @@ function updateStartButtonState() {
 // Start/Stop
 function startStop() {
   if (running) abortTest();
-  else if (canStartTest()) startTest();
+  else if (canStartTest()) LibreSpeedConsent.ensure(startTest);
 }
 
 function abortTest() {
@@ -230,6 +230,7 @@ function onWorkerMessage(currentWorker, event) {
 }
 
 function startTest() {
+  if (running || !canStartTest()) return;
   allPingData = [];
   latestData = null;
   recordedTest = false;
@@ -437,6 +438,46 @@ function updateThreshold(value) {
   I("thresholdValue").textContent = alertThresholdMs > 0 ? alertThresholdMs + " ms" : t("stability.off", "Off");
 }
 
+// SHARE: a summary of a measurement, with the share sheet of the system or the clipboard
+function canShare() {
+  return !!(navigator.share || navigator.clipboard);
+}
+
+function shareSummary(entry) {
+  var format = LibreSpeedStability.format;
+  var rating = LibreSpeedStability.rating(entry.avg, entry.jitter, entry.loss);
+  return t(
+    "share.stability-text",
+    "LibreSpeed stability test, {time}: {rating}. Average {avg} ms, jitter {jitter} ms, min {min} ms, max {max} ms, failed requests {loss}%.",
+    {
+      time: formatTime(entry.duration),
+      rating: LibreSpeedStability.ratingLabel(rating),
+      avg: format(entry.avg),
+      jitter: format(entry.jitter),
+      min: format(entry.min),
+      max: format(entry.max),
+      loss: entry.loss.toFixed(1)
+    }
+  );
+}
+
+function shareEntry(entry) {
+  var url = window.location.href.split("#")[0].split("?")[0];
+  if (navigator.share) {
+    return navigator
+      .share({ title: "LibreSpeed", text: shareSummary(entry), url: url })
+      .then(function () {
+        return "shared";
+      })
+      .catch(function () {
+        // The person closed the share sheet
+      });
+  }
+  return navigator.clipboard.writeText(shareSummary(entry) + " " + url).then(function () {
+    return "copied";
+  });
+}
+
 function downloadCsv() {
   LibreSpeedStability.downloadCsv(allPingData, new Date().toISOString().slice(0, 19).replace(/:/g, "-"));
 }
@@ -463,6 +504,8 @@ var testHistory = LibreSpeedHistory.create({
       [t("metric.jitter", "Jitter"), format(entry.jitter) + " ms"]
     ];
   },
+  canShare: canShare,
+  onShare: shareEntry,
   extra: function (entry, body) {
     if (!entry.pings || !entry.pings.length) return;
     var button = document.createElement("button");

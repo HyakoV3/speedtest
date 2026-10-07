@@ -26,6 +26,42 @@ function selectServer(index) {
   showSponsor(SPEEDTEST_SERVERS[index]);
 }
 
+// The telemetry of the server is what gives a test an id, so the privacy consent and the sharing depend on it
+var telemetryEnabled = false;
+
+// The link of the result and its picture come from the server, which only gives a test an id with telemetry
+function resultUrl(entry) {
+  var base = window.location.href.substring(0, window.location.href.lastIndexOf("/"));
+  return base + "/results/?id=" + entry.testId + "&style=classic";
+}
+
+function openShare(entry) {
+  var url = resultUrl(entry);
+  I("shareImage").src = url;
+  I("shareCopy").textContent = t("share.copy", "Copy link");
+  I("shareCopy").style.display = navigator.clipboard ? "" : "none";
+  I("shareCopy").onclick = function () {
+    navigator.clipboard.writeText(url).then(function () {
+      I("shareCopy").textContent = t("share.copied", "Copied!");
+      setTimeout(function () {
+        I("shareCopy").textContent = t("share.copy", "Copy link");
+      }, 3000);
+    });
+  };
+  I("shareDialog").showModal();
+}
+
+LibreSpeedConsent.ready.then(function () {
+  telemetryEnabled = LibreSpeedConsent.telemetryEnabled();
+  // The share icons of the history depend on it
+  testHistory.render();
+});
+
+I("shareDialog").addEventListener("click", function (event) {
+  // A click on the dark area around the picture closes it
+  if (event.target === this) this.close();
+});
+
 // SERVER AUTO SELECTION
 function initServers() {
   if (SPEEDTEST_SERVERS.length == 0) {
@@ -167,18 +203,24 @@ function startStop() {
     setRunningUI(false);
     initUI();
   } else {
-    applyConnMode();
-    setRunningUI(true);
-    s.onupdate = function (data) {
-      uiData = data;
-    };
-    s.onend = function (aborted) {
-      setRunningUI(false);
-      updateUI(true);
-      if (!aborted) recordSpeedtest();
-    };
-    s.start();
+    // With telemetry on, the first start asks the person to accept the privacy policy
+    LibreSpeedConsent.ensure(startTest);
   }
+}
+
+function startTest() {
+  if (s.getState() == 3) return;
+  applyConnMode();
+  setRunningUI(true);
+  s.onupdate = function (data) {
+    uiData = data;
+  };
+  s.onend = function (aborted) {
+    setRunningUI(false);
+    updateUI(true);
+    if (!aborted) recordSpeedtest();
+  };
+  s.start();
 }
 
 function oscillate() {
@@ -279,6 +321,10 @@ var testHistory = LibreSpeedHistory.create({
     if (entry.testId) rows.push([t("classic.test-id", "Test ID:").replace(/:$/, ""), entry.testId]);
     return rows;
   },
+  canShare: function (entry) {
+    return telemetryEnabled && !!entry.testId;
+  },
+  onShare: openShare,
   extra: function (entry, body) {
     if (!entry.testId) return;
     var base = window.location.href.substring(0, window.location.href.lastIndexOf("/"));

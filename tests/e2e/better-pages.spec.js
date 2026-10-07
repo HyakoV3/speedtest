@@ -394,3 +394,199 @@ for (const { name, path } of [
     await expect(page.locator("header.brand h1")).toHaveText("Teste de velocidade livre e de código aberto.");
   });
 }
+
+for (const { name, path } of [
+  { name: "speed test", path: "/index-better.html" },
+  { name: "stability", path: "/stability-better.html" }
+]) {
+  test(`${name}: the head has the manifest, the icons, the theme color and the description`, async ({ page }) => {
+    await page.goto(`${staticRepositoryUrl}${path}`);
+    await expect(page.locator('link[rel="manifest"]')).toHaveAttribute("href", "manifest.webmanifest");
+    await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute("href", "images/icon-192.png");
+    await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute("content", "#000000");
+    await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", /Free and Open Source Speedtest/);
+  });
+}
+
+test("the tab titles of the better pages", async ({ page }) => {
+  await page.goto(`${staticRepositoryUrl}/index-better.html`);
+  await expect(page).toHaveTitle("LibreSpeed - Free and Open Source Speedtest");
+  await page.goto(`${staticRepositoryUrl}/stability-better.html`);
+  await expect(page).toHaveTitle("LibreSpeed - Stability Test");
+});
+
+// Privacy notice and sharing (they depend on the telemetry of the server)
+async function mockTelemetry(page, level) {
+  await page.route("**/settings.json*", route => route.fulfill({ json: { telemetry_level: level } }));
+}
+
+for (const { name, path } of [
+  { name: "speed test", path: "/index-better.html" },
+  { name: "stability", path: "/stability-better.html" }
+]) {
+  test(`${name}: without telemetry the test starts without asking`, async ({ page }) => {
+    await mockTelemetry(page, "off");
+    await page.goto(`${staticRepositoryUrl}${path}`);
+    await page.evaluate(() => LibreSpeedConsent.ready);
+    await page.evaluate(() => LibreSpeedConsent.ensure(() => (window.started = true)));
+    await expect(page.locator("#consentDialog")).toHaveCount(0);
+    expect(await page.evaluate(() => window.started)).toBe(true);
+  });
+
+  test(`${name}: with telemetry the first start asks for the privacy policy and remembers the answer`, async ({
+    page
+  }) => {
+    await mockTelemetry(page, "basic");
+    await page.goto(`${staticRepositoryUrl}${path}`);
+    await page.evaluate(() => LibreSpeedConsent.ready);
+    await page.evaluate(() => LibreSpeedConsent.ensure(() => (window.started = true)));
+    const dialog = page.locator("#consentDialog");
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText("you agree to our privacy policy");
+    expect(await page.evaluate(() => window.started)).toBeUndefined();
+
+    // Cancel does not start and does not remember
+    await dialog.locator(".consent-cancel").click();
+    await expect(page.locator("#consentDialog")).toHaveCount(0);
+    expect(await page.evaluate(() => window.started)).toBeUndefined();
+
+    // Accept starts, and the next start does not ask again, not even after a reload
+    await page.evaluate(() => LibreSpeedConsent.ensure(() => (window.started = true)));
+    await page.locator("#consentDialog .consent-accept").click();
+    await expect(page.locator("#consentDialog")).toHaveCount(0);
+    expect(await page.evaluate(() => window.started)).toBe(true);
+    await page.reload();
+    await page.evaluate(() => LibreSpeedConsent.ready);
+    await page.evaluate(() => LibreSpeedConsent.ensure(() => (window.startedAgain = true)));
+    await expect(page.locator("#consentDialog")).toHaveCount(0);
+    expect(await page.evaluate(() => window.startedAgain)).toBe(true);
+  });
+
+  test(`${name}: an answer older than a year is asked again, in the language of the page`, async ({ page }) => {
+    await mockTelemetry(page, "basic");
+    await page.addInitScript(() => {
+      window.localStorage.setItem("librespeed-better-consent", String(Date.now() - 366 * 24 * 60 * 60 * 1000));
+    });
+    await page.goto(`${staticRepositoryUrl}${path}?lang=pt`);
+    await page.evaluate(() => LibreSpeedConsent.ready);
+    await page.evaluate(() => LibreSpeedConsent.ensure(() => (window.started = true)));
+    await expect(page.locator("#consentDialog")).toContainText("política de privacidade");
+    await expect(page.locator("#consentDialog .consent-accept")).toHaveText("Aceitar e iniciar");
+  });
+}
+
+test("speed test: the Start button asks before the test and the policy can be read", async ({ page }) => {
+  await mockTelemetry(page, "basic");
+  await mockServers(page, ["Only, Testland"]);
+  await page.goto(`${staticRepositoryUrl}/index-better.html`);
+  await expect(page.locator("#testWrapper")).toHaveClass(/visible/);
+  await page.locator("#startStopBtn").click();
+  await expect(page.locator("#consentDialog")).toBeVisible();
+  await expect(page.locator("#startStopBtn")).not.toHaveClass(/running/);
+  await page.locator("#consentDialog .consent-read").click();
+  await expect(page.locator("#consentDialog")).toHaveCount(0);
+  await expect(page.locator("#privacyPolicy")).toBeVisible();
+});
+
+test("stability: the Start button asks before the measurement", async ({ page }) => {
+  await mockTelemetry(page, "basic");
+  await page.goto(`${staticRepositoryUrl}/stability-better.html`);
+  await page.locator("#targetSelect").selectOption({ label: "Google" });
+  await page.locator("#startBtn").click();
+  await expect(page.locator("#consentDialog")).toBeVisible();
+  await expect(page.locator("#startBtn")).not.toHaveClass(/running/);
+  await page.locator("#consentDialog .consent-accept").click();
+  await expect(page.locator("#startBtn")).toHaveClass(/running/);
+  await page.locator("#startBtn").click();
+  await expect(page.locator("#startBtn")).not.toHaveClass(/running/);
+});
+
+function speedEntry(extra) {
+  return { date: Date.now(), dl: 250, ul: 100, ping: 8, jitter: 1, ip: "203.0.113.5", conn: "multi", ...extra };
+}
+
+async function seedHistory(page, key, entries) {
+  await page.addInitScript(
+    ([storageKey, value]) => window.localStorage.setItem(storageKey, JSON.stringify(value)),
+    [key, entries]
+  );
+}
+
+test("speed test: a result with an id has a share icon that opens its link and picture", async ({ page }) => {
+  await mockTelemetry(page, "basic");
+  await mockServers(page, ["Only, Testland"]);
+  await page.route("**/results/**", route =>
+    route.fulfill({ status: 200, contentType: "image/png", body: Buffer.alloc(0) })
+  );
+  await seedHistory(page, "librespeed-better-history", [speedEntry({ testId: "42" }), speedEntry({})]);
+  await page.goto(`${staticRepositoryUrl}/index-better.html`);
+  await expect(page.locator("#testWrapper")).toHaveClass(/visible/);
+
+  // Only the result with an id can be shared: the header and the icon are the two parts of one bar
+  await expect(page.locator(".history-share-btn")).toHaveCount(1);
+  const bar = page.locator(".history-bar").first();
+  await expect(bar.locator(".history-header")).toBeVisible();
+  await expect(bar.locator(".history-share-btn")).toBeVisible();
+  const header = await bar.locator(".history-header").boundingBox();
+  const icon = await bar.locator(".history-share-btn").boundingBox();
+  expect(icon.x).toBeGreaterThan(header.x + header.width - 2);
+  expect(Math.abs(icon.y - header.y)).toBeLessThan(2);
+  expect(Math.abs(icon.height - header.height)).toBeLessThan(2);
+
+  await bar.locator(".history-share-btn").click();
+  await expect(page.locator("#shareDialog")).toBeVisible();
+  await expect(page.locator("#shareImage")).toHaveAttribute("src", /\/results\/\?id=42&style=classic$/);
+  await page.locator("#shareDialog .privacy-close").click();
+  await expect(page.locator("#shareDialog")).toBeHidden();
+
+  // The icon does not open the panel, and the header does not share
+  await expect(page.locator(".history-panel.open")).toHaveCount(0);
+  await bar.locator(".history-header").click();
+  await expect(page.locator(".history-panel.open")).toHaveCount(1);
+});
+
+test("speed test: without telemetry the history has no share icon", async ({ page }) => {
+  await mockTelemetry(page, "off");
+  await mockServers(page, ["Only, Testland"]);
+  await seedHistory(page, "librespeed-better-history", [speedEntry({ testId: "42" })]);
+  await page.goto(`${staticRepositoryUrl}/index-better.html`);
+  await expect(page.locator("#testWrapper")).toHaveClass(/visible/);
+  await page.evaluate(() => LibreSpeedConsent.ready);
+  await expect(page.locator(".history-header")).toHaveCount(1);
+  await expect(page.locator(".history-share-btn")).toHaveCount(0);
+});
+
+test("stability: a measurement in the history is shared with a summary", async ({ page }) => {
+  await page.addInitScript(() => {
+    navigator.share = async data => {
+      window.sharedData = data;
+    };
+  });
+  await seedHistory(page, "librespeed-better-stability-history", [
+    { date: Date.now(), duration: 60, avg: 12.3, min: 8, max: 30, jitter: 1.5, loss: 0.5, pings: [] }
+  ]);
+  await page.goto(`${staticRepositoryUrl}/stability-better.html`);
+  await expect(page.locator(".history-share-btn")).toHaveCount(1);
+  await page.locator(".history-share-btn").click();
+  await expect
+    .poll(() => page.evaluate(() => window.sharedData && window.sharedData.text))
+    .toContain("LibreSpeed stability test, 01:00");
+  const shared = await page.evaluate(() => window.sharedData);
+  expect(shared.text).toContain("Average 12.3 ms");
+  expect(shared.text).toContain("failed requests 0.5%");
+  expect(shared.url).toMatch(/\/stability-better\.html$/);
+});
+
+test("stability: without the share sheet the summary is copied", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "share", { value: undefined });
+  });
+  await seedHistory(page, "librespeed-better-stability-history", [
+    { date: Date.now(), duration: 60, avg: 12.3, min: 8, max: 30, jitter: 1.5, loss: 0.5, pings: [] }
+  ]);
+  await page.goto(`${staticRepositoryUrl}/stability-better.html`);
+  await page.locator(".history-share-btn").click();
+  await expect(page.locator(".history-share-btn")).toHaveClass(/done/);
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toContain("Average 12.3 ms");
+});
