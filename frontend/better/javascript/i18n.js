@@ -12,6 +12,8 @@
  * the browser, then English. A key that is missing in a catalog falls back to the English catalog.
  *
  * LibreSpeedI18n.set(language, save) changes the language of the open page and fires "i18nchange" on window.
+ * LibreSpeedI18n.serverName(server) is the name of a server of the list in the language of the page: the entry of
+ * server.names for the language ({ "pt": "Servidor local" }), or server.name.
  * LibreSpeedI18n.languages is the list of { id, name } with the name of each language in its own language.
  */
 (() => {
@@ -140,6 +142,10 @@
     },
     ready,
     set,
-    t: translate
+    t: translate,
+    serverName(server) {
+      const names = server && server.names;
+      return (names && names[language]) || (server && server.name) || "";
+    }
   };
 })();

@@ -102,7 +102,7 @@ function initServers() {
         if (indexed[i].server.pingT == -1) continue;
         var option = document.createElement("option");
         option.value = indexed[i].idx;
-        option.textContent = indexed[i].server.name;
+        option.textContent = LibreSpeedI18n.serverName(indexed[i].server);
         if (indexed[i].server === server) option.selected = true;
         I("server").appendChild(option);
       }
@@ -297,6 +297,12 @@ window.addEventListener("accessibilitychange", repaintIdleMeters);
 window.addEventListener("themechange", repaintIdleMeters);
 window.addEventListener("i18nchange", function () {
   if (I("testWrapper").className === "visible") setRunningUI(s.getState() == 3);
+  // The server names that have a text in the language of the page
+  if (typeof SPEEDTEST_SERVERS === "string") return;
+  Array.prototype.forEach.call(I("server").options, function (option) {
+    if (SPEEDTEST_SERVERS[option.value])
+      option.textContent = LibreSpeedI18n.serverName(SPEEDTEST_SERVERS[option.value]);
+  });
 });
 frame();
 
