@@ -38,8 +38,10 @@
 <body onload="LibreSpeedI18n.ready.then(initServers)">
 	<header class="brand">
 		<img class="brand-logo" src="frontend/images/logo.svg" alt="LibreSpeed">
-		<h1 data-i18n="brand.title">Free and Open Source Speedtest.</h1>
-		<p class="tagline" data-i18n="brand.tagline">No Flash, No Java, No Websockets, No Bullsh*t</p>
+		<div class="brand-text">
+			<h1 data-i18n="brand.title">Free and Open Source Speedtest.</h1>
+			<p class="tagline" data-i18n="brand.tagline">No Flash, No Java, No Websockets, No Bullsh*t</p>
+		</div>
 	</header>
 	<div id="loading" class="visible">
 		<p id="message"><span class="loadCircle"></span><span data-i18n="classic.selecting">Selecting a server...</span></p>
