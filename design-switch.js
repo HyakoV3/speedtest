@@ -1,12 +1,14 @@
 /**
- * Feature switch for enabling the new LibreSpeed design
- * 
+ * Feature switch for choosing the LibreSpeed design (classic, modern or better)
+ *
  * This script checks for:
- * 1. URL parameter: ?design=new or ?design=old
- * 2. Configuration file: config.json with useNewDesign flag
- * 
+ * 1. URL parameter: ?design=new|modern, ?design=old|classic or ?design=better
+ * 2. The design the visitor chose with the design links of the pages, kept in
+ *    localStorage["librespeed-design"] (ignored when config.json has "designSwitch": false)
+ * 3. Configuration file: config.json with useNewDesign flag
+ *
  * Default behavior: Shows the old design
- * 
+ *
  * Note: This script is only loaded on the root index.html
  */
 (function () {
@@ -15,7 +17,7 @@
     // Don't run this script if we're already on a specific design page
     // This prevents infinite redirect loops
     const currentPath = window.location.pathname;
-    if (currentPath.includes('index-classic.html') || currentPath.includes('index-modern.html')) {
+    if (currentPath.includes('index-classic.html') || currentPath.includes('index-modern.html') || currentPath.includes('index-better.html')) {
         return;
     }
 
@@ -23,13 +25,18 @@
     const urlParams = new URLSearchParams(window.location.search);
     const designParam = urlParams.get('design');
 
-    if (designParam === 'new') {
-        redirectToNewDesign();
+    if (designParam === 'new' || designParam === 'modern') {
+        redirectTo('index-modern.html');
         return;
     }
 
     if (designParam === 'old' || designParam === 'classic') {
-        redirectToOldDesign();
+        redirectTo('index-classic.html');
+        return;
+    }
+
+    if (designParam === 'better') {
+        redirectTo('index-better.html');
         return;
     }
 
@@ -44,30 +51,40 @@
         // Check for a successful response, but not 304 Not Modified, which can have an empty response body
         if (xhr.status >= 200 && xhr.status < 300) {
             const config = JSON.parse(xhr.responseText);
-            if (config.useNewDesign === true) {
-                redirectToNewDesign();
+            const saved = config.designSwitch !== false ? savedDesign() : null;
+            if (saved) {
+                redirectTo(pageOf(saved));
+            } else if (config.useNewDesign === true) {
+                redirectTo('index-modern.html');
             } else {
-                redirectToOldDesign();
+                redirectTo('index-classic.html');
             }
         } else {
-            // Config not found or error - default to old design
-            redirectToOldDesign();
+            // Config not found or error - use the saved design, or the old one
+            redirectTo(pageOf(savedDesign() || 'classic'));
         }
     } catch (error) {
-        // If there's any error (e.g., network, JSON parse), default to old design
+        // If there's any error (e.g., network, JSON parse), use the saved design, or the old one
         console.log('Using default (old) design:', error.message || 'config error');
-        redirectToOldDesign();
+        redirectTo(pageOf(savedDesign() || 'classic'));
     }
 
-    function redirectToNewDesign() {
-        // Preserve any URL parameters when redirecting
-        const currentParams = window.location.search;
-        window.location.href = 'index-modern.html' + currentParams;
+    // The design the visitor chose with the design links (see design-links.js)
+    function savedDesign() {
+        try {
+            var value = window.localStorage.getItem('librespeed-design');
+            return value === 'classic' || value === 'modern' || value === 'better' ? value : null;
+        } catch (error) {
+            return null;
+        }
     }
 
-    function redirectToOldDesign() {
+    function pageOf(design) {
+        return 'index-' + design + '.html';
+    }
+
+    function redirectTo(page) {
         // Preserve any URL parameters when redirecting
-        const currentParams = window.location.search;
-        window.location.href = 'index-classic.html' + currentParams;
+        window.location.href = page + window.location.search;
     }
 })();

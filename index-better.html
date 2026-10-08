@@ -24,6 +24,7 @@
 	<script src="frontend/better/javascript/toast.js"></script>
 	<script src="frontend/better/javascript/history-periods.js"></script>
 	<script src="frontend/better/javascript/test-history.js"></script>
+	<script src="design-links.js" defer data-design-switch></script>
 	<script>
 		//LIST OF TEST SERVERS: the URL of a list (like the modern design), or the list itself. See documentation for details
 		var SPEEDTEST_SERVERS = "server-list.json";
@@ -124,6 +125,7 @@
 			<a id="routeLink" hidden href="route-better.html" data-i18n="route.link" onclick="location.href='route-better.html'+location.search;return false;">Trace Route</a>
 			<a href="#" data-i18n="classic.privacy" onclick="I('privacyPolicy').style.display='';return false;">Privacy</a>
 			<a href="https://github.com/librespeed/speedtest" target="_blank" rel="noopener" data-i18n="classic.source">Source code</a>
+			<p class="design-switch" data-design-switch><span data-i18n="design.label">Design</span> <a href="index-classic.html" data-design="classic">Classic</a><a href="index-modern.html" data-design="modern">Modern</a><a href="index-better.html" data-design="better" aria-current="page">Better</a></p>
 		</div>
 	</div>
 	</main>

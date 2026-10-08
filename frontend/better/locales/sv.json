@@ -32,6 +32,7 @@
   "classic.test-id": "Test-id:",
   "classic.stability": "Stabilitetstest",
   "classic.source": "Källkod",
+  "design.label": "Design",
   "classic.start": "Starta",
   "classic.abort": "Avbryt",
   "stability.back": "Hastighetstest",
