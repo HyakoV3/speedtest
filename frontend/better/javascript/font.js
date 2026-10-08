@@ -114,9 +114,11 @@ var LibreSpeedFont = (function () {
     return value || fallback;
   }
 
-  // The saved choice is restored before the page is painted; ?font= wins over it
+  // The saved choice is restored before the page is painted; ?font= wins over it, and it wins over the site default
   var requested = new URLSearchParams(window.location.search).get("font");
   var initial = SETS.indexOf(requested) >= 0 ? requested : readSetting();
+  // Without a choice the site default (better-defaults.js) applies
+  if (SETS.indexOf(initial) < 0 && window.LibreSpeedDefaults) initial = window.LibreSpeedDefaults.font;
   if (SETS.indexOf(initial) >= 0 && initial !== "system") {
     root.setAttribute("data-font", initial);
     updateStylesheet();
