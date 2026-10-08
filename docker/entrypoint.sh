@@ -36,6 +36,7 @@ rm -rf /var/www/html/*
 # Copy frontend files
 cp /speedtest/*.js /var/www/html/
 cp /speedtest/stability.html /var/www/html/
+cp /speedtest/stability-better.html /var/www/html/
 
 # Copy design switch files
 cp /speedtest/config.json /var/www/html/
@@ -82,6 +83,8 @@ if [[ "$MODE" == "frontend" || "$MODE" == "dual" ||  "$MODE" == "standalone" ]];
   cp /speedtest/index-classic.html /var/www/html/
   cp /speedtest/index-modern.html /var/www/html/
   cp /speedtest/stability.html /var/www/html/
+  cp /speedtest/index-better.html /var/www/html/
+  cp /speedtest/stability-better.html /var/www/html/
   # Keep the frontend assets under frontend/, which is where the HTML looks for
   # them and where they sit in the repository
   cp -a /speedtest/frontend /var/www/html/
@@ -106,7 +109,7 @@ if [[ "$MODE" == "frontend" || "$MODE" == "dual" ||  "$MODE" == "standalone" ]];
     SERVER_LIST_URL_ESCAPED=$(printf '%s\n' "$SERVER_LIST_URL" | sed 's/[&/\\]/\\&/g; s/\$/\\$/g')
     sed -i "s/var SPEEDTEST_SERVERS = \"server-list.json\";/var SPEEDTEST_SERVERS = \"$SERVER_LIST_URL_ESCAPED\";/" /var/www/html/index-modern.html
     sed -i "/var SPEEDTEST_SERVERS = \\[/,/^[[:space:]]*];/c\\\t\tvar SPEEDTEST_SERVERS = \"$SERVER_LIST_URL_ESCAPED\";" /var/www/html/index-classic.html
-    sed -i "s/var SPEEDTEST_SERVERS = \"server-list.json\";/var SPEEDTEST_SERVERS = \"$SERVER_LIST_URL_ESCAPED\";/" /var/www/html/stability.html
+    sed -i "s/var SPEEDTEST_SERVERS = \"server-list.json\";/var SPEEDTEST_SERVERS = \"$SERVER_LIST_URL_ESCAPED\";/" /var/www/html/stability.html /var/www/html/index-better.html /var/www/html/stability-better.html
   fi
 
   # The stability page reads the same local server list as the main UI when present.
@@ -122,6 +125,12 @@ if [[ "$MODE" == "frontend" || "$MODE" == "dual" ||  "$MODE" == "standalone" ]];
     TITLE_ESCAPED=$(sed_escape "$TITLE_HTML_ESCAPED")
     sed -i "s/<title>LibreSpeed<\\/title>/<title>$TITLE_ESCAPED<\\/title>/g; s/<h1>LibreSpeed<\\/h1>/<h1>$TITLE_ESCAPED<\\/h1>/g" /var/www/html/index-classic.html
     sed -i "s/<title>LibreSpeed<\\/title>/<title>$TITLE_ESCAPED<\\/title>/g" /var/www/html/index.html
+    sed -i "s/<title>LibreSpeed - Free and Open Source Speedtest<\\/title>/<title>$TITLE_ESCAPED - Free and Open Source Speedtest<\\/title>/g" /var/www/html/index-better.html
+    sed -i "s/<title>LibreSpeed - Stability Test<\\/title>/<title>$TITLE_ESCAPED - Stability Test<\\/title>/g" /var/www/html/stability-better.html
+    # The better pages keep their translated heading unless TITLE is something other than the default
+    if [ "$TITLE_ONE_LINE" != "LibreSpeed" ]; then
+      sed -i "s/<h1 data-i18n=\"brand.title\">Free and Open Source Speedtest\\.<\\/h1>/<h1>$TITLE_ESCAPED<\\/h1>/g" /var/www/html/index-better.html /var/www/html/stability-better.html
+    fi
     sed -i "s/<title>LibreSpeed - Free and Open Source Speedtest<\\/title>/<title>$TITLE_ESCAPED - Free and Open Source Speedtest<\\/title>/g; s/<h1>Free and Open Source Speedtest\\.<\\/h1>/<h1>$TITLE_ESCAPED<\\/h1>/g" /var/www/html/index-modern.html
   fi
 
@@ -132,6 +141,10 @@ if [[ "$MODE" == "frontend" || "$MODE" == "dual" ||  "$MODE" == "standalone" ]];
     TAGLINE_HTML_ESCAPED=$(html_escape "$TAGLINE_ONE_LINE")
     TAGLINE_ESCAPED=$(sed_escape "$TAGLINE_HTML_ESCAPED")
     sed -i "s/<p class=\"tagline\">No Flash, No Java, No Websockets, No Bullsh\\*t<\\/p>/<p class=\"tagline\">$TAGLINE_ESCAPED<\\/p>/g" /var/www/html/index-modern.html
+    # The better pages keep their translated tagline unless TAGLINE is something other than the default
+    if [ "$TAGLINE_ONE_LINE" != "No Flash, No Java, No Websockets, No Bullsh*t" ]; then
+      sed -i "s/<p class=\"tagline\" data-i18n=\"brand.tagline\">No Flash, No Java, No Websockets, No Bullsh\\*t<\\/p>/<p class=\"tagline\">$TAGLINE_ESCAPED<\\/p>/g" /var/www/html/index-better.html /var/www/html/stability-better.html
+    fi
   fi
 
   # Support legacy EMAIL env var as fallback for GDPR_EMAIL
@@ -146,7 +159,7 @@ if [[ "$MODE" == "frontend" || "$MODE" == "dual" ||  "$MODE" == "standalone" ]];
     # Escape special sed characters: & (replacement), / (delimiter), \ (escape), $ (variable)
     GDPR_EMAIL_ESCAPED=$(printf '%s\n' "$GDPR_EMAIL" | sed 's/[&/\\]/\\&/g; s/\$/\\$/g')
 
-    for html_file in /var/www/html/index-modern.html /var/www/html/index-classic.html; do
+    for html_file in /var/www/html/index-modern.html /var/www/html/index-classic.html /var/www/html/index-better.html /var/www/html/stability-better.html; do
       if [ -f "$html_file" ]; then
         sed -i "s/TO BE FILLED BY DEVELOPER/$GDPR_EMAIL_ESCAPED/g; s/PUT@YOUR_EMAIL.HERE/$GDPR_EMAIL_ESCAPED/g" "$html_file"
       fi

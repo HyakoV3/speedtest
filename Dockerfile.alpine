@@ -45,10 +45,12 @@ COPY *.js /speedtest/
 COPY index.html /speedtest/
 COPY index-classic.html /speedtest/
 COPY index-modern.html /speedtest/
+COPY index-better.html /speedtest/
 COPY config.json /speedtest/
 COPY settings.json /speedtest/
 COPY server-list.json /speedtest/
 COPY stability.html /speedtest/
+COPY stability-better.html /speedtest/
 COPY favicon.ico /speedtest/
 COPY manifest.webmanifest /speedtest/
 COPY images/ /speedtest/images/
