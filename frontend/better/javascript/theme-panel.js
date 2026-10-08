@@ -200,12 +200,12 @@
 
   // The photo background is off by default. Its list of packs is only requested the first time the panel opens, and
   // the section does not show when there are no packs. The packs and the change options show with the "packs" mode.
-  function backgroundSection(box) {
+  function backgroundSection(main, side) {
     var Background = window.LibreSpeedBackground;
     if (!Background) return function () {};
-    var holder = element("div");
+    var holder = element("div", "panel-group");
     var requested = false;
-    box.appendChild(holder);
+    main.appendChild(holder);
 
     function everyLabel(seconds) {
       var fallbacks = {
@@ -272,7 +272,8 @@
             refreshAll();
           }
         );
-        var more = element("div");
+        // The packs and how they change go in the second column, which only shows with the "Packs" mode
+        var more = side;
         title(more, "panel.background-packs", "Packs");
         toggles(
           more,
@@ -322,7 +323,6 @@
           refreshAll();
         };
         more.appendChild(match);
-        holder.appendChild(more);
         refresh(function () {
           more.hidden = Background.mode() !== "packs";
           match.textContent = t("background.match", "Match the theme");
@@ -419,13 +419,19 @@
     });
     var box = element("div", "panel-box", { role: "dialog" });
     box.hidden = true;
-    appearanceSection(box);
-    chartSection(box);
-    footerSection(box);
-    var fillBackground = backgroundSection(box);
-    fontSection(box);
-    accessibilitySection(box);
-    languageSection(box);
+    // The main column has every option; a second one opens beside it when the photo background has more to show
+    var main = element("div", "panel-column panel-main");
+    var side = element("div", "panel-column panel-side");
+    side.hidden = true;
+    box.appendChild(main);
+    box.appendChild(side);
+    appearanceSection(main);
+    chartSection(main);
+    footerSection(main);
+    var fillBackground = backgroundSection(main, side);
+    fontSection(main);
+    accessibilitySection(main);
+    languageSection(main);
     refresh(function () {
       button.setAttribute("aria-label", t("panel.open", "Customize theme"));
       box.setAttribute("aria-label", t("panel.open", "Customize theme"));

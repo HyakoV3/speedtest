@@ -34,10 +34,23 @@
   border-color: var(--primary);
 }
 
+/* The box has one column and, when the photo background has packs to show, a second one on its left (the box is
+   anchored to the right edge). On a narrow screen the two columns stack and the box scrolls. */
 .panel-box {
   position: absolute;
   top: calc(100% + 0.5rem);
   right: 0;
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.panel-box[hidden] {
+  display: none;
+}
+
+.panel-column {
   box-sizing: border-box;
   width: 18rem;
   max-width: calc(100vw - 2rem);
@@ -51,8 +64,30 @@
   box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.18);
 }
 
-.panel-box[hidden] {
+.panel-column[hidden] {
   display: none;
+}
+
+/* A group of options added later, which starts with its own title (the first title of a column has no margin) */
+.panel-group {
+  margin-top: 0.9rem;
+}
+
+@media (max-width: 40rem) {
+  .panel-box {
+    flex-direction: column;
+    align-items: stretch;
+    width: 18rem;
+    max-width: calc(100vw - 2rem);
+    max-height: calc(100vh - 5rem);
+    overflow-y: auto;
+  }
+
+  .panel-column {
+    width: auto;
+    max-height: none;
+    overflow-y: visible;
+  }
 }
 
 .panel-title {
