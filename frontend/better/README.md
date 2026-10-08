@@ -24,6 +24,22 @@ The round button in the top right corner opens a panel with every option. Each o
 | Language                       | `?lang=en\|pt\|es\|sv`         |
 | Text size and high contrast    | panel only                     |
 
+## Site defaults
+
+`better-defaults.js` (empty in the repository) sets what a visitor sees the first time: the font, and whether the photo
+background is on and how often it changes. A choice made in the theme panel, or a URL parameter, wins over it. In Docker,
+mount a file over `/speedtest/better-defaults.js`. The comments in the file list the values.
+
+## Server names
+
+An entry of `server-list.json` can carry `names`, the name of the server in each language of the pages, next to `name`
+(the fallback, and what the other pages show). The pages use the one of the language they are shown in, and change it
+with the language:
+
+```json
+{ "name": "Local Server (Vör, Brazil)", "names": { "pt": "Servidor local (Vör, Brasil)", "sv": "Lokal server (Vör, Brasilien)" }, "server": "/backend" }
+```
+
 ## Languages
 
 The catalogs are flat JSON files with dotted keys, in the format of the shared localization (`data-i18n`,
