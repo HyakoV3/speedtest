@@ -9,6 +9,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, user-scalable=no" />
 	<meta charset="UTF-8" />
 	<script type="text/javascript" src="speedtest.js"></script>
+	<script type="text/javascript" src="design-links.js" defer data-design-switch></script>
 	<script type="text/javascript">
 		function I(i) { return document.getElementById(i); }
 
@@ -569,7 +570,7 @@
 				<img src="" id="resultsImg" />
 			</div>
 		</div>
-		<a href="index.html?design=new">Try the modern design</a><br>
+		<span data-design-switch>Design: <a href="index-classic.html" data-design="classic" aria-current="page" style="font-weight:bold">Classic</a> | <a href="index-modern.html" data-design="modern">Modern</a> | <a href="index-better.html" data-design="better">Better</a></span><br>
 		<a href="stability.html">Stability Test</a> | <a href="https://github.com/librespeed/speedtest">Source code</a>
 	</div>
 	<div id="privacyPolicy" style="display:none">

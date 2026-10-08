@@ -32,6 +32,7 @@
   "classic.test-id": "Test ID:",
   "classic.stability": "Stability Test",
   "classic.source": "Source code",
+  "design.label": "Design",
   "classic.start": "Start",
   "classic.abort": "Abort",
   "stability.back": "Speed Test",

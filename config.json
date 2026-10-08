@@ -1,3 +1,4 @@
 {
-  "useNewDesign": false
+  "useNewDesign": false,
+  "designSwitch": true
 }

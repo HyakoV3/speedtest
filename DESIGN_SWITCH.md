@@ -81,13 +81,34 @@ images. Result images can be explicitly overridden with `?style=modern` or
 
 Both designs are at the same directory level, ensuring that relative paths to shared resources like `backend/` and `results/` work correctly for both.
 
+## Better Design and the Design Links
+
+`index-better.html` is a third design. Open it with `?design=better` (`?design=modern` also works for the modern design).
+
+The footer of the three speed test pages (classic, modern and better) has a line `Design: Classic | Modern | Better`. They are plain links, and a plain click also remembers the choice in the browser (`localStorage["librespeed-design"]`) and keeps the query string of the page, without `design=`. The stability pages have the same line. Their links go to the stability page of each design (`stability.html` is shared by classic and modern, so neither is marked as the current one there; `stability-better.html` is the better one).
+
+`index.html` (`design-switch.js`) decides in this order:
+
+1. `?design=` in the URL (`new`/`modern`, `old`/`classic` or `better`). The parameter stays in the URL.
+2. The design the visitor saved with the design links, unless `config.json` has `"designSwitch": false`.
+3. `useNewDesign` in `config.json` (or `USE_NEW_DESIGN` in Docker): modern when `true`.
+4. The classic design.
+
+A saved choice wins over `useNewDesign` for the visitors who made one.
+
+### Turning the design links off
+
+- Docker: set `DESIGN_SWITCH=false`. The links are removed from the pages and `index.html` ignores any saved choice.
+- Without Docker: set `"designSwitch": false` in `config.json` **and** delete the lines with `data-design-switch` from `index-classic.html`, `index-modern.html`, `index-better.html`, `stability.html` and `stability-better.html`.
+
 ## Technical Details
 
 The feature switch is implemented in `design-switch.js`, which is loaded by the root `index.html`. It checks:
 
-1. First, URL parameters (`?design=new` or `?design=old`)
-2. Then, the `config.json` configuration file
-3. Redirects to either `index-classic.html` or `index-modern.html`
+1. First, URL parameters (`?design=new`, `?design=old` or `?design=better`)
+2. Then, the design saved by the design links (`design-links.js`)
+3. Then, the `config.json` configuration file
+4. Redirects to `index-classic.html`, `index-modern.html` or `index-better.html`
 
 Both design HTML files are at the root level, eliminating path issues.
 

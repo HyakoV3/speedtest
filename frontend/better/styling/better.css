@@ -725,6 +725,35 @@ html:not([data-footer]) .footer .poweredby a::before {
   content: none;
 }
 
+/* Design links: a line of their own under the footer links, in every footer style */
+.footer .design-switch {
+  margin: 0.6em 0 0;
+}
+
+.footer .design-switch > span {
+  margin-right: 0.5em;
+  font-size: 0.8em;
+  color: var(--muted);
+}
+
+.footer .design-switch a[aria-current="page"] {
+  color: var(--text);
+  font-weight: 600;
+}
+
+html[data-footer="chips"] .footer .design-switch {
+  margin-top: 0;
+}
+
+html[data-footer="bar"] .footer .design-switch {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+html[data-footer="bar"] .footer .design-switch a + a {
+  margin-left: 1.4em;
+}
+
 /* Privacy policy */
 #privacyPolicy {
   position: fixed;

@@ -60,6 +60,7 @@ Here's a list of additional environment variables available in this mode:
 * __`TITLE`__: Title of your speed test, used by the classic, modern and better (`index-better.html`, `stability-better.html`) pages. Default value: `LibreSpeed`
 * __`TAGLINE`__: Slogan shown below the heading on the modern frontend (`index-modern.html`) and on the better pages. The better pages keep their translated slogan while this has its default value. Default value: `No Flash, No Java, No Websockets, No Bullsh*t`
 * __`USE_NEW_DESIGN`__: When set to `true`, enables the new modern frontend design. When set to `false` (default), uses the classic design. The design can also be switched using URL parameters (`?design=new` or `?design=old`). Default value: `false`
+* __`DESIGN_SWITCH`__: When set to `false`, removes the "Design: Classic | Modern | Better" links from the footer of the speed test and stability pages and makes `index.html` ignore the design a visitor chose earlier. Default value: `true`
 * __`SERVER_LIST_URL`__: When set, both frontend designs load their server list from this URL instead of the generated or mounted `server-list.json`. This is useful if you want the containerized frontend to consume a remote shared server list.
 * __`TELEMETRY`__: Whether to enable telemetry or not. If enabled, you maybe want your data to be persisted. See below. Default value: `false`
 * __`ENABLE_ID_OBFUSCATION`__: When set to true with telemetry enabled, test IDs are obfuscated, to avoid exposing the database internal sequential IDs. Default value: `false`

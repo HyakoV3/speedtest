@@ -3,6 +3,7 @@
 echo "Setting up docker env..."
 echo "MODE: $MODE"
 echo "USE_NEW_DESIGN: $USE_NEW_DESIGN"
+echo "DESIGN_SWITCH: $DESIGN_SWITCH"
 echo "SERVER_LIST_URL: $SERVER_LIST_URL"
 echo "WEBPORT: $WEBPORT"
 echo "REDACT_IP_ADDRESSES: $REDACT_IP_ADDRESSES"
@@ -165,10 +166,18 @@ if [[ "$MODE" == "frontend" || "$MODE" == "dual" ||  "$MODE" == "standalone" ]];
       fi
     done
   fi
+
+  # Remove the design links of the speed test pages when DESIGN_SWITCH=false
+  if [ "$DESIGN_SWITCH" == "false" ]; then
+    sed -i '/data-design-switch/d' /var/www/html/index-classic.html /var/www/html/index-modern.html /var/www/html/index-better.html /var/www/html/stability.html /var/www/html/stability-better.html
+  fi
 fi
 # Configure design preference via config.json
 if [ "$USE_NEW_DESIGN" == "true" ]; then
   sed -i 's/"useNewDesign": false/"useNewDesign": true/' /var/www/html/config.json
+fi
+if [ "$DESIGN_SWITCH" == "false" ]; then
+  sed -i 's/"designSwitch": true/"designSwitch": false/' /var/www/html/config.json
 fi
 
 # Apply Telemetry settings when running in standalone or frontend mode and telemetry is enabled
