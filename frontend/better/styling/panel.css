@@ -158,3 +158,11 @@
     forced-color-adjust: none;
   }
 }
+
+/* The photo packs of the background option: a quiet sub-heading over each group */
+.panel-pack {
+  margin: 0.6rem 0 0.3rem;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+}

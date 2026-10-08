@@ -2,7 +2,7 @@
  * Theme panel of the better pages
  *
  * A round button in the top right corner that opens a box with every option of the page: mode, brand color, corner
- * radius, chart style (when the page has one), footer style, font, text size, high contrast and language.
+ * radius, chart style (when the page has one), footer style, background (when the pack has photos), font, text size, high contrast and language.
  * The options are applied by theme.js, font.js, accessibility.js and i18n.js, this file only builds the controls.
  * A page with a chart style option sets window.LibreSpeedChartStyle = { list: [ids], get(), set(id) } before this file.
  *
@@ -198,6 +198,140 @@
     );
   }
 
+  // The photo background is off by default. Its list of packs is only requested the first time the panel opens, and
+  // the section does not show when there are no packs. The packs and the change options show with the "packs" mode.
+  function backgroundSection(box) {
+    var Background = window.LibreSpeedBackground;
+    if (!Background) return function () {};
+    var holder = element("div");
+    var requested = false;
+    box.appendChild(holder);
+
+    function everyLabel(seconds) {
+      var fallbacks = {
+        "-1": "Never",
+        0: "Every load",
+        300: "Every 5 min",
+        900: "Every 15 min",
+        3600: "Every hour",
+        86400: "Every day",
+        604800: "Every week"
+      };
+      return t("background.every-" + seconds, fallbacks[seconds]);
+    }
+
+    // A group of toggle buttons: items [{ id, label }], on(id) tells if it is selected, toggle(id) changes it
+    function toggles(parent, labelKey, labelFallback, items, on, toggle) {
+      var group = element("div", "panel-options two", { role: "group" });
+      var buttons = items.map(function (item) {
+        var button = element("button", "panel-option", { type: "button" });
+        button.onclick = function () {
+          toggle(item.id);
+        };
+        group.appendChild(button);
+        return button;
+      });
+      refresh(function () {
+        group.setAttribute("aria-label", t(labelKey, labelFallback));
+        items.forEach(function (item, index) {
+          buttons[index].textContent = item.label;
+          buttons[index].setAttribute("aria-pressed", String(on(item.id)));
+        });
+      });
+      parent.appendChild(group);
+    }
+
+    return function () {
+      if (requested) return;
+      requested = true;
+      Background.load().then(function (packs) {
+        if (!packs.length) return;
+        title(holder, "panel.background", "Background");
+        radios(
+          holder,
+          "",
+          "panel.background",
+          "Background",
+          [
+            {
+              id: "none",
+              label: function () {
+                return t("background.none", "None");
+              }
+            },
+            {
+              id: "packs",
+              label: function () {
+                return t("background.packs", "Packs");
+              }
+            }
+          ],
+          Background.mode,
+          function (id) {
+            Background.setMode(id);
+            refreshAll();
+          }
+        );
+        var more = element("div");
+        title(more, "panel.background-packs", "Packs");
+        toggles(
+          more,
+          "panel.background-packs",
+          "Packs",
+          packs.map(function (pack) {
+            return { id: pack.id, label: pack.title };
+          }),
+          function (id) {
+            return Background.packs().indexOf(id) >= 0;
+          },
+          function (id) {
+            var chosen = Background.packs().slice();
+            var at = chosen.indexOf(id);
+            if (at >= 0) chosen.splice(at, 1);
+            else chosen.push(id);
+            // One pack always stays selected
+            if (chosen.length) Background.setPacks(chosen);
+            refreshAll();
+          }
+        );
+        title(more, "panel.background-every", "Show a new photo");
+        radios(
+          more,
+          "two",
+          "panel.background-every",
+          "Show a new photo",
+          Background.everyValues.map(function (seconds) {
+            return {
+              id: seconds,
+              label: function () {
+                return everyLabel(seconds);
+              }
+            };
+          }),
+          Background.every,
+          function (seconds) {
+            Background.setEvery(seconds);
+            refreshAll();
+          }
+        );
+        var match = element("button", "panel-option", { type: "button", "aria-pressed": "false" });
+        match.style.width = "100%";
+        match.style.marginTop = "0.5rem";
+        match.onclick = function () {
+          Background.setMatch(!Background.match());
+          refreshAll();
+        };
+        more.appendChild(match);
+        holder.appendChild(more);
+        refresh(function () {
+          more.hidden = Background.mode() !== "packs";
+          match.textContent = t("background.match", "Match the theme");
+          match.setAttribute("aria-pressed", String(Background.match()));
+        });
+      });
+    };
+  }
+
   function fontSection(box) {
     title(box, "panel.font", "Font");
     radios(
@@ -288,6 +422,7 @@
     appearanceSection(box);
     chartSection(box);
     footerSection(box);
+    var fillBackground = backgroundSection(box);
     fontSection(box);
     accessibilitySection(box);
     languageSection(box);
@@ -300,6 +435,7 @@
     function open(visible) {
       box.hidden = !visible;
       button.setAttribute("aria-expanded", String(visible));
+      if (visible) fillBackground();
     }
     button.onclick = function (event) {
       event.stopPropagation();
@@ -323,5 +459,6 @@
   window.addEventListener("themechange", refreshAll);
   window.addEventListener("i18nchange", refreshAll);
   window.addEventListener("fontchange", refreshAll);
+  window.addEventListener("backgroundchange", refreshAll);
   build();
 })();
