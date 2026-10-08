@@ -92,13 +92,21 @@ div.hidden {
   margin-inline: auto;
 }
 
-/* The logo, the title and the tagline of the modern design, above the page */
+/* The logo, the title and the tagline of the modern design, above the page: the logo on the left, the title with the
+   tagline under it always in the middle of the page, and the round theme button of the panel at the right end. The
+   side columns have the same width, so the text is centered on the page; on a narrow screen the text goes under the logo. */
 header.brand {
-  margin: 0 auto 1.5em;
-  text-align: center;
+  display: grid;
+  grid-template-columns: minmax(9.5em, 1fr) auto minmax(9.5em, 1fr);
+  align-items: center;
+  gap: 0.6em 1em;
+  box-sizing: border-box;
+  margin: -1.7rem auto 2.4em;
+  padding: 0 0.5rem;
 }
 
 header.brand .brand-logo {
+  grid-column: 1;
   width: 9.5em;
   height: auto;
 }
@@ -108,8 +116,14 @@ header.brand .brand-logo {
   filter: invert(1) hue-rotate(180deg);
 }
 
+header.brand .brand-text {
+  grid-column: 2;
+  min-width: 0;
+  text-align: center;
+}
+
 header.brand h1 {
-  margin: 0.6em 0 0.2em;
+  margin: 0 0 0.2em;
   font-size: 1.5em;
   font-weight: 400;
   letter-spacing: -0.02em;
@@ -119,6 +133,16 @@ header.brand .tagline {
   margin: 0;
   font-size: 0.95em;
   color: var(--muted);
+}
+
+@media (max-width: 58em) {
+  header.brand {
+    grid-template-columns: 1fr;
+  }
+
+  header.brand .brand-text {
+    grid-column: 1;
+  }
 }
 
 /* Buttons */

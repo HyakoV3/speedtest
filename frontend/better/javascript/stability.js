@@ -125,7 +125,7 @@ function discoverServers() {
         if (candidate.pingT <= 0) return;
         var option = document.createElement("option");
         option.value = index;
-        option.textContent = candidate.name;
+        option.textContent = LibreSpeedI18n.serverName(candidate);
         if (candidate === best) option.selected = true;
         I("server").appendChild(option);
       });
@@ -430,6 +430,12 @@ window.addEventListener("i18nchange", function () {
   if (latestData) showRating(latestData);
   updateStartButtonState();
   testHistory.render();
+  // The server names that have a text in the language of the page
+  Array.prototype.forEach.call(I("server").options, function (option) {
+    if (option.value !== "" && SPEEDTEST_SERVERS[option.value]) {
+      option.textContent = LibreSpeedI18n.serverName(SPEEDTEST_SERVERS[option.value]);
+    }
+  });
 });
 
 // Alert threshold

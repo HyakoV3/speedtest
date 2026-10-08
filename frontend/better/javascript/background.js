@@ -6,7 +6,7 @@
  * Mode "packs" shows a photo of the chosen packs and changes it as set by "every": never, on every load, or every
  * 5 minutes, 15 minutes, hour, day or week (like Tabliss). Pausing stops the changes, previous and next walk through the
  * photos shown. With "match" on, a photo is picked among those whose tone fits the dark or light mode of the page.
- * The options are kept in localStorage. The URL parameter ?background=<id>|none shows that photo (or none) on this
+ * The options are kept in localStorage; before a choice is made, better-defaults.js can set the mode and "every". The URL parameter ?background=<id>|none shows that photo (or none) on this
  * visit only. The list, the style sheet and the photo are only requested when a background is on or when the list is
  * asked for (the first time the theme panel opens). Nothing is painted when the browser asks to save data. A change
  * never happens while a test is running.
@@ -442,6 +442,10 @@ var LibreSpeedBackground = (function () {
     else window.addEventListener("load", run);
   }
 
+  // The site defaults (better-defaults.js) first, then what the visitor chose over them
+  var site = window.LibreSpeedDefaults && window.LibreSpeedDefaults.background;
+  if (site && MODES.indexOf(site.mode) >= 0) options.mode = site.mode;
+  if (site && EVERY.indexOf(site.every) >= 0) options.every = site.every;
   loadOptions();
   var param = new URLSearchParams(window.location.search).get("background");
   if (param === "none") options.mode = "none";
