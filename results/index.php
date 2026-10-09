@@ -52,6 +52,11 @@ function tryFont($name)
  */
 function format($d)
 {
+    // The columns are text, and a result can have a blank or a failed measurement: a TypeError here would answer 500
+    // instead of showing a zero
+    if (!is_numeric($d)) {
+        $d = 0;
+    }
     if ($d < 10) {
         return number_format($d, 2, '.', '');
     }
