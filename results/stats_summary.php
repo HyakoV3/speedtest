@@ -153,21 +153,35 @@ function statsBar(array $line)
 }
 
 /**
+ * A speed as its number and its unit, so the page can set them apart: ["250", "Mbit/s"] or ["1.25", "Gbit/s"]
+ *
+ * @param float|null $mbps
+ *
+ * @return array{0: string, 1: string}|null
+ */
+function statsSpeedParts($mbps)
+{
+    if (null === $mbps) {
+        return null;
+    }
+    if ($mbps >= 1000) {
+        return [number_format($mbps / 1000, 2, '.', ''), 'Gbit/s'];
+    }
+    $decimals = $mbps < 10 ? 2 : ($mbps < 100 ? 1 : 0);
+
+    return [number_format($mbps, $decimals, '.', ''), 'Mbit/s'];
+}
+
+/**
  * @param float|null $mbps
  *
  * @return string
  */
 function statsFormatSpeed($mbps)
 {
-    if (null === $mbps) {
-        return '-';
-    }
-    if ($mbps >= 1000) {
-        return number_format($mbps / 1000, 2, '.', '').' Gbit/s';
-    }
-    $decimals = $mbps < 10 ? 2 : ($mbps < 100 ? 1 : 0);
+    $parts = statsSpeedParts($mbps);
 
-    return number_format($mbps, $decimals, '.', '').' Mbit/s';
+    return null === $parts ? '-' : $parts[0].' '.$parts[1];
 }
 
 /**
@@ -178,4 +192,161 @@ function statsFormatSpeed($mbps)
 function statsFormatMs($ms)
 {
     return null === $ms ? '-' : number_format($ms, 1, '.', '').' ms';
+}
+
+/** How many tests a page of the list can have */
+const STATS_PER_PAGE_CHOICES = [25, 50, 100, 250, 500, 1000];
+
+/**
+ * The size of a page asked for in the URL, or 50 when it is missing or not one of the choices
+ *
+ * @param mixed $input
+ *
+ * @return int
+ */
+function statsPerPage($input)
+{
+    if (is_string($input) && ctype_digit($input) && in_array((int) $input, STATS_PER_PAGE_CHOICES, true)) {
+        return (int) $input;
+    }
+
+    return 50;
+}
+
+/**
+ * How many pages $total tests make, at least one
+ *
+ * @param int $total
+ * @param int $perPage
+ *
+ * @return int
+ */
+function statsPageCount($total, $perPage)
+{
+    return max(1, intdiv(max(0, $total) + $perPage - 1, $perPage));
+}
+
+/**
+ * The page asked for in the URL, kept between the first and the last
+ *
+ * @param mixed $input
+ * @param int   $total
+ * @param int   $perPage
+ *
+ * @return int
+ */
+function statsPageNumber($input, $total, $perPage)
+{
+    $page = is_string($input) && ctype_digit($input) ? (int) $input : 1;
+
+    return max(1, min(statsPageCount($total, $perPage), $page));
+}
+
+/**
+ * The ISP of a test as text, without the IP address it starts with: the stored value is JSON with the text in
+ * "processedString"
+ *
+ * @param mixed $ispinfo
+ *
+ * @return string
+ */
+function statsIspText($ispinfo)
+{
+    if (!is_string($ispinfo)) {
+        return '';
+    }
+    $decoded = json_decode($ispinfo, true);
+    if (is_array($decoded) && isset($decoded['processedString']) && is_string($decoded['processedString'])) {
+        $text = $decoded['processedString'];
+        // It starts with the IP address, which the list shows on its own: "203.0.113.7 - ACME Net, Brazil"
+        $dash = strpos($text, ' - ');
+
+        return false === $dash ? $text : substr($text, $dash + 3);
+    }
+
+    return $ispinfo;
+}
+
+/**
+ * The links to the other pages of the list, as HTML: First and Previous, where the person is, Next and Last
+ *
+ * @param int    $page
+ * @param int    $pages
+ * @param int    $perPage
+ * @param string $month  "YYYY-MM", kept so the summary does not change when the page does
+ * @param int    $total
+ * @param string $label  what a screen reader says for this group of links
+ *
+ * @return string
+ */
+function statsPager($page, $pages, $perPage, $month, $total, $label = 'Pages of tests')
+{
+    $link = function ($target, $label) use ($perPage, $month) {
+        $query = http_build_query(['month' => $month, 'per' => $perPage, 'page' => $target]);
+
+        return '<a href="stats.php?'.htmlspecialchars($query, ENT_QUOTES | ENT_HTML5, 'UTF-8').'">'.$label.'</a>';
+    };
+    $off = function ($label) {
+        return '<span class="off" aria-disabled="true">'.$label.'</span>';
+    };
+
+    return '<nav class="pager" aria-label="'.htmlspecialchars($label, ENT_QUOTES | ENT_HTML5, 'UTF-8').'">'
+        .($page > 1 ? $link(1, 'First').$link($page - 1, 'Previous') : $off('First').$off('Previous'))
+        .'<span aria-current="page">Page '.(int) $page.' of '.(int) $pages.' ('.(int) $total.' tests)</span>'
+        .($page < $pages ? $link($page + 1, 'Next').$link($pages, 'Last') : $off('Next').$off('Last'))
+        .'</nav>';
+}
+
+/** Under this many usable values the percentiles of a measurement are rough, and the page says so */
+const STATS_FEW_SAMPLES = 10;
+
+/**
+ * The month that comes $delta months after (or before, when negative) $month
+ *
+ * @param string $month "YYYY-MM", already checked by statsMonth()
+ * @param int    $delta
+ *
+ * @return string
+ */
+function statsMonthShift($month, $delta)
+{
+    $first = DateTimeImmutable::createFromFormat('!Y-m', $month, new DateTimeZone('UTC'));
+
+    return $first->modify(sprintf('%+d month', $delta))->format('Y-m');
+}
+
+/**
+ * "October 2026", for a person to read
+ *
+ * @param string $month "YYYY-MM", already checked by statsMonth()
+ *
+ * @return string
+ */
+function statsMonthLabel($month)
+{
+    return DateTimeImmutable::createFromFormat('!Y-m', $month, new DateTimeZone('UTC'))->format('F Y');
+}
+
+/**
+ * A stored measurement as it goes in a cell of the list: the number in Mbit/s (or in ms), or the text that was stored
+ * when it is not a number ("Fail"), or "-" when there is nothing
+ *
+ * @param mixed $raw
+ * @param bool  $speed true for a speed (no decimals from 100 up), false for a time in ms
+ *
+ * @return string
+ */
+function statsCell($raw, $speed)
+{
+    $value = statsCleanValue($raw);
+    if (null === $value) {
+        $text = is_string($raw) ? trim($raw) : '';
+
+        return '' === $text ? '-' : $text;
+    }
+    if (!$speed) {
+        return number_format($value, 1, '.', '');
+    }
+
+    return number_format($value, $value < 10 ? 2 : ($value < 100 ? 1 : 0), '.', '');
 }
