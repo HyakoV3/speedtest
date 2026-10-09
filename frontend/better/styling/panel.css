@@ -68,9 +68,110 @@
   display: none;
 }
 
-/* A group of options added later, which starts with its own title (the first title of a column has no margin) */
-.panel-group {
-  margin-top: 0.9rem;
+/* A section of the accordion: the heading is a button that opens and closes the options under it, with a line between
+   two sections. High contrast hides the appearance section, so the section after it loses the line. */
+.panel-section + .panel-section {
+  border-top: 0.0625rem solid var(--border);
+}
+
+html.high-contrast .panel-appearance + .panel-section {
+  border-top: 0;
+}
+
+.panel-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 0.6rem 0;
+  font: inherit;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  text-align: left;
+  text-transform: uppercase;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.panel-section-title:hover {
+  color: var(--text);
+}
+
+/* The arrow points down when the section is closed and up when it is open */
+.panel-section-title::after {
+  content: "";
+  width: 0.4rem;
+  height: 0.4rem;
+  margin: -0.2rem 0.2rem 0 0;
+  border-right: 0.125rem solid currentColor;
+  border-bottom: 0.125rem solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 0.15s;
+}
+
+.panel-section-title[aria-expanded="true"]::after {
+  margin-top: 0.2rem;
+  transform: rotate(-135deg);
+}
+
+.panel-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  padding: 0 0 0.75rem;
+}
+
+.panel-section-body[hidden] {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-section-title::after {
+    transition: none;
+  }
+}
+
+/* The second column: the name of the option over its controls */
+.panel-side-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.panel-side-heading {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+/* A menu in the panel (the icon set), with the look of the buttons of the options */
+.panel-select {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  font: inherit;
+  font-size: 0.8125rem;
+  color: var(--text);
+  background: var(--surface-muted);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-button);
+  cursor: pointer;
+}
+
+.panel-select:hover {
+  border-color: var(--primary);
+}
+
+.panel-item[hidden] {
+  display: none;
 }
 
 @media (max-width: 40rem) {
@@ -90,17 +191,12 @@
   }
 }
 
+/* The title of an option, under the heading of its section */
 .panel-title {
-  margin: 0.9rem 0 0.4rem;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  color: var(--muted);
-  text-transform: uppercase;
-}
-
-.panel-title:first-child {
-  margin-top: 0;
+  margin: 0 0 0.3rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text);
 }
 
 .panel-options {

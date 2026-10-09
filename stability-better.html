@@ -15,6 +15,7 @@
     <script src="frontend/better/javascript/theme.js"></script>
     <script src="frontend/better/javascript/accessibility.js"></script>
     <script src="frontend/better/javascript/font.js"></script>
+    <script src="frontend/better/javascript/icons.js"></script>
     <script src="frontend/better/javascript/i18n.js"></script>
     <script src="frontend/better/javascript/background.js"></script>
     <script src="frontend/better/javascript/consent.js"></script>
@@ -28,15 +29,22 @@
     <link rel="stylesheet" href="frontend/better/styling/better.css" />
     <link rel="stylesheet" href="frontend/better/styling/contrast.css" />
     <link rel="stylesheet" href="frontend/better/styling/panel.css" />
+    <link rel="stylesheet" href="frontend/better/styling/icons.css" />
   </head>
   <body>
     <header class="brand">
-      <img class="brand-logo" src="frontend/images/logo.svg" alt="LibreSpeed" />
+      <a class="brand-logo-link" href="https://librespeed.org/" target="_blank" rel="noopener">
+        <img class="brand-logo" src="frontend/images/logo.svg" alt="LibreSpeed" />
+      </a>
       <div class="brand-text">
         <h1 data-i18n="brand.title">Free and Open Source Speedtest.</h1>
         <p class="tagline" data-i18n="brand.tagline">No Flash, No Java, No Websockets, No Bullsh*t</p>
       </div>
     </header>
+    <div id="loading" class="visible">
+      <p id="message"><span class="loadCircle"></span><span data-i18n="classic.selecting">Selecting a server...</span></p>
+    </div>
+    <div id="stabilityArea" class="hidden">
     <div id="controls">
       <select id="durationSelect" aria-label="Duration" data-i18n-attr="aria-label:stability.duration">
         <option value="60" data-i18n="stability.60-seconds">60 Seconds</option>
@@ -116,7 +124,6 @@
         <input type="range" id="alertThreshold" min="0" max="500" step="10" value="0" oninput="updateThreshold(this.value)" />
         <span id="thresholdValue" data-i18n="stability.off">Off</span>
       </label>
-      <button id="downloadCsvBtn" onclick="downloadCsv()" data-i18n="stability.download-csv">Download CSV</button>
     </div>
 
     <div id="historySection" style="display: none">
@@ -135,11 +142,11 @@
       <a href="index-better.html" data-i18n="stability.back" onclick="location.href='index-better.html'+location.search;return false;">Speed Test</a>
       <a href="#" data-i18n="classic.privacy" onclick="document.getElementById('privacyPolicy').style.display='';return false;">Privacy</a>
       <a href="https://github.com/librespeed/speedtest" target="_blank" rel="noopener" data-i18n="stability.source">Source code</a>
-      <p class="poweredby"><a href="https://librespeed.org/" target="_blank" rel="noopener">Powered by LibreSpeed</a></p>
+    </div>
     </div>
 
     <div id="privacyPolicy" style="display: none">
-      <button type="button" class="privacy-close" aria-label="Close" title="Close" data-i18n-attr="aria-label:dialog.close,title:dialog.close" onclick="document.getElementById('privacyPolicy').style.display='none'">&times;</button>
+      <button type="button" class="privacy-close" data-icon="close" aria-label="Close" title="Close" data-i18n-attr="aria-label:dialog.close,title:dialog.close" onclick="document.getElementById('privacyPolicy').style.display='none'">&times;</button>
       <h2 data-i18n="privacy.title">Privacy Policy</h2>
       <p data-i18n="privacy.telemetry">This HTML5 speed test server is configured with telemetry enabled.</p>
       <h4 data-i18n="privacy.collect-title">What data we collect</h4>
@@ -179,6 +186,7 @@
       // Set this to a different URL to load the server list from another location.
       var SPEEDTEST_SERVERS = "server-list.json";
     </script>
+    <script src="speedtest.js"></script>
     <script src="frontend/better/javascript/stability.js"></script>
     <script src="frontend/better/javascript/theme-panel.js"></script>
   </body>

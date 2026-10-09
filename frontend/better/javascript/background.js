@@ -190,19 +190,11 @@ var LibreSpeedBackground = (function () {
     document.head.appendChild(link);
   }
 
-  var ICONS = {
-    prev: '<path d="M15 5l-7 7 7 7"/>',
-    next: '<path d="M9 5l7 7-7 7"/>',
-    pause: '<path d="M9 5v14M15 5v14"/>',
-    play: '<path d="M8 5l11 7-11 7z"/>'
-  };
+  // The icon of each button of the credit, in the icon set of the page
+  var CONTROL_ICONS = { prev: "chevron-left", next: "chevron-right", pause: "pause", play: "play" };
 
   function icon(name) {
-    return (
-      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-      ICONS[name] +
-      "</svg>"
-    );
+    return window.LibreSpeedIcons ? window.LibreSpeedIcons.html(CONTROL_ICONS[name], 14) : "";
   }
 
   function link(label, href) {
@@ -259,7 +251,7 @@ var LibreSpeedBackground = (function () {
       }
       credit.appendChild(control("next", text("background.next", "Next photo"), next));
     }
-    footer.insertBefore(credit, footer.querySelector(".poweredby"));
+    footer.appendChild(credit);
   }
 
   function clear() {
@@ -452,6 +444,11 @@ var LibreSpeedBackground = (function () {
   else if (param && /^[a-z0-9-]+$/.test(param)) explicit = param;
   if (document.body) begin();
   else document.addEventListener("DOMContentLoaded", begin);
+
+  // The buttons of the credit are drawn again with the icons of a new icon set
+  window.addEventListener("iconschange", function () {
+    if (credit) paintCredit(find(options.id));
+  });
 
   // A new photo that fits the mode when the page changes from dark to light or back
   window.addEventListener("themechange", function () {

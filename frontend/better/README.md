@@ -20,6 +20,8 @@ The round button in the top right corner opens a panel with every option. Each o
 | Rounding of buttons and boxes  | panel only                     |
 | Footer style: text, chips, bar | `?footer=text\|chips\|bar`     |
 | Font: system, Inter, Sora, Manrope | `?font=sora`               |
+| Icon set (see `icons/README.md`) | `?icons=lucide`              |
+| Weight of the icons: light, regular, bold | `?weight=bold`      |
 | Chart style (stability page)   | `?chart=polished\|bands\|uplot` |
 | Language                       | `?lang=en\|pt\|es\|sv`         |
 | Text size and high contrast    | panel only                     |

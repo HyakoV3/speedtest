@@ -105,8 +105,14 @@ header.brand {
   padding: 0 0.5rem;
 }
 
-header.brand .brand-logo {
+/* The logo is a link to the project */
+header.brand .brand-logo-link {
   grid-column: 1;
+  justify-self: start;
+  line-height: 0;
+}
+
+header.brand .brand-logo {
   width: 9.5em;
   height: auto;
 }
@@ -412,11 +418,7 @@ div.testArea .sub {
   cursor: pointer;
 }
 
-#historyClear,
-.history-copy,
-.history-csv,
-#downloadCsvBtn,
-#shareCopy {
+#historyClear {
   font: inherit;
   color: var(--muted);
   background: none;
@@ -431,8 +433,7 @@ div.testArea .sub {
   font-size: 0.75em;
 }
 
-#historyClear:hover,
-.history-copy:hover {
+#historyClear:hover {
   color: var(--primary);
   border-color: var(--primary);
 }
@@ -475,7 +476,8 @@ div.testArea .sub {
   min-width: 0;
 }
 
-.history-share-btn {
+.history-share-btn,
+.history-download-btn {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
@@ -493,7 +495,9 @@ div.testArea .sub {
 }
 
 .history-share-btn:hover,
-.history-share-btn:focus-visible {
+.history-share-btn:focus-visible,
+.history-download-btn:hover,
+.history-download-btn:focus-visible {
   color: var(--on-primary);
   background: var(--primary);
 }
@@ -622,61 +626,6 @@ div.testArea .sub {
   content: "\25CF\00a0";
 }
 
-.history-row.history-share {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-}
-
-.history-link {
-  min-width: 0;
-  padding: 0.15em 0;
-  font: inherit;
-  font-size: 0.85em;
-  color: var(--muted);
-  background: transparent;
-  border: 0;
-  text-overflow: ellipsis;
-}
-
-.history-copy,
-.history-csv {
-  padding: 0.3em 0.9em;
-  font-size: 0.85em;
-}
-
-.history-csv {
-  display: block;
-  margin: 0.6em 0 0 auto;
-  color: var(--primary);
-  border-color: var(--primary);
-}
-
-.history-csv:hover,
-#downloadCsvBtn:hover,
-#shareCopy:hover {
-  color: var(--on-primary);
-  background: var(--primary);
-}
-
-.history-image-link {
-  display: block;
-  width: 55%;
-  max-width: 16em;
-  margin: 0.75em auto 0;
-}
-
-.history-image {
-  display: block;
-  width: 100%;
-  height: auto;
-  border-radius: var(--radius-card);
-  cursor: zoom-in;
-}
-
-:root[data-theme="dark"] .history-image {
-  filter: invert(1);
-}
-
 /* Footer: three styles, chosen in the theme panel (data-footer on <html>) */
 .footer {
   margin: 2em 0 1em;
@@ -693,10 +642,6 @@ div.testArea .sub {
 .footer a:focus-visible {
   color: var(--primary);
   text-decoration: underline;
-}
-
-.footer .poweredby {
-  margin: 0.6em 0 0;
 }
 
 html[data-footer="text"] .footer a + a::before,
@@ -732,21 +677,6 @@ html[data-footer="bar"] .footer {
   margin-inline: auto;
   padding-top: 0.9em;
   border-top: 0.0625rem solid var(--border);
-}
-
-html[data-footer="bar"] .footer .poweredby {
-  margin: 0;
-}
-
-html[data-footer="chips"] .footer .poweredby,
-html[data-footer="bar"] .footer .poweredby {
-  display: contents;
-}
-
-/* The text and the chips styles put the separators and the chips only between the links */
-html[data-footer="text"] .footer .poweredby a::before,
-html:not([data-footer]) .footer .poweredby a::before {
-  content: none;
 }
 
 /* Privacy policy */
@@ -969,15 +899,6 @@ div.closePrivacyPolicy a {
   white-space: nowrap;
 }
 
-#downloadCsvBtn {
-  flex: 0 0 auto;
-  padding: 0.4em 1em;
-  font-size: 0.9em;
-  white-space: nowrap;
-  color: var(--primary);
-  border-color: var(--primary);
-}
-
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;
@@ -1009,10 +930,74 @@ div.closePrivacyPolicy a {
   margin: 0 auto 1em;
 }
 
-#shareCopy {
-  padding: 0.5em 1.2em;
+/* One bar on top of the picture: the pill of the copy buttons on the left and the close button on the right, in one height */
+.share-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0.5em;
+  margin-bottom: 0.75em;
+}
+
+.share-dialog .share-bar .privacy-close {
+  position: static;
+  float: none;
+  flex: none;
+  margin: 0 0 0 auto;
+}
+
+/* The two copy buttons are one pill: the link on the left, the picture on the right, with a line between them */
+.share-pill {
+  display: inline-flex;
+  align-items: stretch;
+  overflow: hidden;
+  border: 0.0625rem solid var(--primary);
+  border-radius: var(--radius-button);
+}
+
+.share-pill button {
+  display: grid;
+  place-items: center;
+  min-width: 2.9em;
+  padding: 0 0.9em;
+  font: inherit;
+  font-size: 0.9em;
   color: var(--primary);
-  border-color: var(--primary);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.share-pill button + button {
+  border-left: 0.0625rem solid var(--primary);
+}
+
+.share-pill button:hover,
+.share-pill button:focus-visible {
+  color: var(--on-primary);
+  background: var(--primary);
+}
+
+.share-pill button:focus-visible {
+  outline-offset: -0.25rem;
+}
+
+.share-pill button svg {
+  display: block;
+  width: 1.45em;
+  height: 1.45em;
+}
+
+/* What is told to the screen readers after a copy, and not shown */
+.share-status {
+  position: absolute;
+  width: 0.0625rem;
+  height: 0.0625rem;
+  margin: -0.0625rem;
+  overflow: hidden;
+  white-space: nowrap;
+  clip: rect(0 0 0 0);
 }
 
 /* The privacy consent that is asked before the first test when the server has telemetry */

@@ -13,6 +13,7 @@
 	<script src="frontend/better/javascript/theme.js"></script>
 	<script src="frontend/better/javascript/accessibility.js"></script>
 	<script src="frontend/better/javascript/font.js"></script>
+	<script src="frontend/better/javascript/icons.js"></script>
 	<script src="frontend/better/javascript/i18n.js"></script>
 	<script src="frontend/better/javascript/background.js"></script>
 	<script src="frontend/better/javascript/consent.js"></script>
@@ -33,12 +34,15 @@
 	<link rel="stylesheet" href="frontend/better/styling/better.css">
 	<link rel="stylesheet" href="frontend/better/styling/contrast.css">
 	<link rel="stylesheet" href="frontend/better/styling/panel.css">
+	<link rel="stylesheet" href="frontend/better/styling/icons.css">
 	<title>LibreSpeed - Free and Open Source Speedtest</title>
 </head>
 
 <body onload="LibreSpeedI18n.ready.then(initServers)">
 	<header class="brand">
-		<img class="brand-logo" src="frontend/images/logo.svg" alt="LibreSpeed">
+		<a class="brand-logo-link" href="https://librespeed.org/" target="_blank" rel="noopener">
+			<img class="brand-logo" src="frontend/images/logo.svg" alt="LibreSpeed">
+		</a>
 		<div class="brand-text">
 			<h1 data-i18n="brand.title">Free and Open Source Speedtest.</h1>
 			<p class="tagline" data-i18n="brand.tagline">No Flash, No Java, No Websockets, No Bullsh*t</p>
@@ -96,16 +100,21 @@
 			<a href="stability-better.html" data-i18n="classic.stability" onclick="location.href='stability-better.html'+location.search;return false;">Stability Test</a>
 			<a href="#" data-i18n="classic.privacy" onclick="I('privacyPolicy').style.display='';return false;">Privacy</a>
 			<a href="https://github.com/librespeed/speedtest" target="_blank" rel="noopener" data-i18n="classic.source">Source code</a>
-			<p class="poweredby"><a href="https://librespeed.org/" target="_blank" rel="noopener">Powered by LibreSpeed</a></p>
 		</div>
 	</div>
 	<dialog id="shareDialog" class="share-dialog">
-		<button type="button" class="privacy-close" aria-label="Close" title="Close" data-i18n-attr="aria-label:dialog.close,title:dialog.close" onclick="I('shareDialog').close()">&times;</button>
+		<div class="share-bar">
+			<div id="sharePill" class="share-pill">
+				<button id="shareCopy" type="button" data-icon="link" aria-label="Copy link" title="Copy link" data-i18n-attr="aria-label:share.copy,title:share.copy">Copy link</button>
+				<button id="shareCopyImage" type="button" data-icon="image" aria-label="Copy image" title="Copy image" data-i18n-attr="aria-label:share.copy-image,title:share.copy-image">Copy image</button>
+			</div>
+			<button type="button" class="privacy-close" data-icon="close" aria-label="Close" title="Close" data-i18n-attr="aria-label:dialog.close,title:dialog.close" onclick="I('shareDialog').close()">&times;</button>
+		</div>
 		<img id="shareImage" alt="Test results in graphical form" data-i18n-attr="alt:share.image-alt" />
-		<button id="shareCopy" type="button" data-i18n="share.copy">Copy link</button>
+		<span id="shareStatus" class="share-status" role="status" aria-live="polite"></span>
 	</dialog>
 	<div id="privacyPolicy" style="display:none">
-		<button type="button" class="privacy-close" aria-label="Close" title="Close" data-i18n-attr="aria-label:dialog.close,title:dialog.close" onclick="I('privacyPolicy').style.display='none'">&times;</button>
+		<button type="button" class="privacy-close" data-icon="close" aria-label="Close" title="Close" data-i18n-attr="aria-label:dialog.close,title:dialog.close" onclick="I('privacyPolicy').style.display='none'">&times;</button>
 		<h2 data-i18n="privacy.title">Privacy Policy</h2>
 		<p data-i18n="privacy.telemetry">This HTML5 speed test server is configured with telemetry enabled.</p>
 		<h4 data-i18n="privacy.collect-title">What data we collect</h4>

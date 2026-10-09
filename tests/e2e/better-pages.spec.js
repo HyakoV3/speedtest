@@ -32,6 +32,12 @@ async function open(page, path, query = "") {
   await expect(page.locator(".panel-button")).toBeVisible();
 }
 
+// The sections of the panel are an accordion: open the one that has the option before using it
+async function openSection(page, id) {
+  const header = page.locator(`[data-panel-section="${id}"] > .panel-section-title`);
+  if ((await header.getAttribute("aria-expanded")) !== "true") await header.click();
+}
+
 function rootStyle(page, name) {
   return page.evaluate(property => getComputedStyle(document.documentElement).getPropertyValue(property).trim(), name);
 }
@@ -104,6 +110,7 @@ for (const { name, path, start } of pages) {
       await expect(page.locator(start)).toHaveText("Iniciar");
 
       await page.locator(".panel-button").click();
+      await openSection(page, "language");
       await page.getByRole("radio", { name: "Español" }).click();
       await expect(page.locator("html")).toHaveAttribute("lang", "es");
       await page.goto(`${staticRepositoryUrl}${path}`);
@@ -119,9 +126,11 @@ for (const { name, path, start } of pages) {
     test("a font set, the text size and high contrast work from the panel", async ({ page }) => {
       await open(page, path);
       await page.locator(".panel-button").click();
+      await openSection(page, "page");
       await page.getByRole("radio", { name: "Sora" }).click();
       await expect(page.locator("html")).toHaveAttribute("data-font", "sora");
 
+      await openSection(page, "accessibility");
       await page.getByRole("button", { name: "Larger text" }).click();
       expect(await page.evaluate(() => document.documentElement.style.fontSize)).toBe("112.5%");
 
@@ -133,6 +142,7 @@ for (const { name, path, start } of pages) {
     test("the footer style changes", async ({ page }) => {
       await open(page, path);
       await page.locator(".panel-button").click();
+      await openSection(page, "page");
       await page.getByRole("radio", { name: "Chips" }).click();
       await expect(page.locator("html")).toHaveAttribute("data-footer", "chips");
     });
@@ -159,9 +169,11 @@ for (const { name, path, start } of pages) {
 test("the stability page changes the chart style from the panel and keeps it", async ({ page }) => {
   await open(page, "/stability-better.html");
   await page.locator(".panel-button").click();
+  await openSection(page, "page");
   await page.getByRole("radio", { name: "Bands" }).click();
   await page.reload();
   await page.locator(".panel-button").click();
+  await openSection(page, "page");
   await expect(page.getByRole("radio", { name: "Bands" })).toHaveAttribute("aria-checked", "true");
 });
 
