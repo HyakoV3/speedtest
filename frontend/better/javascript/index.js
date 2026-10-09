@@ -26,7 +26,7 @@ function selectServer(index) {
   showSponsor(SPEEDTEST_SERVERS[index]);
 }
 
-// The telemetry of the server is what gives a test an id, so the privacy consent and the sharing depend on it
+// Whether settings.json turns the telemetry on: it decides the privacy consent, the sending of the result and the sharing
 var telemetryEnabled = false;
 
 // The link of the result and its picture come from the server, which only gives a test an id with telemetry
@@ -261,6 +261,9 @@ function startStop() {
 function startTest() {
   if (s.getState() == 3) return;
   applyConnMode();
+  // The result goes to the server (results/telemetry.php) only when settings.json turns the telemetry on, which is also
+  // when the privacy policy is asked first (consent.js). Without it the test has no id and nothing to share.
+  s.setParameter("telemetry_level", LibreSpeedConsent.telemetryEnabled() ? "basic" : "off");
   setRunningUI(true);
   s.onupdate = function (data) {
     uiData = data;
