@@ -116,6 +116,29 @@ header('Pragma: no-cache');
                 text-align:right;
                 font-variant-numeric:tabular-nums;
             }
+            .bar{
+                position:relative;
+                height:0.6em;
+                min-width:7em;
+                margin:0;
+                background:var(--meter-track, #80808040);
+                border-radius:999px;
+            }
+            .bar span{
+                position:absolute;
+                top:0;
+                bottom:0;
+                background:var(--primary, #2563eb);
+                border-radius:999px;
+                opacity:0.6;
+            }
+            .bar i{
+                position:absolute;
+                top:-0.2em;
+                bottom:-0.2em;
+                width:2px;
+                background:var(--text, #1f2430);
+            }
             .scroll{
                 overflow-x:auto;
             }
@@ -167,13 +190,16 @@ header('Pragma: no-cache');
                         <div class="scroll">
                             <table class="summary">
                                 <caption><?= (int) $statsSummary['tests'] ?> tests in <?= htmlspecialchars($statsMonth, ENT_HTML5, 'UTF-8') ?>, by the clock of the database (UTC with SQLite)</caption>
-                                <tr><th scope="col"></th><th scope="col">Valid</th><th scope="col">P10</th><th scope="col">Median</th><th scope="col">P90</th></tr>
+                                <tr><th scope="col"></th><th scope="col">Valid</th><th scope="col">P10</th><th scope="col">Median</th><th scope="col">P90</th><th scope="col">P10 to P90</th></tr>
                                 <?php
                                 foreach (['dl' => 'Download', 'ul' => 'Upload', 'ping' => 'Ping', 'jitter' => 'Jitter'] as $statsKey => $statsLabel) {
                                     $statsLine = $statsSummary[$statsKey];
                                     $statsFormat = 'dl' === $statsKey || 'ul' === $statsKey ? 'statsFormatSpeed' : 'statsFormatMs';
                                     echo '<tr><th scope="row">'.$statsLabel.'</th><td>'.$statsLine['count'].'</td><td>'.$statsFormat($statsLine['p10'])
-                                        .'</td><td>'.$statsFormat($statsLine['p50']).'</td><td>'.$statsFormat($statsLine['p90']).'</td></tr>';
+                                        .'</td><td>'.$statsFormat($statsLine['p50']).'</td><td>'.$statsFormat($statsLine['p90']).'</td>';
+                                    // The range of P10 to P90 and the median, drawn for the eye; the numbers are in the cells
+                                    $statsBarData = statsBar($statsLine);
+                                    echo null === $statsBarData ? '<td></td></tr>' : '<td><div class="bar" aria-hidden="true"><span style="left:'.$statsBarData['left'].'%;width:'.$statsBarData['width'].'%"></span><i style="left:'.$statsBarData['median'].'%"></i></div></td></tr>';
                                 }
                                 ?>
                             </table>

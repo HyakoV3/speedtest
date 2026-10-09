@@ -128,6 +128,31 @@ function statsSummarize($rows)
 }
 
 /**
+ * Where the bar of a measurement starts, how wide it is and where the median is, as percentages of the P90
+ *
+ * Each measurement has its own scale (Mbit/s against ms), so the bar of a line only says how the P10 to P90 range
+ * and the median sit against that line's own P90. It is null when there is nothing to draw.
+ *
+ * @param array $line one measurement of statsSummarize(): the keys p10, p50 and p90
+ *
+ * @return array{left: float, width: float, median: float}|null
+ */
+function statsBar(array $line)
+{
+    if (null === $line['p10'] || null === $line['p50'] || null === $line['p90'] || $line['p90'] <= 0) {
+        return null;
+    }
+    $left = $line['p10'] / $line['p90'] * 100;
+
+    return [
+        'left' => round($left, 1),
+        // A range that is a single value would be invisible
+        'width' => round(max(1.0, 100 - $left), 1),
+        'median' => round($line['p50'] / $line['p90'] * 100, 1),
+    ];
+}
+
+/**
  * @param float|null $mbps
  *
  * @return string
