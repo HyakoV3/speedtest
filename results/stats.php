@@ -1,9 +1,34 @@
 <?php
+// The session cookie of the admin: kept away from scripts, and from other sites. Behind a proxy that ends the
+// HTTPS (Traefik, nginx) PHP only sees HTTP, so the header of the proxy tells whether the visitor used HTTPS.
+$statsHttps = !empty($_SERVER['HTTPS']) || 'https' === strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''));
+session_set_cookie_params([
+    'lifetime' => 0,
+    'path' => '/',
+    'secure' => $statsHttps || (bool) ini_get('session.cookie_secure'),
+    'httponly' => true,
+    'samesite' => 'Strict',
+]);
+// Only ids the server made are accepted
+ini_set('session.use_strict_mode', '1');
 session_start();
 error_reporting(0);
 
 require 'telemetry_settings.php';
 require_once 'telemetry_db.php';
+
+// The login is handled here, before the page starts, because a new session id needs a header. The new id is why an id
+// known before the login is of no use afterwards.
+if (
+    isset($stats_password) && 'PASSWORD' !== $stats_password && true !== ($_SESSION['logged'] ?? false)
+    && 'login' === ($_GET['op'] ?? '') && is_string($_POST['password'] ?? null)
+    && hash_equals((string) $stats_password, $_POST['password'])
+) {
+    session_regenerate_id(true);
+    $_SESSION['logged'] = true;
+    header('Location: stats.php', true, 303);
+    exit;
+}
 
 header('Content-Type: text/html; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0, s-maxage=0');
@@ -152,9 +177,6 @@ header('Pragma: no-cache');
                     <?php
                 }
             }
-        } elseif ($_GET['op'] === 'login' && $_POST['password'] === $stats_password) {
-            $_SESSION['logged'] = true;
-            ?><script type="text/javascript">window.location=location.protocol+"//"+location.host+location.pathname;</script><?php
         } else {
             ?>
             <form action="stats.php?op=login" method="POST">
