@@ -28,3 +28,6 @@ jobs:
           plugins: "code-review@claude-code-plugins"
           prompt: "/code-review:code-review --comment ${{ github.repository }}/pull/${{ github.event.pull_request.number }}. Para correções pequenas e diretas, formate o corpo do comentário inline com um bloco de código na linguagem 'suggestion' contendo o texto substituto exato, para habilitar o botão 'Commit suggestion' do GitHub."
           claude_args: '--allowedTools "mcp__github_inline_comment__create_inline_comment"'
+          # TEMPORARY, to find out why the review sometimes ends without a comment: it writes every message and tool result
+          # of the review in the log, and the log of a public repository is public. Remove it once the cause is known.
+          show_full_output: true
