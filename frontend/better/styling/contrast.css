@@ -93,10 +93,6 @@ html.high-contrast span.loadCircle {
   border-top-color: var(--primary);
 }
 
-html.high-contrast .history-image {
-  filter: invert(1);
-}
-
 /* The mode and the brand color have no effect with high contrast */
 html.high-contrast .panel-appearance {
   display: none;

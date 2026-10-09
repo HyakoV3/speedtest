@@ -6,6 +6,10 @@
  *
  * window.LibreSpeedDefaults = {
  *   font: "sora",                                    // system, inter, sora or manrope
- *   background: { mode: "packs", every: 0 }          // mode: none or packs; every: -1 never, 0 every load,
- * };                                                 // or the seconds between photos (300, 900, 3600, 86400, 604800)
+ *   background: { mode: "packs", every: 0 },         // mode: none or packs; every: -1 never, 0 every load,
+ *                                                    // or the seconds between photos (300, 900, 3600, 86400, 604800)
+ *   icons: "ph",                                     // an id of frontend/better/icons/subset.json:
+ *                                                    // material-symbols, mdi, tabler, lucide or ph
+ *   weight: "bold"                                   // light, regular or bold: only Phosphor draws other weights
+ * };
  */

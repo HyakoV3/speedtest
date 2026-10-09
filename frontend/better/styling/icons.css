@@ -1,0 +1,105 @@
+/**
+ * The carets, the check marks, the arrow of the selects and the close buttons of the better pages, drawn with the icon
+ * set the visitor chose. javascript/icons.js sets the variables used here and data-icons on <html> once the icons are
+ * read: until then, and without the file, the other style sheets draw these signs as text and as borders.
+ */
+
+/* A caret or a check mark: a box in the color of the text around it, cut to the shape of the icon */
+html[data-icons] .history-caret::before,
+html[data-icons] .history-icon::before,
+html[data-icons] .history-share-btn.done::before,
+html[data-icons] .panel-section-title::after {
+  content: "";
+  display: inline-block;
+  box-sizing: border-box;
+  margin: 0;
+  background: currentColor;
+  border: 0;
+  vertical-align: middle;
+  -webkit-mask: var(--icon-chevron-down) center / contain no-repeat;
+  mask: var(--icon-chevron-down) center / contain no-repeat;
+}
+
+/* The caret of the history: pointing down while it is open, to the right when it is collapsed */
+html[data-icons] .history-caret::before {
+  width: 1.4em;
+  height: 1.4em;
+}
+
+html[data-icons] #historySection.collapsed .history-caret::before,
+html[data-icons] .history-icon::before {
+  -webkit-mask-image: var(--icon-chevron-right);
+  mask-image: var(--icon-chevron-right);
+}
+
+/* The caret of an item of the history turns down when the item opens (the turn is in better.css) */
+html[data-icons] .history-icon::before {
+  width: 1.4em;
+  height: 1.4em;
+}
+
+/* The check mark of the share icon after it copied the link */
+html[data-icons] .history-share-btn.done::before {
+  width: 1.2em;
+  height: 1.2em;
+  font-size: 1em;
+  -webkit-mask-image: var(--icon-check);
+  mask-image: var(--icon-check);
+}
+
+/* The arrow of the section of the panel: down when it is closed, up when it is open */
+html[data-icons] .panel-section-title::after {
+  width: 1.5em;
+  height: 1.5em;
+  transform: none;
+}
+
+html[data-icons] .panel-section-title[aria-expanded="true"]::after {
+  margin: 0;
+  transform: rotate(180deg);
+}
+
+/* The check mark on the brand color that is chosen */
+html[data-icons] .panel-color[aria-checked="true"]::after {
+  content: "";
+  background: var(--on-primary);
+  -webkit-mask: var(--icon-check) center / 65% no-repeat;
+  mask: var(--icon-check) center / 65% no-repeat;
+}
+
+/* The arrow of the selects */
+html[data-icons] #durationSelect,
+html[data-icons] #targetSelect,
+html[data-icons] #server {
+  background-image: var(--icon-select-arrow);
+  background-position: right 0.6em center;
+  background-size: 1.3em 1.3em;
+}
+
+html[data-icons].high-contrast #durationSelect,
+html[data-icons].high-contrast #targetSelect,
+html[data-icons].high-contrast #server {
+  background-image: var(--icon-select-arrow-contrast);
+}
+
+/* The close buttons, which have the icon in place of the sign of text they have in the page */
+html[data-icons] .privacy-close {
+  display: grid;
+  place-items: center;
+}
+
+html[data-icons] .privacy-close svg {
+  display: block;
+  width: 1em;
+  height: 1em;
+}
+
+@media (forced-colors: active) {
+  /* A box with a mask has no color of its own to force, so the system color is used */
+  html[data-icons] .history-caret::before,
+  html[data-icons] .history-icon::before,
+  html[data-icons] .history-share-btn.done::before,
+  html[data-icons] .panel-section-title::after {
+    background: CanvasText;
+  }
+}

@@ -1,10 +1,10 @@
 /* global SPEEDTEST_SERVERS:writable, LibreSpeedI18n, LibreSpeedChart, LibreSpeedHistory, LibreSpeedStability, LibreSpeedUplot, uPlot */
-/* exported initServers, startStop, resetTest, onServerChange, updateThreshold, downloadCsv */
+/* exported initServers, startStop, resetTest, onServerChange, updateThreshold */
 /**
  * Stability test of the better page (stability-better.html)
  *
  * The page sets SPEEDTEST_SERVERS (a URL of a list or the list itself) before loading this file. The markup calls
- * startStop, resetTest, onServerChange, updateThreshold and downloadCsv.
+ * startStop, resetTest, onServerChange and updateThreshold.
  */
 function I(id) {
   return document.getElementById(id);
@@ -82,28 +82,14 @@ function loadServers(callback) {
   xhr.send();
 }
 
-function pingServer(server, callback) {
-  var baseUrl = joinServerUrl(server.server, server.pingURL);
-  var url = baseUrl + (baseUrl.match(/\?/) ? "&" : "?") + "cors=true&r=" + Math.random();
-  var xhr = new XMLHttpRequest();
-  var start = new Date().getTime();
-  xhr.onload = function () {
-    callback(server, new Date().getTime() - start);
-  };
-  xhr.onerror = function () {
-    callback(server, -1);
-  };
-  xhr.open("GET", url);
-  try {
-    xhr.timeout = 2000;
-    xhr.ontimeout = xhr.onerror;
-  } catch (error) {
-    // Some old browsers do not allow a timeout on this request
-  }
-  xhr.send();
+// The page shows once the server search is over: the loading message goes away and the test shows
+function showPage() {
+  I("loading").className = "hidden";
+  I("stabilityArea").className = "visible";
 }
 
-// Ping every server and select the closest one
+// Ping every server and select the closest one. The search is the one of the speed test page: speedtest.js pings each
+// server up to three times, six servers at the same time, and sets pingT (the best ping, or -1) on every server.
 function discoverServers() {
   serverDiscoveryPending = true;
   I("server").disabled = true;
@@ -112,30 +98,41 @@ function discoverServers() {
   pending.textContent = t("stability.finding-server", "Finding best server...");
   I("server").appendChild(pending);
   updateStartButtonState();
-  var completed = 0;
-  var best = null;
-  SPEEDTEST_SERVERS.forEach(function (server) {
-    pingServer(server, function (pinged, rtt) {
-      pinged.pingT = rtt;
-      if (rtt > 0 && (best === null || rtt < best.pingT)) best = pinged;
-      completed++;
-      if (completed < SPEEDTEST_SERVERS.length) return;
-      I("server").innerHTML = "";
-      SPEEDTEST_SERVERS.forEach(function (candidate, index) {
-        if (candidate.pingT <= 0) return;
-        var option = document.createElement("option");
-        option.value = index;
-        option.textContent = LibreSpeedI18n.serverName(candidate);
-        if (candidate === best) option.selected = true;
-        I("server").appendChild(option);
-      });
-      selectedServer = best;
-      serverDiscoveryPending = false;
-      localServerReady = selectedServer !== null || I("server").options.length > 0;
-      I("server").disabled = !localServerReady;
-      updateStartButtonState();
+
+  var finish = function (best) {
+    I("server").innerHTML = "";
+    SPEEDTEST_SERVERS.forEach(function (candidate, index) {
+      if (!(candidate.pingT > 0)) return;
+      var option = document.createElement("option");
+      option.value = index;
+      option.textContent = LibreSpeedI18n.serverName(candidate);
+      if (candidate === best) option.selected = true;
+      I("server").appendChild(option);
     });
+    selectedServer = best;
+    serverDiscoveryPending = false;
+    localServerReady = selectedServer !== null || I("server").options.length > 0;
+    I("server").disabled = !localServerReady;
+    updateStartButtonState();
+    showPage();
+  };
+
+  // An entry that is not a valid server is left out, the others are still searched
+  var selector = new Speedtest();
+  var added = 0;
+  SPEEDTEST_SERVERS.forEach(function (server) {
+    try {
+      selector.addTestPoint(server);
+      added++;
+    } catch (error) {
+      console.warn("A server of the list is not valid:", server && server.name, error);
+    }
   });
+  if (added === 0) {
+    finish(null);
+    return;
+  }
+  selector.selectServer(finish);
 }
 
 function initServers() {
@@ -148,6 +145,7 @@ function initServers() {
       I("serverArea").style.display = "none";
       localServerReady = true;
       updateStartButtonState();
+      showPage();
     } else {
       discoverServers();
     }
@@ -484,10 +482,6 @@ function shareEntry(entry) {
   });
 }
 
-function downloadCsv() {
-  LibreSpeedStability.downloadCsv(allPingData, new Date().toISOString().slice(0, 19).replace(/:/g, "-"));
-}
-
 // TEST HISTORY (see test-history.js)
 var testHistory = LibreSpeedHistory.create({
   key: "librespeed-better-stability-history",
@@ -512,16 +506,15 @@ var testHistory = LibreSpeedHistory.create({
   },
   canShare: canShare,
   onShare: shareEntry,
-  extra: function (entry, body) {
-    if (!entry.pings || !entry.pings.length) return;
-    var button = document.createElement("button");
-    button.type = "button";
-    button.className = "history-csv";
-    button.textContent = "↓︎ " + t("stability.download-csv", "Download CSV");
-    button.onclick = function () {
-      LibreSpeedStability.downloadCsv(entry.pings, LibreSpeedHistory.formatDate(entry.date).replace(/[/: ]/g, "-"));
-    };
-    body.appendChild(button);
+  // Every saved measurement keeps its pings, so each one can be saved as a CSV file from its own row
+  canDownload: function (entry) {
+    return !!(entry.pings && entry.pings.length);
+  },
+  onDownload: function (entry) {
+    LibreSpeedStability.downloadCsv(entry.pings, LibreSpeedHistory.formatDate(entry.date).replace(/[/: ]/g, "-"));
+  },
+  downloadLabel: function () {
+    return t("stability.download-csv", "Download CSV");
   }
 });
 

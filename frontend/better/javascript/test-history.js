@@ -14,16 +14,16 @@
  *   limit: number of results to keep (default 20),
  *   header: function (entry) { return { date: "text", metrics: ["text", ...] }; },
  *   rows: function (entry) { return [["label", "value"], ...]; },
- *   extra: function (entry, body) { add more elements to the open panel },
+ *   canDownload: function (entry) { whether the panel gets a download icon, after the share icon (default: no),
+ *   onDownload: function (entry) { called when the icon is used },
+ *   downloadLabel: function () { the name of the download icon, for the tip and for the screen readers },
  *   canShare: function (entry) { whether the panel gets a share icon next to its header (default: no),
  *   onShare: function (entry) { called when the icon is used; may return "copied" (or a promise of it) to
  *     flash a check mark on the icon }
  * }) returns { add(entry), clear(), render() }
  *
- * A panel with a share icon is a pill of two parts: the header (date, numbers, caret) and the share icon.
- *
- * LibreSpeedHistory.addShare(body, url) adds a row with the link and a copy button to the details
- * of a panel and the result image below them.
+ * A panel with a share icon is a pill of two parts: the header (date, numbers, caret) and the share icon. With a download
+ * icon too it has three parts.
  */
 var LibreSpeedHistory = (function () {
   "use strict";
@@ -102,9 +102,19 @@ var LibreSpeedHistory = (function () {
     return header;
   }
 
-  // The standard share icon (three connected nodes)
-  var SHARE_ICON =
-    '<svg viewBox="0 0 24 24" width="1.15em" height="1.15em" aria-hidden="true" focusable="false"><path fill="currentColor" d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/></svg>';
+  // The download icon: a button like the share one, in the icon set of the page
+  function buildDownload(history, entry) {
+    var label = history.downloadLabel ? history.downloadLabel() : text("history.download", "Download");
+    var button = element("button", "history-download-btn");
+    button.type = "button";
+    button.title = label;
+    button.setAttribute("aria-label", label);
+    button.innerHTML = window.LibreSpeedIcons ? window.LibreSpeedIcons.html("download", "1.15em") : "";
+    button.onclick = function () {
+      history.onDownload(entry);
+    };
+    return button;
+  }
 
   function buildShare(history, entry) {
     var label = text("share.button", "Share results");
@@ -112,7 +122,8 @@ var LibreSpeedHistory = (function () {
     button.type = "button";
     button.title = label;
     button.setAttribute("aria-label", label);
-    button.innerHTML = SHARE_ICON;
+    // The share icon, in the icon set of the page
+    button.innerHTML = window.LibreSpeedIcons ? window.LibreSpeedIcons.html("share", "1.15em") : "";
     button.onclick = function () {
       Promise.resolve(history.onShare(entry)).then(function (result) {
         if (result !== "copied") return;
@@ -140,7 +151,6 @@ var LibreSpeedHistory = (function () {
       details.appendChild(row);
     }
     body.appendChild(details);
-    if (history.extra) history.extra(entry, body);
     return body;
   }
 
@@ -159,6 +169,9 @@ var LibreSpeedHistory = (function () {
       if (history.canShare && history.onShare && history.canShare(entries[i])) {
         bar.appendChild(buildShare(history, entries[i]));
       }
+      if (history.canDownload && history.onDownload && history.canDownload(entries[i])) {
+        bar.appendChild(buildDownload(history, entries[i]));
+      }
       panel.appendChild(bar);
       panel.appendChild(buildBody(history, entries[i], panelId));
       list.appendChild(panel);
@@ -172,72 +185,15 @@ var LibreSpeedHistory = (function () {
     byId(history.toggleId).setAttribute("aria-expanded", String(!collapsed));
   }
 
-  function copyLink(input, button) {
-    function feedback(ok) {
-      button.textContent = ok ? text("history.copied", "Copied!") : text("history.failed", "Failed");
-      setTimeout(function () {
-        button.textContent = text("history.copy", "Copy");
-      }, 1500);
-    }
-    function fallback() {
-      input.focus();
-      input.select();
-      var ok = false;
-      try {
-        ok = document.execCommand("copy");
-      } catch (error) {
-        // The copy command is not available
-      }
-      feedback(ok);
-    }
-    if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(input.value).then(function () {
-        feedback(true);
-      }, fallback);
-    } else {
-      fallback();
-    }
-  }
-
-  function addShare(body, url) {
-    var row = element("div", "history-row history-share");
-    var input = element("input", "history-link");
-    input.type = "text";
-    input.readOnly = true;
-    input.value = url;
-    input.title = text("history.link", "Link to the result");
-    input.onclick = function () {
-      this.select();
-    };
-    var button = element("button", "history-copy", text("history.copy", "Copy"));
-    button.type = "button";
-    button.onclick = function () {
-      copyLink(input, button);
-    };
-    row.appendChild(input);
-    row.appendChild(button);
-    body.querySelector(".history-details").appendChild(row);
-
-    var link = element("a", "history-image-link");
-    link.href = url;
-    link.target = "_blank";
-    link.rel = "noopener";
-    link.title = text("history.open", "Open the result in full size");
-    var image = element("img", "history-image");
-    image.alt = text("history.image", "Test results in graphical form");
-    image.loading = "lazy";
-    image.src = url;
-    link.appendChild(image);
-    body.appendChild(link);
-  }
-
   function create(config) {
     var history = {
       key: config.key,
       limit: config.limit || DEFAULT_LIMIT,
       header: config.header,
       rows: config.rows,
-      extra: config.extra,
+      canDownload: config.canDownload,
+      onDownload: config.onDownload,
+      downloadLabel: config.downloadLabel,
       canShare: config.canShare,
       onShare: config.onShare,
       sectionId: "historySection",
@@ -258,14 +214,17 @@ var LibreSpeedHistory = (function () {
       };
     }
     render(history);
-    // The headers and the details are written in the language of the page, so they are built again after a change
-    window.addEventListener("i18nchange", function () {
+    // The headers and the details are written in the language of the page, and the share icons come from the icon set
+    // of the page, so they are built again after a change of either
+    var rebuild = function () {
       var panels = byId(history.listId).querySelectorAll(".history-panel");
       var open = -1;
       for (var i = 0; i < panels.length; i++) if (panels[i].classList.contains("open")) open = i;
       render(history);
       if (open >= 0) togglePanel(byId(history.listId), open);
-    });
+    };
+    window.addEventListener("i18nchange", rebuild);
+    window.addEventListener("iconschange", rebuild);
     return {
       add: function (entry) {
         var list = load(history);
@@ -283,5 +242,5 @@ var LibreSpeedHistory = (function () {
     };
   }
 
-  return { create: create, addShare: addShare, formatDate: formatDate };
+  return { create: create, formatDate: formatDate };
 })();

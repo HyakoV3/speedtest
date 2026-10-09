@@ -35,19 +35,69 @@ function resultUrl(entry) {
   return base + "/results/?id=" + entry.testId + "&style=classic";
 }
 
+// The icon of a button of the pill. Without icons the button shows its text.
+function copyIcon(name, text) {
+  return (window.LibreSpeedIcons && window.LibreSpeedIcons.html(name)) || text;
+}
+
+// A button of the pill of the share dialog: an icon with its name for the screen readers and the tip. After the copy it
+// shows a check mark (or a cross when it failed) for a moment, and the result is told to the screen readers.
+// action() returns a promise of the copy.
+function setCopyButton(id, key, fallback, action) {
+  var button = I(id);
+  var timer = null;
+  var label = t(key, fallback);
+  var idle = function () {
+    button.title = label;
+    button.setAttribute("aria-label", label);
+    button.innerHTML = copyIcon(button.getAttribute("data-icon"), label);
+    I("shareStatus").textContent = "";
+  };
+  var show = function (icon, message) {
+    button.title = message;
+    button.setAttribute("aria-label", message);
+    button.innerHTML = copyIcon(icon, message);
+    I("shareStatus").textContent = message;
+    window.clearTimeout(timer);
+    timer = window.setTimeout(idle, 3000);
+  };
+  idle();
+  button.onclick = function () {
+    action().then(
+      function () {
+        show("check", t("share.copied", "Copied!"));
+      },
+      function () {
+        show("close", t("share.failed", "Failed"));
+      }
+    );
+  };
+}
+
+// The picture of the result is a PNG. The promise goes to the clipboard item, so Safari still sees the click.
+function copyPicture(url) {
+  var blob = window.fetch(url).then(function (response) {
+    if (!response.ok) throw new Error("The picture was not loaded");
+    return response.blob();
+  });
+  return navigator.clipboard.write([new window.ClipboardItem({ "image/png": blob })]);
+}
+
 function openShare(entry) {
   var url = resultUrl(entry);
   I("shareImage").src = url;
-  I("shareCopy").textContent = t("share.copy", "Copy link");
-  I("shareCopy").style.display = navigator.clipboard ? "" : "none";
-  I("shareCopy").onclick = function () {
-    navigator.clipboard.writeText(url).then(function () {
-      I("shareCopy").textContent = t("share.copied", "Copied!");
-      setTimeout(function () {
-        I("shareCopy").textContent = t("share.copy", "Copy link");
-      }, 3000);
-    });
-  };
+  // The pill has what the browser can copy: a link needs the clipboard, a picture needs it to take images
+  var canCopyLink = !!navigator.clipboard;
+  var canCopyPicture = canCopyLink && !!window.ClipboardItem;
+  I("shareCopy").style.display = canCopyLink ? "" : "none";
+  I("shareCopyImage").style.display = canCopyPicture ? "" : "none";
+  I("sharePill").style.display = canCopyLink ? "" : "none";
+  setCopyButton("shareCopy", "share.copy", "Copy link", function () {
+    return navigator.clipboard.writeText(url);
+  });
+  setCopyButton("shareCopyImage", "share.copy-image", "Copy image", function () {
+    return copyPicture(url);
+  });
   I("shareDialog").showModal();
 }
 
@@ -330,10 +380,5 @@ var testHistory = LibreSpeedHistory.create({
   canShare: function (entry) {
     return telemetryEnabled && !!entry.testId;
   },
-  onShare: openShare,
-  extra: function (entry, body) {
-    if (!entry.testId) return;
-    var base = window.location.href.substring(0, window.location.href.lastIndexOf("/"));
-    LibreSpeedHistory.addShare(body, base + "/results/?id=" + entry.testId + "&style=classic");
-  }
+  onShare: openShare
 });
