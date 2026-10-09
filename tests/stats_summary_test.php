@@ -60,6 +60,11 @@ check(3, $s['ping']['count'], 'usable pings');
 check(10.0, $s['ping']['p10'], 'P10 ping');
 check(['count' => 0, 'p10' => null, 'p50' => null, 'p90' => null], statsSummarize([])['dl'], 'empty month');
 
+check(null, statsBar(['p10' => null, 'p50' => null, 'p90' => null]), 'no bar without values');
+check(null, statsBar(['p10' => 0.0, 'p50' => 0.0, 'p90' => 0.0]), 'no bar when everything is zero');
+check(['left' => 10.0, 'width' => 90.0, 'median' => 50.0], statsBar(['p10' => 10.0, 'p50' => 50.0, 'p90' => 100.0]), 'a bar');
+check(['left' => 100.0, 'width' => 1.0, 'median' => 100.0], statsBar(['p10' => 7.0, 'p50' => 7.0, 'p90' => 7.0]), 'one value is still visible');
+
 check('-', statsFormatSpeed(null), 'no value');
 check('5.25 Mbit/s', statsFormatSpeed(5.25), 'below 10');
 check('52.5 Mbit/s', statsFormatSpeed(52.5), 'below 100');
