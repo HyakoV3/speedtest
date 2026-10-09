@@ -13,12 +13,17 @@ $na="<span class='na'>N/A</span>";
 <html>
 <head>
 <title>Speed Test installation sanity check</title>
+<link rel="shortcut icon" href="../frontend/images/favicon.svg">
 <style>
-	table,th,td { border: 1px solid;}
+	html { color-scheme: light dark; font-family: sans-serif; }
+	table { border-collapse: collapse; }
+	th,td { padding: 0.35em 0.9em; text-align: left; border-bottom: 1px solid rgba(128,128,128,0.3); }
+	tr:nth-child(even) td { background: rgba(128,128,128,0.12); }
 	.Pass   { color:green;}
 	.Failed { color:red;}
 	.na     { color:orange;}
 	.SectionHeading { font-style: italic;}
+	@media (prefers-color-scheme: dark) { .Pass { color: #4ade80;} .Failed { color: #ff6b6b;} }
 </style>
 </head>
 <body>
