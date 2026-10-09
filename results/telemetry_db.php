@@ -346,3 +346,65 @@ function getSpeedtestValuesBetween($from, $to)
 
     return $stmt;
 }
+
+/**
+ * How many tests are stored
+ *
+ * @return int|false
+ */
+function countSpeedtestUsers()
+{
+    $pdo = getPdo();
+    if (!($pdo instanceof PDO)) {
+        return false;
+    }
+
+    try {
+        return (int) $pdo->query('SELECT COUNT(*) FROM speedtest_users')->fetchColumn();
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+/**
+ * One page of the tests, the newest first, for the list of stats.php
+ *
+ * The log is not read: it is the largest column, and the list does not show it (a single test does).
+ *
+ * @param int $limit  how many tests
+ * @param int $offset how many tests to skip
+ *
+ * @return array|false
+ */
+function getSpeedtestUsersPage($limit, $offset)
+{
+    $pdo = getPdo();
+    if (!($pdo instanceof PDO)) {
+        return false;
+    }
+
+    require TELEMETRY_SETTINGS_FILE;
+
+    // Cast to int and written into the query: MSSQL and PostgreSQL do not take them as parameters in the same way
+    $limit = max(1, (int) $limit);
+    $offset = max(0, (int) $offset);
+    $sql = 'SELECT id, timestamp, ip, ispinfo, ua, lang, dl, ul, ping, jitter FROM speedtest_users ORDER BY timestamp DESC, id DESC ';
+    if ('mssql' === $db_type) {
+        $sql .= 'OFFSET '.$offset.' ROWS FETCH NEXT '.$limit.' ROWS ONLY';
+    } else {
+        $sql .= 'LIMIT '.$limit.' OFFSET '.$offset;
+    }
+
+    try {
+        $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+        $obfuscated = isObfuscationEnabled();
+        foreach ($rows as $i => $row) {
+            // What the person types in the search to find the test: the obfuscated id when the ids are obfuscated
+            $rows[$i]['id_shown'] = $obfuscated ? obfuscateId($row['id']) : $row['id'];
+        }
+    } catch (Exception $e) {
+        return false;
+    }
+
+    return $rows;
+}
