@@ -314,3 +314,35 @@ function getLatestSpeedtestUsers()
 
     return $rows;
 }
+
+/**
+ * The measurements of the tests stored from $from (included) to $to (excluded), unread, for stats_summary.php
+ *
+ * Only the four short columns are selected: the log is the largest column and nothing here needs it.
+ *
+ * @param string $from see statsMonthBounds()
+ * @param string $to
+ *
+ * @return PDOStatement|false
+ */
+function getSpeedtestValuesBetween($from, $to)
+{
+    $pdo = getPdo();
+    if (!($pdo instanceof PDO)) {
+        return false;
+    }
+
+    try {
+        $stmt = $pdo->prepare(
+            'SELECT dl, ul, ping, jitter
+            FROM speedtest_users
+            WHERE timestamp >= ? AND timestamp < ?'
+        );
+        $stmt->execute([$from, $to]);
+        $stmt->setFetchMode(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        return false;
+    }
+
+    return $stmt;
+}
