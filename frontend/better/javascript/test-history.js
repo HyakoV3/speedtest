@@ -365,7 +365,7 @@ var LibreSpeedHistory = (function () {
         dimension.select.appendChild(option);
       }
       dimension.select.value = history[dimension.key] === null ? "" : history[dimension.key];
-      dimension.select.hidden = values.length < 2;
+      dimension.select.hidden = values.length < 2 || history.view === "detail";
     }
   }
 
