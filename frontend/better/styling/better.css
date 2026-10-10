@@ -449,7 +449,9 @@ div.testArea .sub {
   content: "\25B8";
 }
 
-#historySection.collapsed #historyList {
+#historySection.collapsed #historyList,
+#historySection.collapsed .history-view,
+#historySection.collapsed #historySummary {
   display: none;
 }
 
@@ -624,6 +626,164 @@ div.testArea .sub {
 .history-badge::before,
 #rating::before {
   content: "\25CF\00a0";
+}
+
+/* The history by period: the lists to choose it, and the table */
+.history-view {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5em;
+  margin-bottom: 0.75em;
+}
+
+/* The lists and the button between the two arrows of the pages; they come down to more lines when there is no room */
+.history-controls {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+}
+
+.history-page-btn {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 1.8em;
+  min-width: 1.5rem;
+  height: 1.8em;
+  min-height: 1.5rem;
+  padding: 0;
+  font: inherit;
+  font-size: 0.78em;
+  color: var(--text);
+  background: transparent;
+  border: 0.1em solid var(--border);
+  border-radius: var(--radius-button);
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.history-page-btn:hover {
+  border-color: var(--primary);
+}
+
+/* The arrow that leads nowhere: dimmed, but it still takes the focus */
+.history-page-btn[aria-disabled="true"] {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.history-page-btn[aria-disabled="true"]:hover {
+  border-color: var(--border);
+}
+
+.history-page-btn[hidden] {
+  display: none;
+}
+
+.history-page-btn svg {
+  display: block;
+}
+
+.history-select {
+  box-sizing: border-box;
+  height: 1.8em;
+  min-height: 1.5rem;
+  padding: 0 1.8em 0 0.7em;
+  font: inherit;
+  font-size: 0.78em;
+  color: var(--text);
+  background-color: transparent;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23808080'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.7em center;
+  background-size: 0.7em 0.45em;
+  border: 0.1em solid var(--border);
+  border-radius: var(--radius-button);
+  cursor: pointer;
+  transition: all 0.3s;
+  appearance: none;
+}
+
+.history-select:hover,
+.history-export:hover {
+  border-color: var(--primary);
+}
+
+.history-export {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 1.8em;
+  min-height: 1.5rem;
+  min-width: 1.8em;
+  padding: 0 0.4em;
+  font: inherit;
+  font-size: 0.78em;
+  color: var(--text);
+  background: transparent;
+  border: 0.1em solid var(--border);
+  border-radius: var(--radius-button);
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+/* The display above would otherwise win over the attribute */
+.history-export[hidden] {
+  display: none;
+}
+
+.history-export svg {
+  display: block;
+}
+
+.history-table-wrap {
+  overflow-x: auto;
+  border: 0.0625rem solid var(--primary);
+  border-radius: var(--radius-card);
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85em;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-table th,
+.history-table td {
+  padding: 0.5em 0.55em;
+  text-align: right;
+}
+
+.history-table th[scope="col"] {
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.history-table th[scope="col"]:first-child,
+.history-table th[scope="row"] {
+  text-align: left;
+}
+
+.history-table th[scope="row"] {
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.history-table tbody tr:nth-child(even) {
+  background: var(--surface-muted);
+}
+
+.history-table td.history-badge {
+  font-weight: 600;
 }
 
 /* Footer: three styles, chosen in the theme panel (data-footer on <html>) */
@@ -1041,4 +1201,83 @@ div.closePrivacyPolicy a {
   color: var(--on-primary);
   background: var(--primary);
   border: 0.0625rem solid var(--primary);
+}
+
+/* What the medians of the table are, told to the screen readers and not shown */
+.history-table-caption {
+  position: absolute;
+  width: 0.0625rem;
+  height: 0.0625rem;
+  margin: -0.0625rem;
+  overflow: hidden;
+  white-space: nowrap;
+  clip: rect(0 0 0 0);
+}
+
+/* Toasts: short messages at the bottom left of the page (toast.js). The region and the messages let the mouse go through, so
+   they never cover a control; only the close button is clickable */
+.toast-region {
+  position: fixed;
+  left: 1rem;
+  bottom: 1rem;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  width: min(30rem, calc(100vw - 2rem));
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75em;
+  box-sizing: border-box;
+  max-width: 100%;
+  padding: 0.65em 0.9em;
+  font-size: 0.85em;
+  line-height: 1.35;
+  text-align: left;
+  color: var(--text);
+  background: var(--surface);
+  border: 0.0625rem solid var(--primary);
+  border-radius: var(--radius-card);
+  box-shadow: 0 0.4em 1.2em rgb(0 0 0 / 0.25);
+  opacity: 0;
+  transform: translateY(0.5em);
+  transition:
+    opacity 0.2s,
+    transform 0.2s;
+}
+
+.toast.visible {
+  opacity: 1;
+  transform: none;
+}
+
+.toast-close {
+  flex: none;
+  margin: -0.15em -0.25em 0 0;
+  padding: 0 0.35em;
+  font: inherit;
+  font-size: 1.3em;
+  line-height: 1;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  border-radius: var(--radius-button);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.toast-close:hover {
+  color: var(--text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    transition: none;
+    transform: none;
+  }
 }

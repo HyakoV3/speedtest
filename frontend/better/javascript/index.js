@@ -229,6 +229,15 @@ function setRunningUI(running) {
   renderConn(running);
 }
 
+// The name of the server of the test, "" for a standalone installation (getSelectedServer throws without a server)
+function selectedServerName() {
+  try {
+    return s.getSelectedServer().name || "";
+  } catch (error) {
+    return "";
+  }
+}
+
 function recordSpeedtest() {
   try {
     testHistory.add({
@@ -239,7 +248,8 @@ function recordSpeedtest() {
       jitter: uiData.jitterStatus,
       ip: uiData.clientIp,
       testId: uiData.testId,
-      conn: connMode
+      conn: connMode,
+      server: selectedServerName()
     });
   } catch (error) {
     // The history is a convenience, it must not break the page
@@ -360,8 +370,167 @@ window.addEventListener("i18nchange", function () {
 frame();
 
 // TEST HISTORY (see test-history.js)
+// The median of a field of the rows of a period, "--" when none has it
+function medianText(rows, field) {
+  var value = LibreSpeedPeriods.median(LibreSpeedPeriods.values(rows, field));
+  return value === null ? "--" : format(value);
+}
+
 var testHistory = LibreSpeedHistory.create({
   key: "librespeed-better-history",
+  // What the person should know about this history, as toasts, once in each session. With telemetry the server also
+  // keeps its own copy of each test
+  notices: function () {
+    var list = [{ key: "history-local", text: t("history.local-note", "Saved only in this browser, on this device.") }];
+    if (telemetryEnabled) {
+      list.push({
+        key: "history-server",
+        text: t(
+          "history.server-note",
+          "This server also keeps every speed test it receives (see the privacy policy). Clearing this history does not delete them."
+        )
+      });
+    }
+    return list;
+  },
+  // With telemetry the server keeps its own copy of each test, which this button does not delete
+  confirmText: function () {
+    return telemetryEnabled
+      ? t(
+          "history.confirm-server",
+          "Delete all the test history saved in this browser? The results kept by the server are not deleted."
+        )
+      : t("history.confirm", "Delete all the test history saved in this browser?");
+  },
+  // One small row per result, for the history by period: no IP, numbers or null
+  summary: {
+    key: "librespeed-better-history-summary",
+    // The single and the multiple connections are not the same measure, so they are shown apart
+    group: function (row) {
+      return row.conn;
+    },
+    groupLabel: function (value) {
+      return value === "single" ? t("history.single", "Single (1↓ / 1↑)") : t("history.multi", "Multiple (6↓ / 3↑)");
+    },
+    // The tests to one server are not the tests to another: a list of the servers, when the history has more than one. A
+    // server is written as in the list of the page, in the language of the page, and the ones saved without it are
+    // unknown
+    filter: {
+      value: function (row) {
+        return row.server;
+      },
+      label: function (value) {
+        if (!value) return t("history.unknown", "Unknown");
+        var servers = typeof SPEEDTEST_SERVERS === "object" ? SPEEDTEST_SERVERS : [];
+        for (var i = 0; i < servers.length; i++)
+          if (servers[i].name === value) return LibreSpeedI18n.serverName(servers[i]);
+        return value;
+      }
+    },
+    // The download is what is followed from a period to the next
+    trend: function (rows) {
+      return LibreSpeedPeriods.median(LibreSpeedPeriods.values(rows, "dl"));
+    },
+    // The columns of the file of the latest results: fixed names, for a spreadsheet or a script
+    csvColumns: [
+      {
+        label: "date",
+        value: function (row) {
+          return LibreSpeedHistory.formatDateTime(row.t);
+        }
+      },
+      {
+        label: "download_mbps",
+        value: function (row) {
+          return row.dl;
+        }
+      },
+      {
+        label: "upload_mbps",
+        value: function (row) {
+          return row.ul;
+        }
+      },
+      {
+        label: "ping_ms",
+        value: function (row) {
+          return row.ping;
+        }
+      },
+      {
+        label: "jitter_ms",
+        value: function (row) {
+          return row.jitter;
+        }
+      },
+      {
+        label: "connection",
+        value: function (row) {
+          return row.conn;
+        }
+      },
+      {
+        label: "server",
+        value: function (row) {
+          return row.server;
+        }
+      },
+      {
+        label: "id",
+        value: function (row) {
+          return row.id;
+        }
+      }
+    ],
+    columns: [
+      {
+        label: function () {
+          return t("history.col-tests", "Tests");
+        },
+        value: function (rows) {
+          return String(rows.length);
+        }
+      },
+      {
+        label: function () {
+          return t("history.col-download", "Download (Mbit/s)");
+        },
+        value: function (rows) {
+          return medianText(rows, "dl");
+        }
+      },
+      {
+        label: function () {
+          return t("history.col-upload", "Upload (Mbit/s)");
+        },
+        value: function (rows) {
+          return medianText(rows, "ul");
+        }
+      },
+      {
+        label: function () {
+          return t("history.col-ping", "Ping (ms)");
+        },
+        value: function (rows) {
+          return medianText(rows, "ping");
+        }
+      }
+    ],
+    fromEntry: function (entry) {
+      var number = LibreSpeedHistory.number;
+      return {
+        t: entry.date,
+        dl: number(entry.dl, true),
+        ul: number(entry.ul, true),
+        ping: number(entry.ping),
+        jitter: number(entry.jitter),
+        conn: entry.conn === "single" ? "single" : "multi",
+        server: entry.server || "",
+        // The id the server gave the test (telemetry), kept as it came: the privacy policy asks for it to delete a result
+        id: entry.testId ? String(entry.testId) : null
+      };
+    }
+  },
   header: function (entry) {
     return {
       date: LibreSpeedHistory.formatDate(entry.date),

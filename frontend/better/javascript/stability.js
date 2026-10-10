@@ -483,8 +483,181 @@ function shareEntry(entry) {
 }
 
 // TEST HISTORY (see test-history.js)
+// The text of a target as it is in the list of targets (the one of the local server is translated there)
+function targetLabel(value) {
+  var options = I("targetSelect").options;
+  for (var i = 0; i < options.length; i++) if (value && options[i].value === value) return options[i].textContent;
+  return t("history.unknown", "Unknown");
+}
+
+// The figures of the measurements of a period: the median of the average and of the jitter, the mean of the failures
+function periodFigures(rows) {
+  var periods = LibreSpeedPeriods;
+  var failed = periods.mean(periods.values(rows, "loss"));
+  return {
+    average: periods.median(periods.values(rows, "avg")),
+    jitter: periods.median(periods.values(rows, "jitter")),
+    failed: failed
+  };
+}
+
+function periodRating(rows) {
+  var figures = periodFigures(rows);
+  return LibreSpeedStability.rating(figures.average, figures.jitter, figures.failed);
+}
+
 var testHistory = LibreSpeedHistory.create({
   key: "librespeed-better-stability-history",
+  // There is no limit of measurements but the space, and the pings are what takes it: only the latest ones keep them
+  // (the older ones keep their numbers, and lose the file of their pings)
+  slimAfter: 20,
+  slim: function (entry) {
+    var slim = {};
+    for (var key in entry) if (key !== "pings") slim[key] = entry[key];
+    return slim;
+  },
+  // What the person should know about this history, as a toast, once in each session
+  notices: function () {
+    return [{ key: "history-local", text: t("history.local-note", "Saved only in this browser, on this device.") }];
+  },
+  // One small row per finished measurement, for the history by period: a measurement stopped before its end stays in the
+  // list of results but not in the summary
+  summary: {
+    key: "librespeed-better-stability-history-summary",
+    // The ping to one target is not the ping to another, so they are shown apart
+    group: function (row) {
+      return row.target;
+    },
+    groupLabel: targetLabel,
+    // The measurements to one server are not the ones to another: a list of the servers, when the history has more than one
+    filter: {
+      value: function (row) {
+        return row.server;
+      },
+      label: function (value) {
+        if (!value) return t("history.unknown", "Unknown");
+        var servers = typeof SPEEDTEST_SERVERS === "object" ? SPEEDTEST_SERVERS : [];
+        for (var i = 0; i < servers.length; i++)
+          if (servers[i].name === value) return LibreSpeedI18n.serverName(servers[i]);
+        return value;
+      }
+    },
+    // The average ping is what is followed from a period to the next
+    trend: function (rows) {
+      return LibreSpeedPeriods.median(LibreSpeedPeriods.values(rows, "avg"));
+    },
+    // The columns of the file of the latest measurements: fixed names, for a spreadsheet or a script
+    csvColumns: [
+      {
+        label: "date",
+        value: function (row) {
+          return LibreSpeedHistory.formatDateTime(row.t);
+        }
+      },
+      {
+        label: "average_ms",
+        value: function (row) {
+          return row.avg;
+        }
+      },
+      {
+        label: "min_ms",
+        value: function (row) {
+          return row.min;
+        }
+      },
+      {
+        label: "max_ms",
+        value: function (row) {
+          return row.max;
+        }
+      },
+      {
+        label: "jitter_ms",
+        value: function (row) {
+          return row.jitter;
+        }
+      },
+      {
+        label: "failed_percent",
+        value: function (row) {
+          return row.loss;
+        }
+      },
+      {
+        label: "target",
+        value: function (row) {
+          return row.target;
+        }
+      },
+      {
+        label: "server",
+        value: function (row) {
+          return row.server;
+        }
+      }
+    ],
+    columns: [
+      {
+        label: function () {
+          return t("history.col-measurements", "Measurements");
+        },
+        value: function (rows) {
+          return String(rows.length);
+        }
+      },
+      {
+        label: function () {
+          return t("history.col-average", "Average (ms)");
+        },
+        value: function (rows) {
+          return LibreSpeedStability.format(periodFigures(rows).average);
+        }
+      },
+      {
+        label: function () {
+          return t("history.col-jitter", "Jitter (ms)");
+        },
+        value: function (rows) {
+          return LibreSpeedStability.format(periodFigures(rows).jitter);
+        }
+      },
+      {
+        label: function () {
+          return t("history.col-failed", "Failed (%)");
+        },
+        value: function (rows) {
+          var failed = periodFigures(rows).failed;
+          return failed === null ? "--" : failed.toFixed(1);
+        }
+      },
+      {
+        label: function () {
+          return t("history.rating", "Rating");
+        },
+        value: function (rows) {
+          return LibreSpeedStability.ratingLabel(periodRating(rows));
+        },
+        className: function (rows) {
+          return "history-badge " + periodRating(rows);
+        }
+      }
+    ],
+    fromEntry: function (entry) {
+      if (entry.complete === false) return null;
+      var number = LibreSpeedHistory.number;
+      return {
+        t: entry.date,
+        avg: number(entry.avg, true),
+        min: number(entry.min, true),
+        max: number(entry.max, true),
+        jitter: number(entry.jitter),
+        loss: number(entry.loss),
+        target: entry.target || "",
+        server: entry.server || ""
+      };
+    }
+  },
   header: function (entry) {
     return {
       date: LibreSpeedHistory.formatDate(entry.date) + " · " + entry.duration + "s",
@@ -528,6 +701,10 @@ function recordTest(data) {
       max: data.maxPing,
       jitter: data.jitter,
       loss: data.packetLoss,
+      // The target is read when the result is saved, as the duration is: the selector is disabled during the test
+      target: I("targetSelect").value,
+      server: I("targetSelect").value === "libre" && selectedServer ? selectedServer.name || "" : "",
+      complete: data.testState === 4,
       pings: allPingData.slice()
     });
   } catch (error) {

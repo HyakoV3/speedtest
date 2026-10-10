@@ -21,6 +21,8 @@
     <script src="frontend/better/javascript/consent.js"></script>
     <script src="frontend/better/javascript/colors.js"></script>
     <script src="frontend/better/javascript/sponsor.js"></script>
+    <script src="frontend/better/javascript/toast.js"></script>
+    <script src="frontend/better/javascript/history-periods.js"></script>
     <script src="frontend/better/javascript/test-history.js"></script>
     <script src="frontend/better/javascript/stability-tools.js"></script>
     <script src="frontend/better/javascript/chart-styles.js"></script>
@@ -129,13 +131,33 @@
     <div id="historySection" style="display: none">
       <div class="history-heading">
         <h3>
-          <button type="button" id="historyToggle" aria-expanded="true" aria-controls="historyList">
+          <button type="button" id="historyToggle" aria-expanded="true" aria-controls="historyList historySummary">
             <span data-i18n="history.title">Test history</span> <span class="history-caret" aria-hidden="true"></span>
           </button>
         </h3>
         <button type="button" id="historyClear" data-i18n="history.clear">Clear history</button>
       </div>
+      <div class="history-view">
+        <button type="button" id="historyNewer" class="history-page-btn" data-icon="chevron-left" aria-label="Newer results" title="Newer results" data-i18n-attr="aria-label:history.newer,title:history.newer" hidden>&lsaquo;</button>
+        <div class="history-controls">
+          <select id="historyPeriod" class="history-select" aria-label="Show" data-i18n-attr="aria-label:history.view">
+            <option value="detail" data-i18n="history.view-detail">Latest results</option>
+            <option value="day" data-i18n="history.view-day">By day</option>
+            <option value="week" data-i18n="history.view-week">By week</option>
+            <option value="fortnight" data-i18n="history.view-fortnight">By fortnight</option>
+            <option value="month" data-i18n="history.view-month">By month</option>
+            <option value="bimester" data-i18n="history.view-bimester">By two months</option>
+            <option value="quarter" data-i18n="history.view-quarter">By quarter</option>
+            <option value="semester" data-i18n="history.view-semester">By half year</option>
+          </select>
+          <select id="historyGroup" class="history-select" aria-label="Results of" data-i18n-attr="aria-label:history.group" hidden></select>
+          <select id="historyServer" class="history-select" aria-label="Server" data-i18n-attr="aria-label:history.server" hidden></select>
+          <button type="button" id="historyExport" class="history-export" data-icon="download" aria-label="Download the history as CSV" title="Download the history as CSV" data-i18n-attr="aria-label:history.export,title:history.export" hidden>CSV</button>
+        </div>
+        <button type="button" id="historyOlder" class="history-page-btn" data-icon="chevron-right" aria-label="Older results" title="Older results" data-i18n-attr="aria-label:history.older,title:history.older" hidden>&rsaquo;</button>
+      </div>
       <div id="historyList"></div>
+      <div id="historySummary" hidden></div>
     </div>
 
     <div class="footer">

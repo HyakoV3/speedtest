@@ -70,7 +70,8 @@ html[data-icons] .panel-color[aria-checked="true"]::after {
 /* The arrow of the selects */
 html[data-icons] #durationSelect,
 html[data-icons] #targetSelect,
-html[data-icons] #server {
+html[data-icons] #server,
+html[data-icons] .history-select {
   background-image: var(--icon-select-arrow);
   background-position: right 0.6em center;
   background-size: 1.3em 1.3em;
@@ -78,7 +79,8 @@ html[data-icons] #server {
 
 html[data-icons].high-contrast #durationSelect,
 html[data-icons].high-contrast #targetSelect,
-html[data-icons].high-contrast #server {
+html[data-icons].high-contrast #server,
+html[data-icons].high-contrast .history-select {
   background-image: var(--icon-select-arrow-contrast);
 }
 
