@@ -185,8 +185,9 @@ var LibreSpeedRouteMap = (function () {
   }
 
   // Points nearer than min are pushed apart along the line between them, half each, in a fixed order: the same route gives
-  // the same picture, and a point moves only a few px
-  function separate(points, min) {
+  // the same picture, and a point moves only a few px. The first `fixed` points (none by default) stay where they are
+  function separate(points, min, fixed) {
+    fixed = fixed || 0;
     for (var round = 0; round < 50; round++) {
       var moved = false;
       for (var i = 0; i < points.length; i++) {
@@ -195,16 +196,22 @@ var LibreSpeedRouteMap = (function () {
           var dy = points[j][1] - points[i][1];
           var d = Math.sqrt(dx * dx + dy * dy);
           if (d >= min * 0.999) continue;
+          // The first `fixed` points do not move: two of them are left as they are, and one that is fixed makes the other go all the way
+          var fi = i < fixed;
+          var fj = j < fixed;
+          if (fi && fj) continue;
           var push = (min - d) / 2;
           if (d < 1e-9) {
             dx = Math.cos(j * 2.4);
             dy = Math.sin(j * 2.4);
             d = 1;
           }
-          points[i][0] -= (dx / d) * push;
-          points[i][1] -= (dy / d) * push;
-          points[j][0] += (dx / d) * push;
-          points[j][1] += (dy / d) * push;
+          var gi = fj ? 2 : fi ? 0 : 1;
+          var gj = fi ? 2 : fj ? 0 : 1;
+          points[i][0] -= (dx / d) * push * gi;
+          points[i][1] -= (dy / d) * push * gi;
+          points[j][0] += (dx / d) * push * gj;
+          points[j][1] += (dy / d) * push * gj;
           moved = true;
         }
       }
@@ -346,7 +353,7 @@ var LibreSpeedRouteMap = (function () {
 
   // All of the world, or the countries of the route and the points of the networks with a margin, in the shape of the host. The
   // points depend on the scale and the scale on the frame, so it is worked out again until the frame stops changing
-  function frameOf(md, wrapped, aspect, width, unplaced) {
+  function frameOf(md, wrapped, aspect, width, unplaced, placesAt) {
     var world = worldFrame(aspect);
     var boxes = [];
     md.countries.forEach(function (country) {
@@ -368,12 +375,8 @@ var LibreSpeedRouteMap = (function () {
     var frame = fit(boxes, aspect);
     for (var round = 0; round < 4 && !sameFrame(frame, world); round++) {
       var unit = frame[2] / width;
-      var at = layout(md.nodes, unit, md.crossings);
       var margin = (RADIUS + 3) * unit;
-      var extra = Object.keys(at)
-        .map(function (n) {
-          return at[n];
-        })
+      var extra = placesAt(unit)
         .concat(ends)
         .map(function (place) {
           return [place[0] - margin, place[1] - margin, place[0] + margin, place[1] + margin];
@@ -468,64 +471,11 @@ var LibreSpeedRouteMap = (function () {
     data = null;
   }
 
-  function draw(target, md) {
-    var width = target.clientWidth;
-    target.textContent = "";
-    if (width < 60) return;
-    var aspect = width >= 600 ? 2 : 1.5;
-    var unplaced = [];
-    var automatic = frameOf(md, wraps(md), aspect, width, unplaced);
-    var frame = user ? userFrame(aspect) : automatic;
-    var unit = frame[2] / width;
-    var hatch = 6 * unit;
-    // The sea fills all of the frame (more than the world when the frame is the whole world in the shape of the host)
-    var seaTop = Math.min(0, frame[1]);
-    var world = [0, seaTop, LibreSpeedWorld.width, Math.max(LibreSpeedWorld.height, frame[1] + frame[3]) - seaTop];
-    var at = layout(md.nodes, unit, md.crossings);
-
-    var svg = el("svg", {
-      viewBox: frame.map(number).join(" "),
-      width: width,
-      height: Math.round((width * frame[3]) / frame[2]),
-      "aria-hidden": "true",
-      focusable: "false"
-    });
-
-    var defs = el("defs");
-    var pattern = el("pattern", {
-      id: "routeMapHatch",
-      patternUnits: "userSpaceOnUse",
-      width: number(hatch),
-      height: number(hatch),
-      patternTransform: "rotate(45)"
-    });
-    pattern.appendChild(el("rect", { width: number(hatch), height: number(hatch) }, "route-map-hatch-bg"));
-    pattern.appendChild(el("rect", { width: number(2.4 * unit), height: number(hatch) }, "route-map-hatch"));
-    defs.appendChild(pattern);
-    var clip = el("clipPath", { id: "routeMapClip" });
-    clip.appendChild(el("rect", { x: world[0], y: world[1], width: world[2], height: world[3] }));
-    defs.appendChild(clip);
-    svg.appendChild(defs);
-
-    svg.appendChild(el("rect", { x: world[0], y: world[1], width: world[2], height: world[3] }, "route-map-sea"));
-    var painted = {};
-    var kinds = {};
-    md.countries.forEach(function (country) {
-      kinds[country.code] = country.doubt ? "doubt" : "on";
-    });
-    LibreSpeedWorld.shapes.forEach(function (shape) {
-      var code = shape[0];
-      var path = el("path", { d: shape[1] }, "route-map-land");
-      if (code && kinds[code]) {
-        path.setAttribute("class", "route-map-land route-map-" + kinds[code]);
-        path.setAttribute("data-code", code);
-        painted[code] = kinds[code];
-      }
-      svg.appendChild(path);
-    });
-
-    var group = el("g", { "clip-path": "url(#routeMapClip)" });
-
+  // One way of the route on the map: the line between the networks it links (a straight piece inside a country, a curve between
+  // countries, the sea of a crossing) and its tail. at is where each network of md is drawn. It returns the legs and the landings of
+  // the crossings, the places of the line (linked) and where the ring of the visitor goes (ringAt, and ring: the n of the network or
+  // "center")
+  function drawWay(group, md, at, unit) {
     // The line: between the networks it links, a straight piece inside a country and a curve between countries
     var linked = sequenceOf(md);
     var legs = [];
@@ -582,6 +532,80 @@ var LibreSpeedRouteMap = (function () {
       legs.push({ from: last.n, to: "you", kind: "tail", wrap: tailWrap });
       drawFar(group, placeOf(last, at), ringAt, tailWrap, "route-map-leg route-map-leg-tail", unit);
     }
+    return { legs: legs, landings: landings, linked: linked, ringAt: ringAt, ring: ring };
+  }
+
+  function draw(target, md) {
+    var width = target.clientWidth;
+    target.textContent = "";
+    if (width < 60) return;
+    var aspect = width >= 600 ? 2 : 1.5;
+    var unplaced = [];
+    // Where the networks are drawn at a scale of unit: the places that the frame has to take in
+    var placesAt = function (scale) {
+      var where = layout(md.nodes, scale, md.crossings);
+      return Object.keys(where).map(function (n) {
+        return where[n];
+      });
+    };
+    var automatic = frameOf(md, wraps(md), aspect, width, unplaced, placesAt);
+    var frame = user ? userFrame(aspect) : automatic;
+    var unit = frame[2] / width;
+    var hatch = 6 * unit;
+    // The sea fills all of the frame (more than the world when the frame is the whole world in the shape of the host)
+    var seaTop = Math.min(0, frame[1]);
+    var world = [0, seaTop, LibreSpeedWorld.width, Math.max(LibreSpeedWorld.height, frame[1] + frame[3]) - seaTop];
+    var at = layout(md.nodes, unit, md.crossings);
+
+    var svg = el("svg", {
+      viewBox: frame.map(number).join(" "),
+      width: width,
+      height: Math.round((width * frame[3]) / frame[2]),
+      "aria-hidden": "true",
+      focusable: "false"
+    });
+
+    var defs = el("defs");
+    var pattern = el("pattern", {
+      id: "routeMapHatch",
+      patternUnits: "userSpaceOnUse",
+      width: number(hatch),
+      height: number(hatch),
+      patternTransform: "rotate(45)"
+    });
+    pattern.appendChild(el("rect", { width: number(hatch), height: number(hatch) }, "route-map-hatch-bg"));
+    pattern.appendChild(el("rect", { width: number(2.4 * unit), height: number(hatch) }, "route-map-hatch"));
+    defs.appendChild(pattern);
+    var clip = el("clipPath", { id: "routeMapClip" });
+    clip.appendChild(el("rect", { x: world[0], y: world[1], width: world[2], height: world[3] }));
+    defs.appendChild(clip);
+    svg.appendChild(defs);
+
+    svg.appendChild(el("rect", { x: world[0], y: world[1], width: world[2], height: world[3] }, "route-map-sea"));
+    var painted = {};
+    var kinds = {};
+    md.countries.forEach(function (country) {
+      kinds[country.code] = country.doubt ? "doubt" : "on";
+    });
+    LibreSpeedWorld.shapes.forEach(function (shape) {
+      var code = shape[0];
+      var path = el("path", { d: shape[1] }, "route-map-land");
+      if (code && kinds[code]) {
+        path.setAttribute("class", "route-map-land route-map-" + kinds[code]);
+        path.setAttribute("data-code", code);
+        painted[code] = kinds[code];
+      }
+      svg.appendChild(path);
+    });
+
+    var group = el("g", { "clip-path": "url(#routeMapClip)" });
+
+    var way = drawWay(group, md, at, unit);
+    var legs = way.legs;
+    var landings = way.landings;
+    var ringAt = way.ringAt;
+    var ring = way.ring;
+    var linked = way.linked;
 
     // The countries with no shape are a spot
     md.countries.forEach(function (country) {
