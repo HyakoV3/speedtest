@@ -9,6 +9,8 @@ echo "REDACT_IP_ADDRESSES: $REDACT_IP_ADDRESSES"
 echo "DB_TYPE: $DB_TYPE"
 echo "ENABLE_ID_OBFUSCATION: $ENABLE_ID_OBFUSCATION"
 echo "GDPR_EMAIL: $GDPR_EMAIL"
+echo "ENABLE_ROUTE: $ENABLE_ROUTE"
+echo "ROUTE_IPV6: $ROUTE_IPV6"
 
 set -e
 #set -x
@@ -85,6 +87,7 @@ if [[ "$MODE" == "frontend" || "$MODE" == "dual" ||  "$MODE" == "standalone" ]];
   cp /speedtest/stability.html /var/www/html/
   cp /speedtest/index-better.html /var/www/html/
   cp /speedtest/stability-better.html /var/www/html/
+  cp /speedtest/route-better.html /var/www/html/
   # Keep the frontend assets under frontend/, which is where the HTML looks for
   # them and where they sit in the repository
   cp -a /speedtest/frontend /var/www/html/
@@ -127,9 +130,10 @@ if [[ "$MODE" == "frontend" || "$MODE" == "dual" ||  "$MODE" == "standalone" ]];
     sed -i "s/<title>LibreSpeed<\\/title>/<title>$TITLE_ESCAPED<\\/title>/g" /var/www/html/index.html
     sed -i "s/<title>LibreSpeed - Free and Open Source Speedtest<\\/title>/<title>$TITLE_ESCAPED - Free and Open Source Speedtest<\\/title>/g" /var/www/html/index-better.html
     sed -i "s/<title>LibreSpeed - Stability Test<\\/title>/<title>$TITLE_ESCAPED - Stability Test<\\/title>/g" /var/www/html/stability-better.html
+    sed -i "s/<title>LibreSpeed - Route<\\/title>/<title>$TITLE_ESCAPED - Route<\\/title>/g" /var/www/html/route-better.html
     # The better pages keep their translated heading unless TITLE is something other than the default
     if [ "$TITLE_ONE_LINE" != "LibreSpeed" ]; then
-      sed -i "s/<h1 data-i18n=\"brand.title\">Free and Open Source Speedtest\\.<\\/h1>/<h1>$TITLE_ESCAPED<\\/h1>/g" /var/www/html/index-better.html /var/www/html/stability-better.html
+      sed -i "s/<h1 data-i18n=\"brand.title\">Free and Open Source Speedtest\\.<\\/h1>/<h1>$TITLE_ESCAPED<\\/h1>/g" /var/www/html/index-better.html /var/www/html/stability-better.html /var/www/html/route-better.html
     fi
     sed -i "s/<title>LibreSpeed - Free and Open Source Speedtest<\\/title>/<title>$TITLE_ESCAPED - Free and Open Source Speedtest<\\/title>/g; s/<h1>Free and Open Source Speedtest\\.<\\/h1>/<h1>$TITLE_ESCAPED<\\/h1>/g" /var/www/html/index-modern.html
   fi
@@ -143,7 +147,7 @@ if [[ "$MODE" == "frontend" || "$MODE" == "dual" ||  "$MODE" == "standalone" ]];
     sed -i "s/<p class=\"tagline\">No Flash, No Java, No Websockets, No Bullsh\\*t<\\/p>/<p class=\"tagline\">$TAGLINE_ESCAPED<\\/p>/g" /var/www/html/index-modern.html
     # The better pages keep their translated tagline unless TAGLINE is something other than the default
     if [ "$TAGLINE_ONE_LINE" != "No Flash, No Java, No Websockets, No Bullsh*t" ]; then
-      sed -i "s/<p class=\"tagline\" data-i18n=\"brand.tagline\">No Flash, No Java, No Websockets, No Bullsh\\*t<\\/p>/<p class=\"tagline\">$TAGLINE_ESCAPED<\\/p>/g" /var/www/html/index-better.html /var/www/html/stability-better.html
+      sed -i "s/<p class=\"tagline\" data-i18n=\"brand.tagline\">No Flash, No Java, No Websockets, No Bullsh\\*t<\\/p>/<p class=\"tagline\">$TAGLINE_ESCAPED<\\/p>/g" /var/www/html/index-better.html /var/www/html/stability-better.html /var/www/html/route-better.html
     fi
   fi
 
@@ -159,13 +163,29 @@ if [[ "$MODE" == "frontend" || "$MODE" == "dual" ||  "$MODE" == "standalone" ]];
     # Escape special sed characters: & (replacement), / (delimiter), \ (escape), $ (variable)
     GDPR_EMAIL_ESCAPED=$(printf '%s\n' "$GDPR_EMAIL" | sed 's/[&/\\]/\\&/g; s/\$/\\$/g')
 
-    for html_file in /var/www/html/index-modern.html /var/www/html/index-classic.html /var/www/html/index-better.html /var/www/html/stability-better.html; do
+    for html_file in /var/www/html/index-modern.html /var/www/html/index-classic.html /var/www/html/index-better.html /var/www/html/stability-better.html /var/www/html/route-better.html; do
       if [ -f "$html_file" ]; then
         sed -i "s/TO BE FILLED BY DEVELOPER/$GDPR_EMAIL_ESCAPED/g; s/PUT@YOUR_EMAIL.HERE/$GDPR_EMAIL_ESCAPED/g" "$html_file"
       fi
     done
   fi
 fi
+# Route page: off unless ENABLE_ROUTE=true (standalone and dual only: it traces from this server)
+if [[ "$ENABLE_ROUTE" == "true" && ( "$MODE" == "standalone" || "$MODE" == "dual" ) ]]; then
+  sed -i 's/^\$route_enabled = false;/$route_enabled = true;/' /var/www/html/backend/route_settings.php
+  if [ -n "$ROUTE_TRUSTED_PROXIES" ]; then
+    if [[ "$ROUTE_TRUSTED_PROXIES" =~ ^[0-9A-Fa-f:.,/\ ]+$ ]]; then
+      sed -i "s#^\$route_trusted_proxies = '';#\$route_trusted_proxies = '$ROUTE_TRUSTED_PROXIES';#" /var/www/html/backend/route_settings.php
+    else
+      echo "WARNING: ROUTE_TRUSTED_PROXIES has characters other than IPs and CIDRs, ignored" >&2
+    fi
+  fi
+  if [ "$ROUTE_IPV6" == "true" ]; then
+    sed -i 's/^\$route_ipv6 = false;/$route_ipv6 = true;/' /var/www/html/backend/route_settings.php
+  fi
+  sed -i 's/<a id="routeLink" hidden /<a id="routeLink" /' /var/www/html/index-better.html /var/www/html/stability-better.html
+fi
+
 # Configure design preference via config.json
 if [ "$USE_NEW_DESIGN" == "true" ]; then
   sed -i 's/"useNewDesign": false/"useNewDesign": true/' /var/www/html/config.json

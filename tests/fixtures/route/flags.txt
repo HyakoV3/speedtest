@@ -1,0 +1,6 @@
+traceroute to 198.51.100.50 (198.51.100.50), 20 hops max, 60 byte packets
+ 1  198.51.100.1  0.500 ms !H
+ 2  * 198.51.100.9  3.100 ms !X
+traceroute: warning: something
+ 3  999.1.1.1  1.000 ms
+ 4  198.51.100.50  4.200 ms

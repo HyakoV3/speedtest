@@ -24,6 +24,24 @@ test.describe('Runtime mode smoke coverage', () => {
     await expect(page.locator('main > p.tagline')).toHaveText(defaultTagline);
   });
 
+  test('the route page is served but the route is off by default, with its link hidden', async ({ page, request }) => {
+    for (const base of [baseUrls.standalone, baseUrls.standaloneAlpine]) {
+      const route = await request.get(`${base}/route-better.html`);
+      expect(route.status()).toBe(200);
+
+      const caps = await request.get(`${base}/backend/route.php?caps`);
+      expect(caps.status()).toBe(404);
+      await expect(caps.json()).resolves.toMatchObject({ enabled: false });
+
+      const post = await request.post(`${base}/backend/route.php`, { headers: { 'X-LibreSpeed-Route': '1' } });
+      expect(post.status()).toBe(404);
+
+      await page.goto(`${base}/index-better.html`);
+      await expect(page.locator('#routeLink')).toBeHidden();
+      await expect(page.locator('#routeLink')).toHaveAttribute('hidden', '');
+    }
+  });
+
   test('Alpine standalone serves modern frontend settings', async ({ page, request }) => {
     const settings = await request.get(`${baseUrls.standaloneAlpine}/settings.json`);
     expect(settings.ok()).toBeTruthy();
