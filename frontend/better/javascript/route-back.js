@@ -21,22 +21,47 @@ var LibreSpeedRouteBack = (function () {
   "use strict";
 
   var HOST = /^[A-Za-z0-9._:-]{1,253}$/;
+  // The longest text that the box and the parser take (route-parse.js, MAX_TEXT), and the biggest file that can hold it
+  var MAX_TEXT = 32768;
+  var MAX_FILE_BYTES = 131072;
   var TIMEOUT_MS = 10000;
   var AS = /^AS\d{1,10}$/;
 
-  function commands(system, host, family) {
+  // What sends the output of the command to the clipboard, in each system (the paste button reads it from there)
+  var CLIPBOARD = { windows: " | clip", macos: " | pbcopy", linux: " | xclip -selection clipboard" };
+
+  // The command to run, with clip true: with its output sent to the clipboard (the terminal shows nothing until it ends)
+  function commands(system, host, family, clip) {
     if (typeof host !== "string") return null;
     var name = host.replace(/^\[|\]$/g, "");
     if (!HOST.test(name) || name.charAt(0) === "-") return null;
     var flag = family === 4 ? " -4" : family === 6 ? " -6" : "";
-    if (system === "windows") return { main: "tracert -d -h 30 -w 1000" + flag + " " + name, alt: null };
+    var tail = clip === true && CLIPBOARD[system] ? CLIPBOARD[system] : "";
+    if (system === "windows") return { main: "tracert -d -h 30 -w 1000" + flag + " " + name + tail, alt: null };
     if (system === "macos") {
       return {
-        main: family === 6 ? "traceroute6 -n -m 30 " + name : "traceroute -n -m 30 -w 1 " + name,
+        main: (family === 6 ? "traceroute6 -n -m 30 " + name : "traceroute -n -m 30 -w 1 " + name) + tail,
         alt: null
       };
     }
-    return { main: "traceroute -n -m 30 -w 1" + flag + " " + name, alt: "tracepath -n" + flag + " " + name };
+    return {
+      main: "traceroute -n -m 30 -w 1" + flag + " " + name + tail,
+      alt: "tracepath -n" + flag + " " + name + tail
+    };
+  }
+
+  // The text of a file or of the clipboard as the person wrote it: a file from PowerShell (">") is UTF-16 with a mark at the start, one from
+  // cmd is in the code page of the console (the words are never read, only the numbers and addresses, so it does not matter which)
+  function decode(buffer) {
+    var bytes = new Uint8Array(buffer);
+    var label = "utf-8";
+    if (bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xfe) label = "utf-16le";
+    else if (bytes.length >= 2 && bytes[0] === 0xfe && bytes[1] === 0xff) label = "utf-16be";
+    try {
+      return new TextDecoder(label).decode(bytes);
+    } catch (error) {
+      return null;
+    }
   }
 
   function detect(userAgent, platform) {
@@ -144,6 +169,10 @@ var LibreSpeedRouteBack = (function () {
     var notesBox = byId("routeBackNotes");
     var commandBox = byId("routeBackCommand");
     var altBox = byId("routeBackAlt");
+    var clipBox = byId("routeBackClip");
+    var clipHint = byId("routeBackClipHint");
+    var clipLinux = byId("routeBackClipLinux");
+    var pasteClipButton = byId("routeBackPasteClip");
     var noCommandBox = byId("routeBackNoCommand");
     var altCommand = byId("routeBackAltCommand");
     var mobileBox = byId("routeBackMobile");
@@ -175,8 +204,10 @@ var LibreSpeedRouteBack = (function () {
     }
 
     function drawCommand() {
-      var found = commands(system, options.host, options.family());
+      var found = commands(system, options.host, options.family(), clipBox.checked);
       commandBox.textContent = found ? found.main : "";
+      clipHint.hidden = !(found && clipBox.checked);
+      clipLinux.hidden = system !== "linux";
       copyButton.disabled = !found;
       noCommandBox.hidden = !!found;
       altBox.hidden = !(found && found.alt);
@@ -188,7 +219,7 @@ var LibreSpeedRouteBack = (function () {
     }
 
     function copy() {
-      var found = commands(system, options.host, options.family());
+      var found = commands(system, options.host, options.family(), clipBox.checked);
       if (!found) return;
       var done = function () {
         copyButton.textContent = t("route.back.copied");
@@ -320,6 +351,61 @@ var LibreSpeedRouteBack = (function () {
       options.onClear();
     }
 
+    // The output of the command, taken from the clipboard and shown: one press, which is the one that says "show"
+    function pasteFromClipboard() {
+      var denied = function () {
+        setNotes([{ key: "route.back.clip-denied", error: true }]);
+      };
+      if (!navigator.clipboard || typeof navigator.clipboard.readText !== "function") {
+        denied();
+        return;
+      }
+      navigator.clipboard.readText().then(function (text) {
+        if (typeof text !== "string" || !text.trim()) {
+          setNotes([{ key: "route.back.error.empty", error: true }]);
+          return;
+        }
+        textarea.value = text;
+        show();
+      }, denied);
+    }
+
+    // A file dropped on the box: put in the box, to be shown with the button (what is sent is still what the person presses)
+    function takeFile(file) {
+      // 32768 characters (the limit of the box and of the parser) are at most 131072 bytes, at 4 bytes a character
+      if (!file || file.size > MAX_FILE_BYTES || typeof file.arrayBuffer !== "function") {
+        setNotes([{ key: "route.back.file-bad", error: true }]);
+        return;
+      }
+      file.arrayBuffer().then(
+        function (buffer) {
+          var text = decode(buffer);
+          if (text === null || !text.trim() || text.length > MAX_TEXT || /\u0000/.test(text)) {
+            setNotes([{ key: "route.back.file-bad", error: true }]);
+            return;
+          }
+          setNotes([]);
+          textarea.value = text;
+          showButton.focus();
+        },
+        function () {
+          setNotes([{ key: "route.back.file-bad", error: true }]);
+        }
+      );
+    }
+
+    textarea.addEventListener("dragover", function (event) {
+      event.preventDefault();
+    });
+    textarea.addEventListener("drop", function (event) {
+      var files = event.dataTransfer && event.dataTransfer.files;
+      if (!files || !files.length) return;
+      event.preventDefault();
+      takeFile(files[0]);
+    });
+    clipBox.addEventListener("change", drawCommand);
+    pasteClipButton.addEventListener("click", pasteFromClipboard);
+
     Array.prototype.forEach.call(systems.querySelectorAll("[data-system]"), function (button) {
       button.addEventListener("click", function () {
         system = button.dataset.system;
@@ -351,5 +437,13 @@ var LibreSpeedRouteBack = (function () {
     };
   }
 
-  return { commands: commands, detect: detect, build: build, enrichBody: enrichBody, merge: merge, create: create };
+  return {
+    commands: commands,
+    decode: decode,
+    detect: detect,
+    build: build,
+    enrichBody: enrichBody,
+    merge: merge,
+    create: create
+  };
 })();
