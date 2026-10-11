@@ -1,0 +1,26 @@
+Outputs of the commands that a visitor runs to trace the route to the server, for tests/e2e/better-route-back-parse.spec.js.
+Each NAME.txt has a NAME.expected.json: what the parser must give (checked by hand against the text).
+
+linux-*, REAL: run on Linux (Ubuntu), here. The hostname of mtr was changed to "host".
+  linux-traceroute-n.txt        traceroute -n -m 12 -w 1 -q 3 1.1.1.1  (lost probes, three routers in one hop)
+  linux-traceroute-names.txt    traceroute -m 10 -w 1 8.8.8.8  (names and "(address)", three routers in one hop)
+  linux-tracepath-n.txt         tracepath -n -m 12 1.1.1.1  (the same hop twice, "pmtu", "asymm", "no reply")
+  linux-mtr.txt                 mtr -rwn -c 3 -m 12 1.1.1.1
+
+Written by hand from the documented format of each tool. They are NOT output of a real machine, and must be replaced by the real
+ones when someone has them (the roadmap asks for tracert in pt-BR, en, es and sv; traceroute and traceroute6 of macOS):
+  windows-ptbr-tracert.txt            tracert in Portuguese (CRLF), names in brackets, "Esgotado o tempo limite do pedido."
+  windows-en-tracert-silent.txt       tracert in English, the destination answers, then two lines with no answer
+  windows-es-tracert-unreachable.txt  tracert in Spanish, a router that reports "Host de destino inaccesible"
+  macos-traceroute.txt                traceroute of macOS, with the routers of a hop in lines of their own
+  macos-traceroute6.txt               traceroute6 of macOS (a link-local address with its zone)
+  linux-traceroute-v6.txt             traceroute -6 -n of Linux
+  linux-traceroute-30hops.txt         30 hops, three of them with no answer
+  mtr-silent-alt.txt                  mtr with "???" (no "%" in that line, as mtr writes it) and a second router under a hop
+  lsr1.txt                            the text of the app (LSR1)
+The addresses are examples; the ones of internal networks are the usual ones (192.168.x.x, 10.x.x.x, 100.64.x.x).
+Added after the review (hand-made too): linux-tracepath-reached.txt (the last line says "reached"), mtr-unreached.txt (the report ends in
+"???"), macos-traceroute-multi.txt (a warning line with an address before the "traceroute to name (address)" line),
+windows-ptbr-tracert-lines-only.txt (pasted with no header line). The mtr line of the second router of a hop is written as
+"    |  `|-- address", which is how mtr writes it as far as the reviewer remembers: it is NOT confirmed by a run of mtr (the fixture
+used to have a different form, which was only a guess).

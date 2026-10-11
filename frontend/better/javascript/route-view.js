@@ -381,6 +381,55 @@
     };
   }
 
+  // The networks of a route, in order, each once in a row: the public hops that have a network, without the end of the route (the visitor
+  // in the way from the server, the server in the way back)
+  function asPath(data) {
+    var list = [];
+    var hops = (data && data.hops) || [];
+    for (var i = 0; i < hops.length; i++) {
+      var hop = hops[i];
+      if (hop.scope !== "public" || hop.is_target === true || !hop.asn) continue;
+      if (list.length === 0 || list[list.length - 1] !== hop.asn) list.push(hop.asn);
+    }
+    return list;
+  }
+
+  // The two directions side by side: { state, there, back, onlyThere, onlyBack, a, b }
+  //   state "need-both": one of them is missing; "family": not the same IP version; "unknown": too few networks in one of them;
+  //   "same": the same networks in the same order (the way back read from its end); "order": the same networks, in another order;
+  //   "different": a network that is in only one of them
+  function compareDirections(there, back) {
+    var result = { state: "need-both", there: [], back: [], onlyThere: [], onlyBack: [], a: null, b: null };
+    if (!there || !back) return result;
+    if (there.family !== back.family) {
+      result.state = "family";
+      result.a = there.family;
+      result.b = back.family;
+      return result;
+    }
+    result.there = asPath(there);
+    result.back = asPath(back);
+    if (result.there.length < 2 || result.back.length < 2) {
+      result.state = "unknown";
+      return result;
+    }
+    var reversed = result.back.slice().reverse();
+    var same =
+      result.there.length === reversed.length &&
+      result.there.every(function (asn, index) {
+        return asn === reversed[index];
+      });
+    result.onlyThere = result.there.filter(function (asn) {
+      return result.back.indexOf(asn) < 0;
+    });
+    result.onlyBack = result.back.filter(function (asn) {
+      return result.there.indexOf(asn) < 0;
+    });
+    // A network that comes back in a different place is the same network: only the ones that are in one way count as different
+    result.state = same ? "same" : result.onlyThere.length || result.onlyBack.length ? "different" : "order";
+    return result;
+  }
+
   function mtuText(pmtu, drops) {
     if (pmtu === null || pmtu === undefined) return { key: "route.mtu-unknown", params: {} };
     if (!drops || !drops.length) return { key: "route.mtu", params: { mtu: pmtu } };
@@ -409,6 +458,8 @@
     crossingsOf: crossingsOf,
     nodesOf: nodesOf,
     niceMax: niceMax,
+    asPath: asPath,
+    compareDirections: compareDirections,
     mtuText: mtuText,
     countryName: countryName
   };

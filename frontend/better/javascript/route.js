@@ -30,8 +30,16 @@
   var showingBox = document.getElementById("routeShowing");
   var showingText = document.getElementById("routeShowingText");
   var showLatest = document.getElementById("routeShowLatest");
+  var directionBox = document.getElementById("routeDirection");
+  var backPanel = document.getElementById("routeBack");
+  var actionBox = document.querySelector(".route-action");
+  var compareBox = document.getElementById("routeCompare");
+  var compareText = document.getElementById("routeCompareText");
+  var compareLists = document.getElementById("routeCompareLists");
 
   var VIEW_KEY = "librespeed-better-route-view";
+  var DIRECTION_KEY = "librespeed-better-route-direction";
+  var ENRICH_ENDPOINT = "backend/route_enrich.php";
   var HISTORY_KEY = "librespeed-better-route-history";
   var SUMMARY_KEY = "librespeed-better-route-history-summary";
   var HISTORY_LIMIT = 100;
@@ -95,7 +103,19 @@
     { src: "frontend/better/javascript/route-map.js", global: "LibreSpeedRouteMap" }
   ]);
 
+  // The route that is drawn. The two directions each keep theirs while the other is shown: "there" is the one the server traced, "back" the
+  // one the visitor traced and pasted
   var lastData = null;
+  var direction = "there";
+  var thereData = null;
+  var backData = null;
+  var backPanelApi = null;
+  // The way back that is shown: the time of the saved one that was reopened (null: the one pasted), whether the networks have arrived (the
+  // button that saves it waits for them), and whether it is already in the history
+  var backShownT = null;
+  var backReady = false;
+  var backSaved = false;
+  var saveButton = document.getElementById("routeBackSave");
   // The route traced in this visit and the time it was saved at, the time of the saved route that is shown (null: the one traced)
   var liveData = null;
   var liveT = null;
@@ -120,6 +140,7 @@
 
   function drawStatus() {
     status.textContent = "";
+    actionBox.hidden = direction === "back" && !lastStatus;
     if (!lastStatus) return;
     if (lastStatus.key === "route.running") {
       // The counter is in a span that screen readers skip: they hear the start and the end, not each second
@@ -142,7 +163,7 @@
   // Before a route and while it is traced, the table, the chart and the map are there, blank and ready to be filled: only what is
   // told about a route (the summary, the networks, the end, the MTU, the strip of a saved route) is not shown
   function clear() {
-    [summaryBox, showingBox, mtuBox, groupBox, endBox].forEach(function (element) {
+    [summaryBox, showingBox, mtuBox, groupBox, endBox, compareBox].forEach(function (element) {
       element.hidden = true;
     });
     if (chartReady()) window.LibreSpeedRouteChart.destroy();
@@ -212,16 +233,18 @@
     return row;
   }
 
-  function drawRow(hop, widest, jump) {
+  function drawRow(hop, widest, jump, back) {
     var row = document.createElement("tr");
     if (hop.scope === "none") row.className = "hop-none";
     if (jump && jump.to === hop.ttl) row.className = (row.className + " hop-jump").trim();
     row.appendChild(cell("th", String(hop.ttl))).setAttribute("scope", "row");
 
-    var address = cell("td", hop.ip === null ? "*" : hop.ip, "route-address");
+    // The route of the app has no address for an internal router: it only says it was one
+    var internal = hop.ip === null && (hop.scope === "private" || hop.scope === "cgnat");
+    var address = cell("td", hop.ip === null ? (internal ? "–" : "*") : hop.ip, "route-address");
     if (hop.alt_ips && hop.alt_ips.length) address.title = [hop.ip].concat(hop.alt_ips).join(", ");
     if (hop.is_target) {
-      var you = cell("span", t("route.you"), "route-you");
+      var you = cell("span", t(back ? "route.server" : "route.you"), "route-you");
       address.appendChild(document.createTextNode(" "));
       address.appendChild(you);
     }
@@ -277,14 +300,23 @@
 
   // The strip over a saved route that is shown: its date, and the way back to the route just traced
   function drawShowing() {
-    showingBox.hidden = shownT === null;
-    if (shownT === null) return;
-    showingText.textContent = t("route.history.showing", { date: window.LibreSpeedHistory.formatDateTime(shownT) });
-    showLatest.hidden = !liveData;
+    var at = direction === "back" ? backShownT : shownT;
+    showingBox.hidden = at === null;
+    if (at === null) return;
+    showingText.textContent = t("route.history.showing", { date: window.LibreSpeedHistory.formatDateTime(at) });
+    // The way back has no "route just traced" to go back to: the one that was pasted is in the box
+    showLatest.hidden = direction === "back" || !liveData;
+  }
+
+  function toolName(tool) {
+    return tool === "lsr1" ? "app" : String(tool || "");
   }
 
   function draw(data) {
     clear();
+    // The route the visitor traced goes from the visitor to the server: the end of it is the server, and the page did not measure it
+    var back = data.direction === "client_to_server";
+    table.querySelector("caption").textContent = t(back ? "route.back.caption" : "route.caption");
     var hops = data.hops || [];
     if (!hops.length) {
       setStatus("route.no-hops");
@@ -300,12 +332,22 @@
     resultsBox.hidden = false;
     summaryBox.hidden = false;
     // What to keep in mind when reading the result: a toast, once in each session, for as long as it takes to read it
-    if (window.LibreSpeedToast) window.LibreSpeedToast.once("route-about", t("route.notice"));
+    if (window.LibreSpeedToast) {
+      window.LibreSpeedToast.once(
+        back ? "route-about-back" : "route-about",
+        t(back ? "route.back.notice" : "route.notice")
+      );
+    }
 
-    var mtu = view.mtuText(data.pmtu === undefined ? null : data.pmtu, data.pmtu_drops || []);
-    mtuBox.appendChild(cell("p", t(mtu.key, mtu.params), "route-mtu-text"));
-    if (data.pmtu !== null && data.pmtu !== undefined && data.pmtu < 1500) {
-      mtuBox.appendChild(cell("p", t("route.mtu-hint"), "route-hint"));
+    if (back) {
+      // There is no MTU of the way back; the box says who measured the route
+      mtuBox.appendChild(cell("p", t("route.back.measured", { tool: toolName(data.tool) }), "route-mtu-text"));
+    } else {
+      var mtu = view.mtuText(data.pmtu === undefined ? null : data.pmtu, data.pmtu_drops || []);
+      mtuBox.appendChild(cell("p", t(mtu.key, mtu.params), "route-mtu-text"));
+      if (data.pmtu !== null && data.pmtu !== undefined && data.pmtu < 1500) {
+        mtuBox.appendChild(cell("p", t("route.mtu-hint"), "route-hint"));
+      }
     }
     mtuBox.hidden = false;
 
@@ -324,13 +366,23 @@
         body.appendChild(drawGap(hops[i], hops[end]));
         i = end;
       } else {
-        body.appendChild(drawRow(hops[i], widest, jump));
+        body.appendChild(drawRow(hops[i], widest, jump, back));
       }
     }
     table.hidden = false;
 
-    var text = data.target_reached ? t("route.reached") : t("route.not-reached");
-    if (!data.target_reached && data.target_as && data.target_as.asn) {
+    var text = back
+      ? t(
+          data.target_reached === true
+            ? "route.back.reached"
+            : data.target_reached === false
+              ? "route.back.not-reached"
+              : "route.back.reached-unknown"
+        )
+      : data.target_reached
+        ? t("route.reached")
+        : t("route.not-reached");
+    if (!back && !data.target_reached && data.target_as && data.target_as.asn) {
       var last = lastPublicAnswer(hops);
       if (last && last.asn === data.target_as.asn) {
         text += " " + t("route.reached-as", { name: data.target_as.as_name || data.target_as.asn });
@@ -342,6 +394,81 @@
     viewsBox.hidden = false;
     applyView();
     drawShowing();
+    drawCompare();
+  }
+
+  function networkNames() {
+    var names = {};
+    [thereOf(), backOf()].forEach(function (data) {
+      ((data && data.hops) || []).forEach(function (hop) {
+        if (hop.asn && hop.as_name && !names[hop.asn]) names[hop.asn] = hop.as_name;
+      });
+    });
+    return names;
+  }
+
+  // The route of each direction, whichever of them is on the screen
+  function thereOf() {
+    return direction === "there" ? lastData : thereData;
+  }
+
+  function backOf() {
+    return direction === "back" ? lastData : backData;
+  }
+
+  // The networks of the two directions side by side. Shown with the route of the way back (and when the way from the server is there too,
+  // with the way from the server); not on the way from the server alone, where there is nothing to compare
+  function drawCompare() {
+    var there = thereOf();
+    var back = backOf();
+    compareLists.textContent = "";
+    if (!back || !lastData) {
+      compareBox.hidden = true;
+      return;
+    }
+    var result = view.compareDirections(there, back);
+    var names = networkNames();
+    var name = function (asn) {
+      return asn + (names[asn] ? " " + names[asn] : "");
+    };
+    var text = t("route.compare." + (result.state === "different" ? "diff" : result.state), {
+      a: result.a,
+      b: result.b
+    });
+    compareText.textContent = text;
+    if (result.state === "different") {
+      var extra = [];
+      if (result.onlyThere.length) {
+        extra.push(t("route.compare.only-there", { list: result.onlyThere.map(name).join(", ") }));
+      }
+      if (result.onlyBack.length) {
+        extra.push(t("route.compare.only-back", { list: result.onlyBack.map(name).join(", ") }));
+      }
+      compareText.textContent = text + " " + extra.join(" ");
+    }
+    if (result.state === "same" || result.state === "order" || result.state === "different") {
+      [
+        { title: "route.direction.there", list: result.there, only: result.onlyThere },
+        { title: "route.direction.back", list: result.back, only: result.onlyBack }
+      ].forEach(function (column) {
+        var box = document.createElement("div");
+        box.appendChild(cell("h4", t(column.title)));
+        var items = document.createElement("ol");
+        column.list.forEach(function (asn) {
+          var item = cell("li", name(asn));
+          if (column.only.indexOf(asn) >= 0) {
+            item.className = "route-compare-only";
+            var mark = cell("span", "◆", "route-compare-mark");
+            mark.setAttribute("aria-hidden", "true");
+            item.insertBefore(mark, item.firstChild);
+          }
+          items.appendChild(item);
+        });
+        box.appendChild(items);
+        compareLists.appendChild(box);
+      });
+    }
+    compareBox.hidden = false;
   }
 
   // Each view: the element it shows, and what it does when it is shown (the table is drawn by draw())
@@ -457,6 +584,9 @@
     Array.prototype.forEach.call(chartBox.querySelectorAll("li[data-key]"), function (item) {
       item.hidden = !shown[item.dataset.key];
     });
+    chartBox.querySelector('li[data-key="you"] span:last-child').textContent = t(
+      lastData.direction === "client_to_server" ? "route.server" : "route.you"
+    );
     window.LibreSpeedRouteChart.render(document.getElementById("routeChartHost"), data, {
       xLabel: t("route.chart.x"),
       hint: t("route.chart.hint"),
@@ -506,6 +636,7 @@
   function release(seconds) {
     window.clearInterval(tick);
     running = false;
+    lockDirection(false);
     button.removeAttribute("aria-busy");
     if (!seconds) {
       busy = false;
@@ -610,7 +741,16 @@
     if (running) return;
     var data = window.LibreSpeedRouteHistory.trim(entry && entry.data);
     if (data === null) return;
-    if (liveData && entry.t === liveT) {
+    // A route goes to the direction it has: the way back to "You → server", the other one to "Server → you"
+    var way = data.direction === "client_to_server" ? "back" : "there";
+    if (direction !== way) setDirection(way, true);
+    if (way === "back") {
+      backData = lastData = data;
+      backShownT = entry.t;
+      backReady = true;
+      backSaved = true;
+      drawSave();
+    } else if (liveData && entry.t === liveT) {
       shownT = null;
       lastData = liveData;
     } else {
@@ -628,12 +768,106 @@
 
   showLatest.addEventListener("click", function () {
     if (!liveData || running) return;
+    if (direction !== "there") setDirection("there", true);
     shownT = null;
     lastData = liveData;
     if (mapFiles.ready()) window.LibreSpeedRouteMap.resetView();
     draw(lastData);
     resultsBox.scrollIntoView({ block: "start" });
   });
+
+  function savedDirection() {
+    try {
+      return window.localStorage.getItem(DIRECTION_KEY) === "back" ? "back" : "there";
+    } catch (error) {
+      return "there";
+    }
+  }
+
+  // While a route is traced the other direction cannot be chosen: the answer would come to a page that is showing something else
+  function lockDirection(locked) {
+    Array.prototype.forEach.call(directionBox.querySelectorAll("[data-direction]"), function (item) {
+      item.disabled = locked;
+    });
+  }
+
+  function markDirection() {
+    Array.prototype.forEach.call(directionBox.querySelectorAll("[data-direction]"), function (item) {
+      item.setAttribute("aria-pressed", String(item.dataset.direction === direction));
+    });
+    backPanel.hidden = direction !== "back";
+    // Only the button goes: the line of status (a chart or a map that is loading, an error) is for both directions
+    button.hidden = direction === "back";
+    actionBox.hidden = direction === "back" && !lastStatus;
+    if (direction === "back" && backPanelApi) backPanelApi.refresh();
+  }
+
+  // "Server → you" or "You → server": each keeps the route it has, and nothing is traced or sent by the change
+  function setDirection(next, save) {
+    if ((next !== "there" && next !== "back") || running) return;
+    if (save) {
+      try {
+        window.localStorage.setItem(DIRECTION_KEY, next);
+      } catch (error) {
+        // The choice is only kept for the next visit
+      }
+    }
+    if (next === direction) {
+      markDirection();
+      return;
+    }
+    if (direction === "there") thereData = lastData;
+    direction = next;
+    markDirection();
+    lastData = next === "back" ? backData : thereData;
+    if (mapFiles.ready()) window.LibreSpeedRouteMap.resetView();
+    if (lastData) {
+      draw(lastData);
+    } else {
+      clear();
+      setStatus(next === "there" && capsState === "off" ? "route.unavailable" : null);
+    }
+  }
+
+  // The route that the visitor traced and pasted: drawn now, and again when the networks and countries arrive
+  function drawSave() {
+    saveButton.textContent = t(backSaved ? "route.back.saved" : "route.back.save");
+    saveButton.disabled = !routeHistory || !backData || !backReady || backSaved;
+  }
+
+  // The way back goes to the history only when the person says so, with the networks it has by then
+  function saveBack() {
+    if (!backData || backSaved || !backReady) return;
+    if (record(backData) !== null) backSaved = true;
+    drawSave();
+  }
+
+  function showBack(data, first) {
+    backData = data;
+    if (first) {
+      // A new text: it is not a saved route, it has no networks yet, and it is not in the history
+      backShownT = null;
+      backReady = false;
+      backSaved = false;
+    }
+    drawSave();
+    if (direction !== "back") return;
+    lastData = data;
+    if (first && mapFiles.ready()) window.LibreSpeedRouteMap.resetView();
+    draw(data);
+  }
+
+  function clearBack() {
+    backData = null;
+    backShownT = null;
+    backReady = false;
+    backSaved = false;
+    drawSave();
+    if (direction !== "back") return;
+    lastData = null;
+    clear();
+    setStatus(null);
+  }
 
   function jumpText(jump) {
     return jump && number(jump.from) !== null && number(jump.to) !== null && number(jump.ms) !== null
@@ -668,7 +902,11 @@
         ];
         if (entry.changed === true) metrics.push(t("route.history.new-path"));
         return {
-          date: window.LibreSpeedHistory.formatDate(entry.t) + " · IPv" + (entry.f === 6 ? 6 : 4),
+          date:
+            window.LibreSpeedHistory.formatDate(entry.t) +
+            " · IPv" +
+            (entry.f === 6 ? 6 : 4) +
+            (entry.d === "b" ? " · " + t("route.history.back") : ""),
           metrics: metrics
         };
       },
@@ -715,12 +953,14 @@
         key: SUMMARY_KEY,
         csvName: "route_history",
         fromEntry: data.rowOf,
-        // IPv4 and IPv6 do not take the same way: their medians are not mixed
+        // IPv4 and IPv6 do not take the same way, and the way back is not the way from the server: their medians are not mixed
         group: function (row) {
-          return String(row.f);
+          return String(row.f) + (row.d === "b" ? "b" : "");
         },
         groupLabel: function (value) {
-          return "IPv" + value;
+          return (
+            "IPv" + String(value).charAt(0) + (String(value).charAt(1) === "b" ? " · " + t("route.history.back") : "")
+          );
         },
         // The network of the visitor: a list of them when the history has more than one
         filter: {
@@ -794,6 +1034,12 @@
             value: function (row) {
               return row.changed === null ? "" : row.changed ? 1 : 0;
             }
+          },
+          {
+            label: "direction",
+            value: function (row) {
+              return row.d === "b" ? "back" : "there";
+            }
           }
         ],
         columns: [
@@ -858,9 +1104,10 @@
   }
 
   function start() {
-    if (busy) return;
+    if (busy || direction !== "there") return;
     busy = true;
     running = true;
+    lockDirection(true);
     button.disabled = true;
     button.setAttribute("aria-busy", "true");
     button.textContent = t("route.tracing");
@@ -920,6 +1167,25 @@
   function init() {
     button.disabled = true;
     clear();
+    try {
+      backPanelApi = window.LibreSpeedRouteBack.create({
+        t: t,
+        host: window.location.hostname,
+        endpoint: ENRICH_ENDPOINT,
+        family: function () {
+          var there = direction === "there" ? lastData : thereData;
+          return there && (there.family === 4 || there.family === 6) ? there.family : null;
+        },
+        onRoute: showBack,
+        onSettled: function () {
+          backReady = true;
+          drawSave();
+        },
+        onClear: clearBack
+      });
+    } catch (error) {
+      // Without the panel the page still traces the way to the visitor
+    }
     // After the language is loaded: the texts of the history are written when it is made
     try {
       createHistory();
@@ -934,6 +1200,8 @@
         capsState = caps && caps.enabled === true ? "on" : "off";
         if (caps && caps.enabled === true) {
           button.disabled = false;
+          directionBox.hidden = false;
+          if (savedDirection() === "back") setDirection("back", false);
         } else {
           setStatus("route.unavailable");
         }
@@ -945,6 +1213,11 @@
   }
 
   button.addEventListener("click", start);
+  Array.prototype.forEach.call(directionBox.querySelectorAll("[data-direction]"), function (item) {
+    item.addEventListener("click", function () {
+      setDirection(item.dataset.direction, true);
+    });
+  });
   Array.prototype.forEach.call(viewsBox.querySelectorAll("[data-view]"), function (item) {
     item.addEventListener("click", function () {
       setView(item.dataset.view, true);
@@ -960,7 +1233,10 @@
     if (running) button.textContent = t("route.tracing");
     else if (!busy || !button.disabled) button.textContent = label();
     drawStatus();
+    if (backPanelApi) backPanelApi.refresh();
+    drawSave();
     if (lastData) draw(lastData);
   });
+  saveButton.addEventListener("click", saveBack);
   Promise.resolve(window.LibreSpeedI18n && window.LibreSpeedI18n.ready).then(init);
 })();
