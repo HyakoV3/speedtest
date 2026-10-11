@@ -77,11 +77,15 @@
           <code id="routeBackCommand" tabindex="0"></code>
           <button type="button" id="routeBackCopy" class="history-action" data-i18n="route.back.copy">Copy</button>
         </div>
+        <p id="routeBackNoCommand" class="route-hint" data-i18n="route.back.no-command" hidden>
+          No command is shown: the name of this server has a character that a command line should not get. Trace to it
+          by hand and paste the output.
+        </p>
         <p id="routeBackAlt" class="route-hint" hidden>
           <span data-i18n="route.back.linux-alt">Without traceroute installed:</span>
           <code id="routeBackAltCommand"></code>
         </p>
-        <p class="route-hint" data-i18n="route.back.wait">It can take up to a minute.</p>
+        <p class="route-hint" data-i18n="route.back.wait">It can take up to two minutes.</p>
         <p id="routeBackMobile" class="route-hint" data-i18n="route.back.mobile" hidden>
           Phones have no traceroute command. Use a network tools app that has traceroute and paste its result here, or
           use a computer.

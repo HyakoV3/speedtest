@@ -144,6 +144,7 @@ var LibreSpeedRouteBack = (function () {
     var notesBox = byId("routeBackNotes");
     var commandBox = byId("routeBackCommand");
     var altBox = byId("routeBackAlt");
+    var noCommandBox = byId("routeBackNoCommand");
     var altCommand = byId("routeBackAltCommand");
     var mobileBox = byId("routeBackMobile");
     var copyButton = byId("routeBackCopy");
@@ -177,6 +178,7 @@ var LibreSpeedRouteBack = (function () {
       var found = commands(system, options.host, options.family());
       commandBox.textContent = found ? found.main : "";
       copyButton.disabled = !found;
+      noCommandBox.hidden = !!found;
       altBox.hidden = !(found && found.alt);
       altCommand.textContent = found && found.alt ? found.alt : "";
       Array.prototype.forEach.call(systems.querySelectorAll("[data-system]"), function (button) {
