@@ -21,6 +21,9 @@ var LibreSpeedRouteBack = (function () {
   "use strict";
 
   var HOST = /^[A-Za-z0-9._:-]{1,253}$/;
+  // The longest text that the box and the parser take (route-parse.js, MAX_TEXT), and the biggest file that can hold it
+  var MAX_TEXT = 32768;
+  var MAX_FILE_BYTES = 131072;
   var TIMEOUT_MS = 10000;
   var AS = /^AS\d{1,10}$/;
 
@@ -369,14 +372,15 @@ var LibreSpeedRouteBack = (function () {
 
     // A file dropped on the box: put in the box, to be shown with the button (what is sent is still what the person presses)
     function takeFile(file) {
-      if (!file || file.size > 262144 || typeof file.arrayBuffer !== "function") {
+      // 32768 characters (the limit of the box and of the parser) are at most 131072 bytes, at 4 bytes a character
+      if (!file || file.size > MAX_FILE_BYTES || typeof file.arrayBuffer !== "function") {
         setNotes([{ key: "route.back.file-bad", error: true }]);
         return;
       }
       file.arrayBuffer().then(
         function (buffer) {
           var text = decode(buffer);
-          if (text === null || !text.trim() || /\u0000/.test(text)) {
+          if (text === null || !text.trim() || text.length > MAX_TEXT || /\u0000/.test(text)) {
             setNotes([{ key: "route.back.file-bad", error: true }]);
             return;
           }

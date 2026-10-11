@@ -172,6 +172,27 @@ test("K5 a file that is not text, is empty or is too big is refused and the box 
   await drop(page, Buffer.alloc(300000, 0x61), "big.txt");
   await expect(notes(page)).toContainText("could not be read as text");
   await expect(page.locator("#routeBackText")).toHaveValue("what the person had written");
+  // A file of 40 KB is under the limit of bytes and over the limit of characters of the box and the parser (32768): refused too, so that
+  // "Show my route" is not left with a text that it can only call too long
+  await page.locator("#routeBackText").fill("what the person had written");
+  await drop(page, Buffer.from(`${TRACERT}${"x".repeat(40000)}`, "utf8"), "forty.txt");
+  await expect(notes(page)).toContainText("could not be read as text");
+  await expect(page.locator("#routeBackText")).toHaveValue("what the person had written");
+  // The same in UTF-16: 40000 characters are 80 KB
+  await drop(page, Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from("a".repeat(40000), "utf16le")]), "utf16.txt");
+  await expect(notes(page)).toContainText("could not be read as text");
+  await expect(page.locator("#routeBackText")).toHaveValue("what the person had written");
+  // Just inside the limit it is taken: exactly 32768 characters
+  const full = `${TRACERT}${" ".repeat(32768 - TRACERT.length - 1)}x`;
+  expect(full).toHaveLength(32768);
+  await drop(page, Buffer.from(full, "utf8"));
+  await expect(page.locator("#routeBackText")).toHaveValue(full.replace(/\r\n/g, "\n"));
+  await expect(notes(page)).toHaveText("");
+  // And one character more is not
+  await page.locator("#routeBackText").fill("what the person had written");
+  await drop(page, Buffer.from(`${full}y`, "utf8"));
+  await expect(notes(page)).toContainText("could not be read as text");
+  await expect(page.locator("#routeBackText")).toHaveValue("what the person had written");
   // A drop with no file (text dragged from somewhere) is left to the browser
   const handled = await page.evaluate(() => {
     const event = new DragEvent("drop", { dataTransfer: new DataTransfer(), bubbles: true, cancelable: true });
