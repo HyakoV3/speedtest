@@ -827,6 +827,14 @@ div.testArea .sub {
   display: block;
 }
 
+/* The dates of a day are one line and the ones of the other periods are two: the lines are as tall as two, so the table of a day is as
+   tall as the others */
+@media (min-width: 48.0625em) {
+  #historySummary .history-table tbody th[scope="row"] {
+    height: 2.4em;
+  }
+}
+
 /* On a narrow screen each period of the history is a card, like the results of the list: its dates, then the numbers as "name   value" */
 @media (max-width: 48em) {
   #historySummary .history-table,
