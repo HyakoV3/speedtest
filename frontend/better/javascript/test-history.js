@@ -21,13 +21,16 @@
  *   canDownload: function (entry) { whether the panel gets a download icon, after the share icon (default: no),
  *   onDownload: function (entry) { called when the icon is used },
  *   downloadLabel: function () { the name of the download icon, for the tip and for the screen readers },
+ *   actions: function (entry) { return [{ icon: "name of an icon of LibreSpeedIcons", label: "the name of the icon, for the tip and
+ *     for the screen readers", run: function (entry) {} }, ...]: icons after the download one (default: none) },
  *   canShare: function (entry) { whether the panel gets a share icon next to its header (default: no),
  *   onShare: function (entry) { called when the icon is used; may return "copied" (or a promise of it) to
  *     flash a check mark on the icon }
  *   confirmText: function () { the question asked before "Clear history" deletes everything (optional) },
  *   notices: function () { return [{ key: "name", text: "what the person should know about this history" }] }
  *     shown once in each session as toasts (LibreSpeedToast), when the history has something to show (optional),
- *   summary: { key: "localStorage key", fromEntry: function (entry) { return a small row, or null } } keeps one small
+ *   summary: { key: "localStorage key", csvName: "start of the name of the CSV files (default: history)",
+ *     fromEntry: function (entry) { return a small row, or null } } keeps one small
  *     row for every result, apart from the list of results (see below). With these too the history can be shown by
  *     period:
  *       group: function (row) { return the value rows are told apart by, such as the target of a measurement },
@@ -337,8 +340,8 @@ var LibreSpeedHistory = (function () {
     return values;
   }
 
-  // The lists to choose from: each one is hidden unless there is more than one value. What is chosen is the value of the
-  // most recent row until the person chooses another
+  // The lists to choose from: each one is hidden unless there is more than one value. What is chosen is All until the person
+  // chooses another
   function fillGroup(history, rows) {
     var list = dimensions(history);
     for (var d = 0; d < list.length; d++) {
@@ -351,7 +354,8 @@ var LibreSpeedHistory = (function () {
           var chosen = dimensionText(dimension, history[dimension.key]);
           for (var v = 0; v < values.length; v++) if (dimensionText(dimension, values[v]) === chosen) found = values[v];
         }
-        history[dimension.key] = found !== null ? found : values.length ? values[0] : null;
+        // Until the person chooses one, and when the one chosen is gone, it is All
+        history[dimension.key] = found !== null ? found : ALL;
       }
       dimension.select.innerHTML = "";
       if (values.length > 1) {
@@ -364,7 +368,7 @@ var LibreSpeedHistory = (function () {
         option.value = values[i];
         dimension.select.appendChild(option);
       }
-      dimension.select.value = history[dimension.key] === null ? "" : history[dimension.key];
+      dimension.select.value = values.length > 1 ? history[dimension.key] : "";
       dimension.select.hidden = values.length < 2 || history.view === "detail";
     }
   }
@@ -436,6 +440,9 @@ var LibreSpeedHistory = (function () {
 
     var wrap = element("div", "history-table-wrap");
     var table = element("table", "history-table");
+    // On a narrow screen the lines of the table are drawn as cards (see the CSS), which drops the meaning of a table for some
+    // screen readers: the roles give it back
+    table.setAttribute("role", "table");
     // What the medians are, said to the screen readers and not shown
     table.appendChild(
       element(
@@ -447,24 +454,42 @@ var LibreSpeedHistory = (function () {
     var head = element("tr");
     var first = element("th", "", text("history.col-period", "Period"));
     first.scope = "col";
+    first.setAttribute("role", "columnheader");
     head.appendChild(first);
     for (var c = 0; c < columns.length; c++) {
       var th = element("th", "", columns[c].label());
       th.scope = "col";
+      th.setAttribute("role", "columnheader");
       head.appendChild(th);
     }
     if (history.summary.trend) {
       var trendHead = element("th", "", text("history.col-trend", "vs. previous"));
       trendHead.scope = "col";
+      trendHead.setAttribute("role", "columnheader");
       head.appendChild(trendHead);
     }
-    table.appendChild(element("thead")).appendChild(head);
+    var thead = table.appendChild(element("thead"));
+    thead.setAttribute("role", "rowgroup");
+    head.setAttribute("role", "row");
+    thead.appendChild(head);
 
     var body = element("tbody");
+    body.setAttribute("role", "rowgroup");
     for (var p = 0; p < periods.length; p++) {
       var line = element("tr");
-      var title = element("th", "", window.LibreSpeedPeriods.label(periods[p].period));
+      line.setAttribute("role", "row");
+      // The two ends of a period are two lines in a narrow column ("05/10 –" and "11/10/2026"), one line in a card
+      var ends = window.LibreSpeedPeriods.label(periods[p].period).split(" – ");
+      var title = element("th", "history-period");
       title.scope = "row";
+      title.setAttribute("role", "rowheader");
+      if (ends.length === 2) {
+        title.appendChild(element("span", "", ends[0] + " –"));
+        title.appendChild(document.createTextNode(" "));
+        title.appendChild(element("span", "", ends[1]));
+      } else {
+        title.textContent = ends[0];
+      }
       line.appendChild(title);
       for (var k = 0; k < columns.length; k++) {
         var cell = element(
@@ -472,11 +497,17 @@ var LibreSpeedHistory = (function () {
           columns[k].className ? columns[k].className(periods[p].rows) : "",
           columns[k].value(periods[p].rows)
         );
+        cell.setAttribute("role", "cell");
+        // The name of the column, for the card of a narrow screen
+        cell.setAttribute("data-label", columns[k].label());
         line.appendChild(cell);
       }
       if (history.summary.trend) {
         var before = all[offset + p + 1] ? all[offset + p + 1].rows : null;
-        line.appendChild(element("td", "", trendText(trendPercent(history, periods[p].rows, before))));
+        var trendCell = element("td", "", trendText(trendPercent(history, periods[p].rows, before)));
+        trendCell.setAttribute("role", "cell");
+        trendCell.setAttribute("data-label", text("history.col-trend", "vs. previous"));
+        line.appendChild(trendCell);
       }
       body.appendChild(line);
     }
@@ -541,7 +572,7 @@ var LibreSpeedHistory = (function () {
           })
         );
       }
-      name = "history_results_" + today() + ".csv";
+      name = (history.summary.csvName || "history") + "_results_" + today() + ".csv";
     } else {
       var all = window.LibreSpeedPeriods.group(groupRows(history, rows), history.view);
       var columns = history.summary.columns;
@@ -561,7 +592,7 @@ var LibreSpeedHistory = (function () {
         }
         lines.push(line);
       }
-      name = "history_" + history.view + "_" + today() + ".csv";
+      name = (history.summary.csvName || "history") + "_" + history.view + "_" + today() + ".csv";
     }
     downloadText(name, csvText(lines));
     tell("history.exported", "CSV downloaded");
@@ -631,6 +662,22 @@ var LibreSpeedHistory = (function () {
     return button;
   }
 
+  // The icons of the actions of a panel (history.actions): buttons like the share and the download one
+  function buildActions(history, entry) {
+    var list = history.actions ? history.actions(entry) || [] : [];
+    return list.map(function (action) {
+      var button = element("button", "history-action-btn");
+      button.type = "button";
+      button.title = action.label;
+      button.setAttribute("aria-label", action.label);
+      button.innerHTML = window.LibreSpeedIcons ? window.LibreSpeedIcons.html(action.icon, "1.15em") : "";
+      button.onclick = function () {
+        action.run(entry);
+      };
+      return button;
+    });
+  }
+
   function buildBody(history, entry, panelId) {
     var body = element("div", "history-body");
     body.id = panelId;
@@ -683,6 +730,9 @@ var LibreSpeedHistory = (function () {
       if (history.canDownload && history.onDownload && history.canDownload(shown[i])) {
         bar.appendChild(buildDownload(history, shown[i]));
       }
+      buildActions(history, shown[i]).forEach(function (button) {
+        bar.appendChild(button);
+      });
       panel.appendChild(bar);
       panel.appendChild(buildBody(history, shown[i], panelId));
       list.appendChild(panel);
@@ -711,6 +761,7 @@ var LibreSpeedHistory = (function () {
       downloadLabel: config.downloadLabel,
       canShare: config.canShare,
       onShare: config.onShare,
+      actions: config.actions,
       summary: config.summary,
       confirmText: config.confirmText,
       notices: config.notices,

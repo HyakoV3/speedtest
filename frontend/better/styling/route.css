@@ -1,0 +1,660 @@
+/* Route page (route-better.html): only what the other pages do not have; the colors are the tokens of tokens.css. The look is the one of
+   the speed test and of the stability test: a centered column, the primary action in the same outlined button, the numbers in the primary color. */
+
+/* Some rules below set a display, and that would win over the hidden attribute: hidden has to keep meaning hidden */
+#routeArea [hidden] {
+  display: none !important;
+}
+
+#routeArea {
+  max-width: 40em;
+  margin: 1.5em auto 0;
+  padding: 0 1rem;
+}
+
+/* The action: the button is centered by the column, like the start button of the other pages */
+.route-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6em;
+  margin: 1.4em 0 1em;
+}
+
+.route-button {
+  display: inline-block;
+  box-sizing: border-box;
+  width: calc(10em / 1.05);
+  height: calc(3.5em / 1.05);
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-size: 1.05em;
+  line-height: calc(3.2em / 1.05);
+  color: var(--primary);
+  cursor: pointer;
+  background: none;
+  border: 0.15em solid var(--primary);
+  border-radius: var(--radius-button);
+  transition: all 0.3s;
+}
+
+.route-button:hover:not(:disabled) {
+  box-shadow:
+    0 0 2em rgba(0, 0, 0, 0.1),
+    inset 0 0 1em rgba(0, 0, 0, 0.1);
+}
+
+.route-button:disabled {
+  color: var(--muted);
+  cursor: default;
+  border-color: var(--border);
+  opacity: 0.8;
+}
+
+.route-button[aria-busy="true"] {
+  cursor: progress;
+}
+
+.route-button:focus-visible {
+  outline: 0.1875rem solid var(--text);
+  outline-offset: 0.125rem;
+}
+
+#routeStatus {
+  min-height: 1.4em;
+  font-size: 0.9em;
+  color: var(--muted);
+}
+
+.route-spinner {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: 0.5em;
+  vertical-align: -0.15em;
+  border: 0.15em solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+/* The result, in the order it is read: the summary, the networks, the largest rise, then the view of the hops */
+.route-results {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2em;
+  text-align: left;
+}
+
+.route-summary {
+  padding: 1em 1.2em;
+  background: var(--surface);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-card);
+}
+
+.route-summary h3 {
+  margin: 0 0 0.6em;
+  font-size: 0.85em;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.route-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5em;
+  margin: 0;
+  text-align: center;
+}
+
+.route-stats dt {
+  font-size: 0.8em;
+  color: var(--muted);
+}
+
+.route-stats dd {
+  margin: 0.1em 0 0;
+  font-size: 1.7em;
+  line-height: 1.1;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+}
+
+#routeEnd {
+  padding-top: 0.8em;
+  margin: 0.9em 0 0;
+  font-size: 0.9em;
+  border-top: 0.0625rem solid var(--border);
+}
+
+#routeMtu {
+  margin-top: 0.8em;
+}
+
+.route-mtu-text {
+  margin: 0;
+  font-size: 0.9em;
+  font-weight: 600;
+}
+
+.route-hint,
+.route-groups-title {
+  margin: 0.2em 0;
+  font-size: 0.85em;
+  color: var(--muted);
+}
+
+/* The networks of the route are part of its summary, under the numbers, the end and the MTU */
+#routeGroups {
+  padding-top: 0.8em;
+  margin-top: 0.9em;
+  border-top: 0.0625rem solid var(--border);
+}
+
+#routeGroups ol {
+  padding-left: 1.6em;
+  margin: 0.2em 0;
+  font-size: 0.9em;
+}
+
+.route-table-wrap {
+  margin-top: 0;
+}
+
+.route-table caption {
+  padding: 0.5em 0.6em;
+  text-align: left;
+  color: var(--muted);
+  font-size: 0.85em;
+}
+
+.route-table th[scope="row"],
+.route-table td {
+  vertical-align: top;
+}
+
+.route-table td {
+  text-align: left;
+}
+
+/* The words of a column start at its left; the numbers end at its right */
+.route-table th[scope="col"] {
+  text-align: left;
+}
+
+.route-table th[scope="col"]:nth-child(3) {
+  text-align: right;
+}
+
+.route-table td.route-time {
+  min-width: 6em;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.route-address {
+  font-family: ui-monospace, monospace;
+  word-break: break-all;
+}
+
+.route-you {
+  padding: 0.05em 0.4em;
+  font-family: inherit;
+  font-size: 0.8em;
+  color: var(--on-primary);
+  background: var(--primary);
+  border-radius: var(--radius-button);
+}
+
+.route-bar {
+  display: block;
+  height: 0.25rem;
+  margin-top: 0.2em;
+  margin-left: auto;
+  background: var(--primary);
+  border-radius: 0.125rem;
+}
+
+.hop-none td,
+.hop-none th {
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* Hops with no answer in a row: one line, with a vertical ellipsis where the address would be */
+.route-gap-mark {
+  font-size: 1.6em;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.hop-jump td,
+.hop-jump th {
+  background: var(--primary-subtle);
+}
+
+.route-country.doubt {
+  color: var(--muted);
+}
+
+/* The views of the route: table or chart */
+.route-views {
+  display: inline-flex;
+  align-self: center;
+  margin: 0;
+  overflow: hidden;
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-button);
+}
+
+.route-views button {
+  min-height: 2.5rem;
+  padding: 0.3em 1em;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 0;
+  cursor: pointer;
+}
+
+.route-views button[aria-pressed="true"] {
+  color: var(--on-primary);
+  background: var(--primary);
+}
+
+.route-views button:focus-visible {
+  outline: 0.1875rem solid var(--text);
+  outline-offset: -0.1875rem;
+}
+
+.route-chart {
+  margin-top: 0;
+}
+
+.route-chart h3 {
+  margin: 0.6em 0 0.2em;
+  font-size: 0.95em;
+}
+
+.route-chart-summary,
+.route-chart-readout {
+  margin: 0.2em 0;
+  font-size: 0.85em;
+  color: var(--muted);
+}
+
+.route-chart-readout {
+  min-height: 1.4em;
+  overflow-wrap: anywhere;
+}
+
+/* The chart and the map are a box with a chin attached below it: the legend of the chart, or the controls of the map */
+.route-figure {
+  overflow: hidden;
+  background: var(--surface);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-card);
+}
+
+.route-chin {
+  padding: 0.5em 0.75em;
+  margin: 0;
+  background: var(--surface-muted);
+  border-top: 0.0625rem solid var(--border);
+}
+
+.route-chart-host {
+  position: relative;
+  overflow: hidden;
+}
+
+.route-chart-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3em 1em;
+  font-size: 0.8em;
+  color: var(--muted);
+  list-style: none;
+}
+
+.route-key {
+  display: inline-block;
+  width: 0.9em;
+  height: 0.9em;
+  margin-right: 0.35em;
+  vertical-align: -0.1em;
+}
+
+.route-key-time {
+  background: var(--primary);
+  border-radius: 50%;
+}
+
+.route-key-internal {
+  background: var(--muted);
+  border-radius: 50%;
+}
+
+.route-key-slow {
+  box-sizing: border-box;
+  background: var(--surface);
+  border: 0.125rem solid var(--muted);
+  border-radius: 50%;
+}
+
+.route-key-silent {
+  width: auto;
+  line-height: 1;
+}
+
+.route-key-jump {
+  box-sizing: border-box;
+  background: var(--primary-subtle);
+  border: 0.0625rem solid var(--border);
+}
+
+.route-key-mtu {
+  width: 0;
+  height: 1em;
+  border-left: 0.125rem dashed var(--muted);
+}
+
+.route-key-you {
+  box-sizing: border-box;
+  border: 0.125rem solid var(--text);
+  border-radius: 50%;
+}
+
+/* The map: countries of the route */
+.route-map {
+  margin-top: 0;
+}
+
+.route-map h3 {
+  margin: 0 0 0.2em;
+  font-size: 0.95em;
+}
+
+.route-map-none {
+  font-size: 0.85em;
+  color: var(--muted);
+}
+
+.route-map-host {
+  overflow: hidden;
+}
+
+.route-map-host svg {
+  display: block;
+  width: 100%;
+}
+
+.route-map-sea {
+  fill: var(--surface);
+}
+
+.route-map-land {
+  fill: var(--surface-muted);
+  stroke: var(--border);
+  stroke-width: 0.6px;
+  vector-effect: non-scaling-stroke;
+}
+
+.route-map-on {
+  fill: var(--primary);
+  fill-opacity: 0.45;
+  stroke: var(--primary);
+}
+
+.route-map-doubt {
+  fill: url(#routeMapHatch);
+  stroke: var(--muted);
+  stroke-dasharray: 3 2;
+}
+
+.route-map-hatch-bg {
+  fill: var(--surface-muted);
+}
+
+.route-map-hatch {
+  fill: var(--muted);
+  fill-opacity: 0.55;
+}
+
+.route-map-leg {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 1.75px;
+  stroke-dasharray: 5 4;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.route-map-leg-tail {
+  stroke: var(--muted);
+  stroke-dasharray: 1.5 4;
+  stroke-width: 2px;
+}
+
+.route-map-arrow {
+  fill: var(--text);
+}
+
+.route-map-arrow.route-map-leg-tail {
+  fill: var(--muted);
+  stroke: none;
+}
+
+.route-map-spot {
+  fill: var(--primary);
+  fill-opacity: 0.45;
+  stroke: var(--primary);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+
+.route-map-spot-doubt {
+  fill: var(--surface-muted);
+  stroke: var(--muted);
+  stroke-dasharray: 3 2;
+}
+
+.route-map-you {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+}
+
+.route-map-leg-near {
+  stroke-dasharray: none;
+  stroke-width: 1.25px;
+}
+
+.route-map-node circle {
+  fill: var(--text);
+  stroke: var(--surface);
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+}
+
+.route-map-node text {
+  fill: var(--surface);
+  font-family: inherit;
+  font-weight: 700;
+}
+
+.route-map-node-borrowed circle {
+  fill: var(--surface);
+  stroke: var(--text);
+  stroke-dasharray: 2 1.5;
+}
+
+.route-map-node-borrowed text {
+  fill: var(--text);
+}
+
+.route-map-node-doubt circle {
+  fill: var(--surface);
+  stroke: var(--muted);
+  stroke-dasharray: 2 1.5;
+}
+
+.route-map-node-doubt text {
+  fill: var(--muted);
+}
+
+.route-map-host {
+  touch-action: pan-x pan-y;
+}
+
+.route-map-host.route-map-pannable {
+  cursor: grab;
+}
+
+.route-map-host.route-map-chosen {
+  touch-action: none;
+}
+
+.route-map-zoom {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em;
+}
+
+.route-map-zoom button {
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0.2em 0.8em;
+  font: inherit;
+  color: var(--text);
+  cursor: pointer;
+  background: var(--surface);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-button);
+}
+
+.route-map-zoom button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.route-map-zoom button:focus-visible {
+  outline: 0.1875rem solid var(--text);
+  outline-offset: 0.125rem;
+}
+
+@media (max-width: 30em) {
+  #routeArea {
+    padding: 0;
+  }
+
+  /* A narrow table: the long addresses of IPv6 would break in four lines at the size of the other text */
+  .route-address {
+    font-size: 0.72em;
+  }
+
+  .route-table th,
+  .route-table td {
+    padding: 0.45em 0.3em;
+  }
+
+  .route-stats dd {
+    font-size: 1.4em;
+  }
+
+  .route-table td.route-network {
+    min-width: 7em;
+    white-space: normal;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-button {
+    transition: none;
+  }
+}
+
+.route-map-leg-land {
+  stroke-dasharray: none;
+  stroke-width: 1.25px;
+}
+
+.route-map-leg-sea {
+  stroke-dasharray: 2 4;
+}
+
+.route-map-landing {
+  fill: var(--surface);
+  stroke: var(--text);
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+}
+
+.route-showing {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5em;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6em 0.9em;
+  margin: 0 0 1em;
+  background: var(--primary-subtle);
+  border: 0.0625rem solid var(--primary);
+  border-radius: var(--radius-card);
+}
+
+/* An author display beats the hidden attribute, so the strip says it itself */
+.route-showing[hidden] {
+  display: none;
+}
+
+.route-showing:focus {
+  outline: none;
+}
+
+.route-showing:focus-visible {
+  outline: 0.1875rem solid var(--text);
+  outline-offset: 0.125rem;
+}
+
+#historySection {
+  margin-top: 2em;
+}
+
+.route-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  white-space: nowrap;
+  border: 0;
+  clip-path: inset(50%);
+}
+
+.route-map-via {
+  fill: var(--text);
+  stroke: var(--surface);
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Blank, before a route is drawn in them: the box of the chart and of the map have their size already */
+.route-chart-host:empty {
+  min-height: 15rem;
+}
+
+.route-map-host:empty {
+  aspect-ratio: 3 / 2;
+}
+
+@media (min-width: 37.5em) {
+  .route-map-host:empty {
+    aspect-ratio: 2 / 1;
+  }
+}

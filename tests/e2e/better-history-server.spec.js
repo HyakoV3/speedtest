@@ -79,7 +79,7 @@ test("with a single server the list of servers is not there", async ({ page }) =
   expect(await tableLines(page)).toHaveLength(2);
 });
 
-test("with more than one server the list is there, at the server of the most recent result", async ({ page }) => {
+test("with more than one server the list is there, at All", async ({ page }) => {
   await openSpeed(page, [
     row("2026-10-08T14:00:00Z", 300, "Beta, Testland"),
     row("2026-10-07T14:00:00Z", 200, "Alpha, Testland")
@@ -87,8 +87,10 @@ test("with more than one server the list is there, at the server of the most rec
   await page.locator("#historyPeriod").selectOption("day");
   await expect(server(page)).toBeVisible();
   expect(await server(page).locator("option").allTextContents()).toEqual(["All", "Beta, Testland", "Alpha, Testland"]);
-  await expect(server(page)).toHaveValue("Beta, Testland");
-  // The table is of that server only
+  await expect(server(page).locator("option:checked")).toHaveText("All");
+  // The table is of all the servers, and one of them can be chosen
+  expect((await tableLines(page)).map(line => line[2])).toEqual(["300", "200"]);
+  await server(page).selectOption("Beta, Testland");
   expect(await tableLines(page)).toEqual([["08/10/2026", "1", "300", "10.0", "5.00", "--"]]);
 });
 
@@ -111,7 +113,13 @@ test("the server and the connection filter together", async ({ page }) => {
   await page.locator("#historyPeriod").selectOption("day");
   await expect(page.locator("#historyGroup")).toBeVisible();
   await expect(server(page)).toBeVisible();
+  // Both are All until one is chosen: the three results
+  await expect(page.locator("#historyGroup option:checked")).toHaveText("All");
+  await expect(server(page).locator("option:checked")).toHaveText("All");
+  expect((await tableLines(page)).map(line => line[2])).toEqual(["300", "200", "100"]);
   // Beta and multiple: only the first one
+  await server(page).selectOption("Beta, Testland");
+  await page.locator("#historyGroup").selectOption("multi");
   expect((await tableLines(page)).map(line => line[2])).toEqual(["300"]);
   await page.locator("#historyGroup").selectOption("single");
   expect((await tableLines(page)).map(line => line[2])).toEqual(["200"]);
@@ -241,9 +249,10 @@ test("the stability page has a list of servers too, besides the target", async (
   await page.locator("#historyPeriod").selectOption("day");
   await expect(page.locator("#historyServer")).toBeVisible();
   await expect(page.locator("#historyGroup")).toBeVisible();
-  // The server of the most recent measurement, then All shows both
-  expect((await tableLines(page)).length).toBe(1);
-  await page.locator("#historyGroup").selectOption({ label: "All" });
-  await page.locator("#historyServer").selectOption({ label: "All" });
+  // Both lists start at All, which shows both; a server and a target narrow it down
+  await expect(page.locator("#historyGroup option:checked")).toHaveText("All");
+  await expect(page.locator("#historyServer option:checked")).toHaveText("All");
   expect((await tableLines(page)).length).toBe(2);
+  await page.locator("#historyServer").selectOption({ label: "A" });
+  expect((await tableLines(page)).length).toBe(1);
 });

@@ -1,0 +1,181 @@
+{
+  "v": 1,
+  "direction": "server_to_client",
+  "family": 4,
+  "elapsed_ms": 4210,
+  "stopped": {
+    "quick": "eof",
+    "mtu": "eof"
+  },
+  "target_reached": true,
+  "target_as": {
+    "asn": "AS15169",
+    "as_name": "Google LLC"
+  },
+  "target_country": "US",
+  "pmtu": 1480,
+  "pmtu_drops": [
+    {
+      "ttl": 3,
+      "from": 1500,
+      "to": 1480
+    }
+  ],
+  "hops": [
+    {
+      "ttl": 1,
+      "ip": "172.17.0.1",
+      "alt_ips": [],
+      "rtt_min": 0.21,
+      "rtt_avg": 0.23,
+      "sent": 3,
+      "answered": 3,
+      "flags": [],
+      "scope": "private"
+    },
+    {
+      "ttl": 2,
+      "ip": "192.168.0.1",
+      "alt_ips": [],
+      "rtt_min": 2.51,
+      "rtt_avg": 2.98,
+      "sent": 3,
+      "answered": 3,
+      "flags": [],
+      "scope": "private"
+    },
+    {
+      "ttl": 3,
+      "ip": "172.24.74.112",
+      "alt_ips": [],
+      "rtt_min": 4.71,
+      "rtt_avg": 4.73,
+      "sent": 3,
+      "answered": 3,
+      "flags": [],
+      "scope": "private"
+    },
+    {
+      "ttl": 4,
+      "ip": "172.24.75.37",
+      "alt_ips": [],
+      "rtt_min": 5.23,
+      "rtt_avg": 5.36,
+      "sent": 3,
+      "answered": 3,
+      "flags": [],
+      "scope": "private"
+    },
+    {
+      "ttl": 5,
+      "ip": "192.168.68.21",
+      "alt_ips": [],
+      "rtt_min": 5.57,
+      "rtt_avg": 5.58,
+      "sent": 3,
+      "answered": 3,
+      "flags": [],
+      "scope": "private"
+    },
+    {
+      "ttl": 6,
+      "ip": "172.24.75.17",
+      "alt_ips": [],
+      "rtt_min": 4.07,
+      "rtt_avg": 4.48,
+      "sent": 3,
+      "answered": 3,
+      "flags": [],
+      "scope": "private"
+    },
+    {
+      "ttl": 7,
+      "ip": "100.65.61.62",
+      "alt_ips": [],
+      "rtt_min": 2.55,
+      "rtt_avg": 3.58,
+      "sent": 3,
+      "answered": 3,
+      "flags": [],
+      "scope": "cgnat"
+    },
+    {
+      "ttl": 8,
+      "ip": "100.64.10.34",
+      "alt_ips": [],
+      "rtt_min": 12.31,
+      "rtt_avg": 13.9,
+      "sent": 3,
+      "answered": 3,
+      "flags": [],
+      "scope": "cgnat"
+    },
+    {
+      "ttl": 9,
+      "ip": "100.64.10.88",
+      "alt_ips": ["100.64.10.51", "100.64.10.59"],
+      "rtt_min": 17.28,
+      "rtt_avg": 17.51,
+      "sent": 3,
+      "answered": 3,
+      "flags": [],
+      "scope": "cgnat"
+    },
+    {
+      "ttl": 10,
+      "ip": "100.64.10.77",
+      "alt_ips": [],
+      "rtt_min": 18,
+      "rtt_avg": 18.16,
+      "sent": 3,
+      "answered": 3,
+      "flags": [],
+      "scope": "cgnat"
+    },
+    {
+      "ttl": 11,
+      "ip": "72.14.208.80",
+      "alt_ips": [],
+      "rtt_min": 17.96,
+      "rtt_avg": 18.12,
+      "sent": 3,
+      "answered": 3,
+      "flags": [],
+      "scope": "public",
+      "asn": "AS15169",
+      "as_name": "Google LLC",
+      "country": "BR",
+      "continent": "SA",
+      "country_doubt": false,
+      "is_target": false
+    },
+    {
+      "ttl": 12,
+      "ip": null,
+      "alt_ips": [],
+      "rtt_min": null,
+      "rtt_avg": null,
+      "sent": 3,
+      "answered": 0,
+      "flags": [],
+      "scope": "none"
+    },
+    {
+      "ttl": 13,
+      "ip": "8.8.8.8",
+      "alt_ips": [],
+      "rtt_min": 16.92,
+      "rtt_avg": 17.56,
+      "sent": 3,
+      "answered": 3,
+      "flags": [],
+      "scope": "public",
+      "asn": "AS15169",
+      "as_name": "Google LLC",
+      "country": "US",
+      "continent": "NA",
+      "country_doubt": true,
+      "is_target": true
+    }
+  ]
+}

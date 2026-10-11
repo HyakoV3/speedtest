@@ -1,0 +1,400 @@
+<!doctype html>
+<html>
+  <head>
+    <link rel="shortcut icon" href="frontend/images/favicon.svg" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="images/icon-192.png" />
+    <meta name="theme-color" content="#000000" />
+    <meta
+      name="description"
+      content="Free and Open Source Speedtest route. See the routers between this server and your connection, their network and country, and the MTU of the path."
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta charset="UTF-8" />
+    <script src="better-defaults.js"></script>
+    <script src="frontend/better/javascript/theme.js"></script>
+    <script src="frontend/better/javascript/accessibility.js"></script>
+    <script src="frontend/better/javascript/font.js"></script>
+    <script src="frontend/better/javascript/icons.js"></script>
+    <script src="frontend/better/javascript/i18n.js"></script>
+    <script src="frontend/better/javascript/background.js"></script>
+    <script src="frontend/better/javascript/toast.js"></script>
+    <script src="frontend/better/javascript/history-periods.js"></script>
+    <script src="frontend/better/javascript/test-history.js"></script>
+    <title>LibreSpeed - Route</title>
+    <link rel="stylesheet" href="frontend/better/styling/tokens.css" />
+    <link rel="stylesheet" href="frontend/better/styling/better.css" />
+    <link rel="stylesheet" href="frontend/better/styling/contrast.css" />
+    <link rel="stylesheet" href="frontend/better/styling/panel.css" />
+    <link rel="stylesheet" href="frontend/better/styling/icons.css" />
+    <link rel="stylesheet" href="frontend/better/styling/route.css" />
+  </head>
+  <body>
+    <header class="brand">
+      <a class="brand-logo-link" href="https://librespeed.org/" target="_blank" rel="noopener">
+        <img class="brand-logo" src="frontend/images/logo.svg" alt="LibreSpeed" />
+      </a>
+      <div class="brand-text">
+        <h1 data-i18n="brand.title">Free and Open Source Speedtest.</h1>
+        <p class="tagline" data-i18n="brand.tagline">No Flash, No Java, No Websockets, No Bullsh*t</p>
+      </div>
+    </header>
+
+    <main id="routeArea">
+      <div class="route-action">
+        <button type="button" id="routeStart" class="route-button" data-i18n="classic.start" disabled>Start</button>
+        <div id="routeStatus" role="status" aria-live="polite"></div>
+      </div>
+      <div id="routeResults" hidden>
+        <p id="routeShowing" class="route-showing" tabindex="-1" hidden>
+          <span id="routeShowingText"></span>
+          <button type="button" id="routeShowLatest" class="history-action" data-i18n="route.history.latest" hidden>
+            Back to the route just traced
+          </button>
+        </p>
+        <div class="route-results">
+          <section id="routeSummary" class="route-summary" aria-labelledby="routeSummaryTitle" hidden>
+            <h3 id="routeSummaryTitle" data-i18n="route.summary">Route summary</h3>
+            <dl class="route-stats">
+              <div>
+                <dt data-i18n="route.stat.hops">Hops</dt>
+                <dd id="routeStatHops"></dd>
+              </div>
+              <div>
+                <dt data-i18n="route.stat.networks">Networks</dt>
+                <dd id="routeStatNetworks"></dd>
+              </div>
+              <div>
+                <dt data-i18n="route.stat.time">Last answer</dt>
+                <dd id="routeStatTime"></dd>
+              </div>
+            </dl>
+            <p id="routeEnd" hidden></p>
+            <div id="routeMtu" hidden></div>
+            <div id="routeGroups" hidden></div>
+          </section>
+          <div
+            id="routeViews"
+            class="route-views"
+            role="group"
+            aria-label="View"
+            data-i18n-attr="aria-label:route.view.label"
+            hidden
+          >
+            <button
+              type="button"
+              data-view="table"
+              aria-pressed="true"
+              aria-controls="routeTableWrap"
+              data-i18n="route.view.table"
+            >
+              Table
+            </button>
+            <button
+              type="button"
+              data-view="chart"
+              aria-pressed="false"
+              aria-controls="routeChart"
+              data-i18n="route.view.chart"
+            >
+              Chart
+            </button>
+            <button
+              type="button"
+              data-view="map"
+              aria-pressed="false"
+              aria-controls="routeMap"
+              data-i18n="route.view.map"
+            >
+              Map
+            </button>
+          </div>
+          <div id="routeTableWrap" class="history-table-wrap route-table-wrap" hidden>
+            <table id="routeTable" class="history-table route-table" hidden>
+              <caption data-i18n="route.caption">Hops from this server to you</caption>
+              <thead>
+                <tr>
+                  <th scope="col" data-i18n="route.col.hop">#</th>
+                  <th scope="col" data-i18n="route.col.address">Address</th>
+                  <th scope="col" data-i18n="route.col.time">Time</th>
+                  <th scope="col" data-i18n="route.col.network">Network</th>
+                  <th scope="col" data-i18n="route.col.country">Country</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <section id="routeChart" class="route-chart" aria-labelledby="routeChartTitle" hidden>
+            <div class="route-figure">
+              <div id="routeChartHost" class="route-chart-host" aria-hidden="true"></div>
+              <ul class="route-chart-key route-chin">
+                <li data-key="time">
+                  <span class="route-key route-key-time" aria-hidden="true"></span>
+                  <span data-i18n="route.chart.key.time">Router that answered</span>
+                </li>
+                <li data-key="internal" hidden>
+                  <span class="route-key route-key-internal" aria-hidden="true"></span>
+                  <span data-i18n="route.internal">internal network</span>
+                </li>
+                <li data-key="slow" hidden>
+                  <span class="route-key route-key-slow" aria-hidden="true"></span>
+                  <span data-i18n="route.chart.key.slow">Slow to answer: later routers answer sooner</span>
+                </li>
+                <li data-key="silent" hidden>
+                  <span class="route-key route-key-silent" aria-hidden="true">×</span>
+                  <span data-i18n="route.no-reply">no reply</span>
+                </li>
+                <li data-key="jump" hidden>
+                  <span class="route-key route-key-jump" aria-hidden="true"></span>
+                  <span data-i18n="route.chart.key.jump">Largest rise</span>
+                </li>
+                <li data-key="mtu" hidden>
+                  <span class="route-key route-key-mtu" aria-hidden="true"></span>
+                  <span data-i18n="route.chart.key.mtu">Where the MTU drops</span>
+                </li>
+                <li data-key="you" hidden>
+                  <span class="route-key route-key-you" aria-hidden="true"></span>
+                  <span data-i18n="route.you">you</span>
+                </li>
+              </ul>
+            </div>
+            <p id="routeChartReadout" class="route-chart-readout" aria-hidden="true"></p>
+            <h3 id="routeChartTitle" data-i18n="route.chart.title">Time to each router, in ms</h3>
+            <p id="routeChartSummary" class="route-chart-summary"></p>
+          </section>
+          <section id="routeMap" class="route-map" aria-labelledby="routeMapTitle" hidden>
+            <h3 id="routeMapTitle" class="route-visually-hidden" data-i18n="route.map.title">
+              Networks and countries on the way
+            </h3>
+            <div class="route-figure">
+              <div id="routeMapHost" class="route-map-host" aria-hidden="true"></div>
+              <div
+                id="routeMapZoom"
+                class="route-map-zoom route-chin"
+                role="group"
+                aria-label="Zoom"
+                data-i18n-attr="aria-label:route.map.zoom"
+              >
+                <button
+                  type="button"
+                  data-zoom="in"
+                  aria-label="Zoom in"
+                  title="Zoom in"
+                  data-i18n-attr="aria-label:route.map.zoom-in,title:route.map.zoom-in"
+                >
+                  +
+                </button>
+                <button
+                  type="button"
+                  data-zoom="out"
+                  aria-label="Zoom out"
+                  title="Zoom out"
+                  data-i18n-attr="aria-label:route.map.zoom-out,title:route.map.zoom-out"
+                >
+                  &minus;
+                </button>
+                <button type="button" data-zoom="world" data-i18n="route.map.zoom-world">World</button>
+                <button type="button" data-zoom="fit" data-i18n="route.map.zoom-fit">Route</button>
+              </div>
+            </div>
+            <p id="routeMapNone" class="route-map-none" data-i18n="route.map.none" hidden>
+              No router on the way has a country in the database.
+            </p>
+          </section>
+        </div>
+      </div>
+      <div id="historySection" style="display: none">
+        <div class="history-heading">
+          <h3>
+            <button type="button" id="historyToggle" aria-expanded="true" aria-controls="historyList historySummary">
+              <span data-i18n="route.history.title">Route history</span>
+              <span class="history-caret" aria-hidden="true"></span>
+            </button>
+          </h3>
+          <button type="button" id="historyClear" data-i18n="history.clear">Clear history</button>
+        </div>
+        <div class="history-view">
+          <button
+            type="button"
+            id="historyNewer"
+            class="history-page-btn"
+            data-icon="chevron-left"
+            aria-label="Newer results"
+            title="Newer results"
+            data-i18n-attr="aria-label:history.newer,title:history.newer"
+            hidden
+          >
+            &lsaquo;
+          </button>
+          <div class="history-controls">
+            <select
+              id="historyPeriod"
+              class="history-select"
+              aria-label="Show"
+              data-i18n-attr="aria-label:history.view"
+            >
+              <option value="detail" data-i18n="history.view-detail">Latest results</option>
+              <option value="day" data-i18n="history.view-day">By day</option>
+              <option value="week" data-i18n="history.view-week">By week</option>
+              <option value="fortnight" data-i18n="history.view-fortnight">By fortnight</option>
+              <option value="month" data-i18n="history.view-month">By month</option>
+              <option value="bimester" data-i18n="history.view-bimester">By two months</option>
+              <option value="quarter" data-i18n="history.view-quarter">By quarter</option>
+              <option value="semester" data-i18n="history.view-semester">By half year</option>
+            </select>
+            <select
+              id="historyGroup"
+              class="history-select"
+              aria-label="IP version"
+              data-i18n-attr="aria-label:route.history.version"
+              hidden
+            ></select>
+            <select
+              id="historyServer"
+              class="history-select"
+              aria-label="Your network"
+              data-i18n-attr="aria-label:route.history.network"
+              hidden
+            ></select>
+            <button
+              type="button"
+              id="historyExport"
+              class="history-export"
+              data-icon="download"
+              aria-label="Download the history as CSV"
+              title="Download the history as CSV"
+              data-i18n-attr="aria-label:history.export,title:history.export"
+              hidden
+            >
+              CSV
+            </button>
+          </div>
+          <button
+            type="button"
+            id="historyOlder"
+            class="history-page-btn"
+            data-icon="chevron-right"
+            aria-label="Older results"
+            title="Older results"
+            data-i18n-attr="aria-label:history.older,title:history.older"
+            hidden
+          >
+            &rsaquo;
+          </button>
+        </div>
+        <div id="historyList"></div>
+        <div id="historySummary" hidden></div>
+      </div>
+    </main>
+
+    <div class="footer">
+      <a
+        href="index-better.html"
+        data-i18n="stability.back"
+        onclick="
+          location.href = 'index-better.html' + location.search;
+          return false;
+        "
+      >
+        Speed Test
+      </a>
+      <a
+        href="stability-better.html"
+        data-i18n="classic.stability"
+        onclick="
+          location.href = 'stability-better.html' + location.search;
+          return false;
+        "
+      >
+        Stability Test
+      </a>
+      <a
+        href="#"
+        data-i18n="classic.privacy"
+        onclick="
+          document.getElementById('privacyPolicy').style.display = '';
+          return false;
+        "
+      >
+        Privacy
+      </a>
+      <a href="https://github.com/librespeed/speedtest" target="_blank" rel="noopener" data-i18n="stability.source">
+        Source code
+      </a>
+    </div>
+
+    <div id="privacyPolicy" style="display: none">
+      <button
+        type="button"
+        class="privacy-close"
+        data-icon="close"
+        aria-label="Close"
+        title="Close"
+        data-i18n-attr="aria-label:dialog.close,title:dialog.close"
+        onclick="document.getElementById('privacyPolicy').style.display = 'none'"
+      >
+        &times;
+      </button>
+      <h2 data-i18n="privacy.title">Privacy Policy</h2>
+      <p data-i18n="privacy.route">
+        Route page: when you press Start, your IP address is given to a command on this server that sends test packets
+        to it. The result is shown only to you and is not stored. To limit how often routes are traced, a keyed hash of
+        your address is kept for up to a minute.
+      </p>
+      <p data-i18n="privacy.telemetry">This HTML5 speed test server is configured with telemetry enabled.</p>
+      <h4 data-i18n="privacy.collect-title">What data we collect</h4>
+      <p data-i18n="privacy.collect-intro">At the end of the test, the following data is collected and stored:</p>
+      <ul>
+        <li data-i18n="privacy.item.test-id">Test ID</li>
+        <li data-i18n="privacy.item.time">Time of testing</li>
+        <li data-i18n="privacy.item.results">Test results (download and upload speed, ping and jitter)</li>
+        <li data-i18n="privacy.item.ip">IP address</li>
+        <li data-i18n="privacy.item.isp">ISP information</li>
+        <li data-i18n="privacy.item.location">Approximate location (inferred from IP address, not GPS)</li>
+        <li data-i18n="privacy.item.locale">User agent and browser locale</li>
+        <li data-i18n="privacy.item.log">Test log (contains no personal information)</li>
+      </ul>
+      <h4 data-i18n="privacy.use-title">How we use the data</h4>
+      <p data-i18n="privacy.use-intro">Data collected through this service is used to:</p>
+      <ul>
+        <li data-i18n="privacy.use.share">Allow sharing of test results (sharable image for forums, etc.)</li>
+        <li data-i18n="privacy.use.improve">
+          To improve the service offered to you (for instance, to detect problems on our side)
+        </li>
+      </ul>
+      <p data-i18n="privacy.no-disclosure">No personal information is disclosed to third parties.</p>
+      <h4 data-i18n="privacy.consent-title">Your consent</h4>
+      <p data-i18n="privacy.consent">By starting the test, you consent to the terms of this privacy policy.</p>
+      <h4 data-i18n="privacy.removal-title">Data removal</h4>
+      <p>
+        <span data-i18n="privacy.removal">
+          If you want to have your information deleted, you need to provide either the ID of the test or your IP
+          address. This is the only way to identify your data, without this information we won't be able to comply with
+          your request.
+        </span>
+        <br />
+        <br />
+        <span data-i18n="privacy.contact">Contact this email address for all deletion requests:</span>
+        <a href="mailto:PUT@YOUR_EMAIL.HERE">TO BE FILLED BY DEVELOPER</a>
+        .
+      </p>
+      <div class="closePrivacyPolicy">
+        <a
+          href="#"
+          data-i18n="dialog.close"
+          onclick="
+            document.getElementById('privacyPolicy').style.display = 'none';
+            return false;
+          "
+        >
+          Close
+        </a>
+      </div>
+    </div>
+
+    <script src="frontend/better/javascript/route-view.js"></script>
+    <script src="frontend/better/javascript/route-history.js"></script>
+    <script src="frontend/better/javascript/route.js"></script>
+    <script src="frontend/better/javascript/theme-panel.js"></script>
+  </body>
+</html>

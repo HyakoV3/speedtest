@@ -1,0 +1,170 @@
+{
+  "v": 1,
+  "direction": "server_to_client",
+  "family": 4,
+  "elapsed_ms": 4210,
+  "stopped": {
+    "quick": "eof",
+    "mtu": "eof"
+  },
+  "target_reached": true,
+  "target_as": {
+    "asn": "AS13335",
+    "as_name": "Cloudflare, Inc."
+  },
+  "target_country": "AU",
+  "pmtu": 1500,
+  "pmtu_drops": [],
+  "hops": [
+    {
+      "ttl": 1,
+      "ip": "172.17.0.1",
+      "alt_ips": [],
+      "rtt_min": 0.19,
+      "rtt_avg": 0.22,
+      "sent": 3,
+      "answered": 3,
+      "flags": [],
+      "scope": "private"
+    },
+    {
+      "ttl": 2,
+      "ip": "192.168.0.1",
+      "alt_ips": [],
+      "rtt_min": 1.71,
+      "rtt_avg": 1.73,
+      "sent": 3,
+      "answered": 3,
+      "flags": [],
+      "scope": "private"
+    },
+    {
+      "ttl": 3,
+      "ip": "172.24.74.112",
+      "alt_ips": [],
+      "rtt_min": 4.09,
+      "rtt_avg": 4.1,
+      "sent": 3,
+      "answered": 3,
+      "flags": [],
+      "scope": "private"
+    },
+    {
+      "ttl": 4,
+      "ip": "172.24.75.37",
+      "alt_ips": [],
+      "rtt_min": 4.57,
+      "rtt_avg": 4.58,
+      "sent": 3,
+      "answered": 3,
+      "flags": [],
+      "scope": "private"
+    },
+    {
+      "ttl": 5,
+      "ip": "192.168.68.21",
+      "alt_ips": [],
+      "rtt_min": 4.53,
+      "rtt_avg": 4.54,
+      "sent": 3,
+      "answered": 3,
+      "flags": [],
+      "scope": "private"
+    },
+    {
+      "ttl": 6,
+      "ip": "172.24.75.17",
+      "alt_ips": [],
+      "rtt_min": 4.1,
+      "rtt_avg": 4.41,
+      "sent": 3,
+      "answered": 3,
+      "flags": [],
+      "scope": "private"
+    },
+    {
+      "ttl": 7,
+      "ip": "100.65.61.62",
+      "alt_ips": [],
+      "rtt_min": 2.95,
+      "rtt_avg": 3.5,
+      "sent": 3,
+      "answered": 3,
+      "flags": [],
+      "scope": "cgnat"
+    },
+    {
+      "ttl": 8,
+      "ip": "100.64.10.34",
+      "alt_ips": [],
+      "rtt_min": 11.4,
+      "rtt_avg": 12.46,
+      "sent": 3,
+      "answered": 3,
+      "flags": [],
+      "scope": "cgnat"
+    },
+    {
+      "ttl": 9,
+      "ip": "100.64.10.61",
+      "alt_ips": ["100.64.10.71", "100.64.10.67"],
+      "rtt_min": 16.09,
+      "rtt_avg": 16.3,
+      "sent": 3,
+      "answered": 3,
+      "flags": [],
+      "scope": "cgnat"
+    },
+    {
+      "ttl": 10,
+      "ip": "187.16.208.188",
+      "alt_ips": [],
+      "rtt_min": 18.31,
+      "rtt_avg": 18.53,
+      "sent": 3,
+      "answered": 3,
+      "flags": [],
+      "scope": "public",
+      "asn": null,
+      "as_name": null,
+      "country": "BR",
+      "continent": "SA",
+      "country_doubt": false,
+      "is_target": false
+    },
+    {
+      "ttl": 11,
+      "ip": "172.68.16.97",
+      "alt_ips": ["172.68.16.101"],
+      "rtt_min": 17.98,
+      "rtt_avg": 21.96,
+      "sent": 3,
+      "answered": 3,
+      "flags": [],
+      "scope": "public",
+      "asn": "AS13335",
+      "as_name": "Cloudflare, Inc.",
+      "country": "BR",
+      "continent": "SA",
+      "country_doubt": false,
+      "is_target": false
+    },
+    {
+      "ttl": 12,
+      "ip": "1.1.1.1",
+      "alt_ips": [],
+      "rtt_min": 17.94,
+      "rtt_avg": 17.95,
+      "sent": 3,
+      "answered": 3,
+      "flags": [],
+      "scope": "public",
+      "asn": "AS13335",
+      "as_name": "Cloudflare, Inc.",
+      "country": "AU",
+      "continent": "OC",
+      "country_doubt": true,
+      "is_target": true
+    }
+  ]
+}

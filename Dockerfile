@@ -5,6 +5,8 @@ ADD --chmod=0755 https://github.com/mlocati/docker-php-extension-installer/relea
 
 # Install extensions and cleanup in a single layer to reduce image size
 RUN install-php-extensions iconv gd pdo pdo_mysql pdo_pgsql pgsql \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends traceroute \
     && rm -f /usr/src/php.tar.xz /usr/src/php.tar.xz.asc \
     && apt-get autoremove -y \
     && apt-get clean \
@@ -32,6 +34,7 @@ COPY settings.json /speedtest/
 COPY server-list.json /speedtest/
 COPY stability.html /speedtest/
 COPY stability-better.html /speedtest/
+COPY route-better.html /speedtest/
 COPY favicon.ico /speedtest/
 COPY manifest.webmanifest /speedtest/
 COPY images/ /speedtest/images/
@@ -48,6 +51,9 @@ ENV ENABLE_ID_OBFUSCATION=false
 ENV REDACT_IP_ADDRESSES=false
 ENV WEBPORT=8080
 ENV USE_NEW_DESIGN=false
+ENV ENABLE_ROUTE=false
+ENV ROUTE_TRUSTED_PROXIES=""
+ENV ROUTE_IPV6=false
 
 # https://httpd.apache.org/docs/2.4/stopping.html#gracefulstop
 STOPSIGNAL SIGWINCH

@@ -1,0 +1,16 @@
+{
+  "v": 1,
+  "direction": "server_to_client",
+  "family": 4,
+  "elapsed_ms": 900,
+  "stopped": {
+    "quick": "eof",
+    "mtu": "eof"
+  },
+  "target_reached": false,
+  "target_as": null,
+  "target_country": null,
+  "pmtu": null,
+  "pmtu_drops": [],
+  "hops": []
+}
