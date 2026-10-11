@@ -86,6 +86,15 @@ async function crossingsFor(page, hops, table = "default") {
   );
 }
 
+// The least rise of the time for a corridor: the same as route-view.js (light in fiber, 204 km each ms, room 0.8, the two ways)
+const leastRise = (a, b) => {
+  const rad = Math.PI / 180;
+  const h =
+    Math.sin(((b.lat - a.lat) * rad) / 2) ** 2 +
+    Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(((b.lon - a.lon) * rad) / 2) ** 2;
+  return Math.round((0.8 * 2 * 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h)))) / 204);
+};
+
 test("T1 the route of the example crosses once, between the first and the second network", async ({ page }) => {
   const md = await crossingsFor(page, example());
   expect(md.nodes.map(node => `${node.n}:${node.country}`)).toEqual(["1:US", "2:BR", "3:BR", "4:BR"]);
@@ -132,13 +141,6 @@ test("T5 no table, no corridor or strange data: no crossing and nothing else cha
   const strange = [{ pair: ["US"] }, null, { pair: ["US", "BR"], ends: ["a", "b"] }];
   expect((await crossingsFor(page, hops, { regions: {}, corridors: strange })).crossings).toEqual([]);
   expect((await crossingsFor(page, [])).crossings).toEqual([]);
-  // A corridor whose ends are more than half the world apart would go round the date line: it is not used
-  const far = {
-    regions: { "us-east": { country: "US", lon: -76, lat: 36 }, "jp-east": { country: "JP", lon: 140, lat: 36 } },
-    corridors: [{ pair: ["JP", "US"], ends: ["jp-east", "us-east"] }]
-  };
-  const pacific = [asn(1, "US", 2, 394151, "Whatbox Inc."), asn(2, "JP", 150, 2914, "NTT America")];
-  expect((await crossingsFor(page, pacific, far)).crossings).toEqual([]);
   // A network in doubt in the middle: the crossing is between its firm neighbours
   const doubt = [
     asn(1, "US", 2, 394151, "Whatbox Inc."),
@@ -228,9 +230,19 @@ test("T9 the table is valid: whole degrees, the right country, sorted pairs, in 
     const ends = corridor.ends.map(key => table.regions[key]);
     expect(ends[0].country).toBe(a);
     expect(ends[1].country).toBe(b);
-    expect(Math.abs(ends[0].lon - ends[1].lon)).toBeLessThanOrEqual(180);
     expect(readme, `${a}-${b} has a source`).toMatch(new RegExp(`${a}.${b}[^\\n]*https://`));
+    // The curve of the sea goes round the date line when the two regions are on its two sides, and so does the line between the two
+    // countries: the two ways of knowing have to give the same answer, or a sea would be drawn the long way
+    const centre = code => (world.centers[code] || world.points[code])[0];
+    expect(Math.abs(ends[0].lon - ends[1].lon) > 180, `${a}-${b} regions`).toBe(
+      Math.abs(centre(a) - centre(b)) > world.width / 2
+    );
+    // A short sea has a time that the last mile of the visitor alone could make: not in the table
+    expect(leastRise(ends[0], ends[1]), `${a}-${b} least rise`).toBeGreaterThanOrEqual(20);
   });
+  // The other way: every line of the table of the README is a corridor of the code
+  const documented = [...readme.matchAll(/^\| ([A-Z]{2})-([A-Z]{2}) \|/gm)].map(match => `${match[1]}-${match[2]}`);
+  expect(new Set(documented)).toEqual(new Set(table.corridors.map(corridor => corridor.pair.join("-"))));
 });
 
 test("T10 the map has only the map and its buttons: no list, no key, no notes, no sentence of the rise", async ({
@@ -296,4 +308,187 @@ test("T12 the numbers of a country follow the way of the route, from the coast w
   const down = await place([hop(1, "CA", 5), hop(2, "BR", 10), hop(3, "BR", 11), hop(4, "BR", 12)], "BR");
   expect(down[1].x).toBeLessThan(down[3].x);
   expect(down[1].y).toBeLessThan(down[3].y);
+});
+
+// The Pacific and the other seas of the table: the curve goes round the date line
+const pacific = (a = "US", b = "JP", rise = 108) => [
+  asn(1, a, 2, 394151, "Whatbox Inc."),
+  asn(2, a, 3, 394151, "Whatbox Inc."),
+  asn(3, b, 2 + rise, 2914, "NTT America"),
+  asn(4, b, 3 + rise, 2914, "NTT America")
+];
+
+test("W1 the Pacific is a crossing: the ends are more than half the world apart and the table is used", async ({
+  page
+}) => {
+  const md = await crossingsFor(page, pacific());
+  expect(md.crossings).toEqual([{ from: 1, to: 2, key: "JP-US", start: "us-west", end: "jp-east", ms: 109 }]);
+  // The other way round
+  const back = await crossingsFor(page, pacific("JP", "US"));
+  expect(back.crossings).toEqual([{ from: 1, to: 2, key: "JP-US", start: "jp-east", end: "us-west", ms: 109 }]);
+  // A rise that light in fiber could not make (the least is 63 ms) is not a crossing
+  expect((await crossingsFor(page, pacific("US", "JP", 60))).crossings).toEqual([]);
+});
+
+test("W2 the sea of the Pacific is two parts, one to each edge of the map, and the marks are on the two coasts", async ({
+  page
+}) => {
+  await openRoute(page, { post: route(pacific(), { target_reached: false, target_country: "JP" }) });
+  await trace(page);
+  const map = await info(page);
+  expect(map.legs[0]).toEqual({ from: 1, to: 2, kind: "cross", wrap: true, via: ["us-west", "jp-east"] });
+  expect(map.landings).toEqual([
+    { key: "us-west", x: 57, y: 43 },
+    { key: "jp-east", x: 320, y: 49 }
+  ]);
+  await expect(page.locator("#routeMapHost rect.route-map-landing")).toHaveCount(2);
+  const sea = page.locator("#routeMapHost path.route-map-leg-sea");
+  await expect(sea).toHaveCount(2);
+  const ends = await sea.evaluateAll(paths =>
+    paths.map(path => {
+      const numbers = path
+        .getAttribute("d")
+        .match(/-?\d+(\.\d+)?/g)
+        .map(Number);
+      return { x0: numbers[0], x1: numbers[numbers.length - 2] };
+    })
+  );
+  // One part leaves the United States to the west and goes off the map; the other comes in from the east edge to Japan
+  expect(ends[0].x0).toBeCloseTo(57, 0);
+  expect(ends[0].x1).toBeLessThan(0);
+  expect(ends[1].x0).toBeGreaterThan(360);
+  expect(ends[1].x1).toBeCloseTo(320, 0);
+  await expect(page.locator("#routeMapHost path.route-map-leg-land")).toHaveCount(2);
+  // The whole world in the shape of the host
+  expect(map.frame[0]).toBe(0);
+  expect(map.frame[2]).toBe(360);
+});
+
+test("W3 the zoom keeps the marks of the Pacific where they are", async ({ page }) => {
+  await openRoute(page, { post: route(pacific(), { target_reached: false, target_country: "JP" }) });
+  await trace(page);
+  const before = (await info(page)).landings;
+  await page.locator('#routeMapZoom [data-zoom="in"]').click();
+  expect((await info(page)).landings).toEqual(before);
+  await page.locator('#routeMapZoom [data-zoom="fit"]').click();
+  expect((await info(page)).landings).toEqual(before);
+});
+
+test("W4 at 360 px the Pacific has no sideways scroll and no error", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 740 });
+  const seen = await openRoute(page, { post: route(pacific(), { target_reached: false, target_country: "JP" }) });
+  await trace(page);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(
+    true
+  );
+  expect(seen.errors).toEqual([]);
+  seen.requests.forEach(url => expect(url.startsWith(staticRepositoryUrl), url).toBe(true));
+});
+
+test("W5 a network that goes through the two countries has its crossing drawn", async ({ page }) => {
+  // Whatbox (US), then Cogent with routers in the United States and in Brazil, then Seabras (BR)
+  const hops = [
+    asn(1, "US", 1, 394151, "Whatbox Inc."),
+    asn(2, "US", 2, 174, "Cogent Communications, LLC"),
+    asn(3, "US", 3, 174, "Cogent Communications, LLC"),
+    asn(4, "BR", 115, 174, "Cogent Communications, LLC"),
+    asn(5, "BR", 120, 13786, "Seabras 1 USA, LLC")
+  ];
+  await openRoute(page, { post: route(hops, { target_reached: false, target_country: "BR" }) });
+  await trace(page);
+  const map = await info(page);
+  const crossing = map.legs.find(leg => leg.kind === "cross");
+  expect(crossing).toBeTruthy();
+  expect(crossing.via).toEqual(["us-east", "br-northeast"]);
+  await expect(page.locator("#routeMapHost rect.route-map-landing")).toHaveCount(2);
+  await expect(page.locator("#routeMapHost path.route-map-leg-sea")).toHaveCount(1);
+});
+
+test("W6 the first network of the line that goes through the two countries is a crossing of its own", async ({
+  page
+}) => {
+  // Cogent, the first network, has routers in the United States and then in Brazil; nothing before it
+  const hops = [
+    asn(1, "US", 1, 174, "Cogent Communications, LLC"),
+    asn(2, "US", 2, 174, "Cogent Communications, LLC"),
+    asn(3, "BR", 115, 174, "Cogent Communications, LLC"),
+    asn(4, "BR", 120, 13786, "Seabras 1 USA, LLC")
+  ];
+  const md = await crossingsFor(page, hops);
+  expect(md.crossings).toEqual([{ from: 1, to: 1, key: "BR-US", start: "us-east", end: "br-northeast", ms: 114 }]);
+  // The same rise that light in fiber could not make is not one
+  const slow = hops.map(item => ({ ...item, rtt_min: Math.min(item.rtt_min, 30), rtt_avg: 30 }));
+  expect((await crossingsFor(page, slow)).crossings).toEqual([]);
+  await openRoute(page, { post: route(hops, { target_reached: false, target_country: "BR" }) });
+  await trace(page);
+  const map = await info(page);
+  expect(map.legs.find(leg => leg.kind === "cross")).toMatchObject({
+    from: 1,
+    to: 1,
+    via: ["us-east", "br-northeast"]
+  });
+  await expect(page.locator("#routeMapHost rect.route-map-landing")).toHaveCount(2);
+});
+
+test("W7 every corridor of the table, both ways: a crossing just over its least rise, none just under it", async ({
+  page
+}) => {
+  await page.goto(`${staticRepositoryUrl}/route-better.html`);
+  await page.waitForFunction(() => !!window.LibreSpeedRouteView);
+  await page.addScriptTag({ url: "/frontend/better/javascript/route-crossings.js" });
+  const result = await page.evaluate(() => {
+    const table = window.LibreSpeedRouteCrossings;
+    const rad = Math.PI / 180;
+    const km = (a, b) => {
+      const h =
+        Math.sin(((b.lat - a.lat) * rad) / 2) ** 2 +
+        Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(((b.lon - a.lon) * rad) / 2) ** 2;
+      return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h)));
+    };
+    const hop = (ttl, country, rtt, number) => ({
+      ttl,
+      ip: `198.51.100.${ttl}`,
+      alt_ips: [],
+      rtt_min: rtt,
+      rtt_avg: rtt,
+      sent: 3,
+      answered: 3,
+      flags: [],
+      scope: "public",
+      asn: `AS${number}`,
+      as_name: `Net ${number}`,
+      country,
+      country_doubt: false,
+      is_target: false
+    });
+    const out = [];
+    table.corridors.forEach(corridor => {
+      const [x, y] = corridor.pair;
+      const least = Math.round((0.8 * 2 * km(table.regions[corridor.ends[0]], table.regions[corridor.ends[1]])) / 204);
+      [
+        [x, y, corridor.ends[0], corridor.ends[1]],
+        [y, x, corridor.ends[1], corridor.ends[0]]
+      ].forEach(([from, to, start, end]) => {
+        const run = rise => {
+          const hops = [
+            hop(1, from, 2, 1001),
+            hop(2, from, 3, 1001),
+            hop(3, to, 2 + rise, 1002),
+            hop(4, to, 3 + rise, 1002)
+          ];
+          return window.LibreSpeedRouteView.mapData({ hops, target_country: to, target_reached: false }, table)
+            .crossings;
+        };
+        out.push({ pair: `${from}-${to}`, over: run(least + 3), under: run(least - 3), start, end, least });
+      });
+    });
+    return out;
+  });
+  expect(result.length).toBe(36);
+  result.forEach(item => {
+    expect(item.over, item.pair).toHaveLength(1);
+    expect(item.over[0].start, item.pair).toBe(item.start);
+    expect(item.over[0].end, item.pair).toBe(item.end);
+    expect(item.under, item.pair).toEqual([]);
+  });
 });

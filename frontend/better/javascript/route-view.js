@@ -237,8 +237,8 @@
     return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h)));
   }
 
-  // The corridors of the table that can be used, by "AA-BB": two codes in order, two regions that exist and are in the
-  // country of their side, and ends that are not more than half the world apart (the line does not wrap in the map)
+  // The corridors of the table that can be used, by "AA-BB": two codes in order, and two regions that exist and are in the
+  // country of their side. Ends more than half the world apart (the Pacific) are used: the map draws that curve round the date line
   function corridorsOf(table) {
     var result = {};
     if (!table || typeof table !== "object" || !table.regions || !table.corridors || !table.corridors.length)
@@ -251,7 +251,6 @@
       var a = table.regions[ends[0]];
       var b = table.regions[ends[1]];
       if (!a || !b || a.country !== pair[0] || b.country !== pair[1]) return;
-      if (Math.abs(a.lon - b.lon) > 180) return;
       var key = pair.join("-");
       if (!result[key]) result[key] = { regions: [ends[0], ends[1]], countries: [pair[0], pair[1]], points: [a, b] };
     });
@@ -280,6 +279,36 @@
     var linked = line.map(function (n) {
       return nodes[n - 1];
     });
+    // The first network of the line has no network before it: its own change of country (its hops in the first country, then in the
+    // second) is a crossing too, with the rise from its first hop in the first country to its last in the second
+    var head = linked[0];
+    if (head.via && head.via.length > 1) {
+      var runs = [];
+      hops.forEach(function (hop, i) {
+        if (hop.ttl < head.from || hop.ttl > head.to || hop.scope !== "public" || hop.country_doubt === true) return;
+        var code = countryOf(hop.country);
+        if (code === null || floor[i] === null) return;
+        var last = runs[runs.length - 1];
+        if (!last || last.code !== code) runs.push({ code: code, first: floor[i], last: floor[i] });
+        else last.last = floor[i];
+      });
+      for (var r = 1; r < runs.length; r++) {
+        var inner = corridors[[runs[r - 1].code, runs[r].code].sort().join("-")];
+        if (!inner) continue;
+        var innerSide = runs[r - 1].code === inner.countries[0] ? 0 : 1;
+        var innerMin = Math.round((CROSSING_ROOM * 2 * kmBetween(inner.points[0], inner.points[1])) / FIBER_KM_PER_MS);
+        var innerRise = Math.round(runs[r].last - runs[r - 1].first);
+        if (innerRise < innerMin) continue;
+        result.push({
+          from: head.n,
+          to: head.n,
+          key: inner.countries.join("-"),
+          start: inner.regions[innerSide],
+          end: inner.regions[1 - innerSide],
+          ms: innerRise
+        });
+      }
+    }
     for (var i = 1; i < linked.length; i++) {
       var p = linked[i - 1];
       var q = linked[i];

@@ -95,12 +95,25 @@ var LibreSpeedRouteMap = (function () {
     return region ? [region.lon + 180, 84 - region.lat] : null;
   }
 
-  // The crossing that is between the networks from and to, or null
-  function crossingOf(md, from, to) {
+  function regionCountry(key) {
+    var table = typeof LibreSpeedRouteCrossings === "object" ? LibreSpeedRouteCrossings : null;
+    var region = table && table.regions ? table.regions[key] : null;
+    return region ? region.country : null;
+  }
+
+  // The crossing for the leg from the place p to the place q of the sequence (countries that are not the same), or null. It is the
+  // first one not used yet whose networks take in both places, and whose ends are in the two countries of the leg: a network that
+  // goes through the two countries has its two places in the sequence with the same n, and its crossing is from its n to its n.
+  // Each one is used once.
+  function crossingFor(md, p, q, used) {
     var list = md.crossings || [];
     for (var i = 0; i < list.length; i++) {
-      if (list[i].from === from && list[i].to === to && regionAt(list[i].start) && regionAt(list[i].end))
-        return list[i];
+      var c = list[i];
+      if (used[i] || c.from > p.n || q.n > c.to) continue;
+      if (regionCountry(c.start) !== p.country || regionCountry(c.end) !== q.country) continue;
+      if (!regionAt(c.start) || !regionAt(c.end)) continue;
+      used[i] = true;
+      return c;
     }
     return null;
   }
@@ -511,6 +524,7 @@ var LibreSpeedRouteMap = (function () {
     var linked = sequenceOf(md);
     var legs = [];
     var landings = [];
+    var used = {};
     for (var i = 1; i < linked.length; i++) {
       var p = linked[i - 1];
       var q = linked[i];
@@ -521,14 +535,16 @@ var LibreSpeedRouteMap = (function () {
         group.appendChild(straight(pAt, qAt, "route-map-leg route-map-leg-near"));
       } else {
         var wrap = Math.abs(position(q.country)[0] - position(p.country)[0]) > LibreSpeedWorld.width / 2;
-        var crossing = wrap || p.n === q.n ? null : crossingOf(md, p.n, q.n);
+        var crossing = crossingFor(md, p, q, used);
         if (crossing) {
-          // Land to the coast, over the sea by a curve, from the coast to the next network
+          // Land to the coast, over the sea by a curve (round the date line when the two coasts are on its two sides: the Pacific),
+          // from the coast to the next network
           var a = regionAt(crossing.start);
           var b = regionAt(crossing.end);
-          legs.push({ from: p.n, to: q.n, kind: "cross", wrap: false, via: [crossing.start, crossing.end] });
+          var seaWrap = Math.abs(b[0] - a[0]) > LibreSpeedWorld.width / 2;
+          legs.push({ from: p.n, to: q.n, kind: "cross", wrap: seaWrap, via: [crossing.start, crossing.end] });
           group.appendChild(straight(pAt, a, "route-map-leg route-map-leg-land"));
-          drawLeg(group, a, b, "route-map-leg route-map-leg-sea", unit);
+          drawFar(group, a, b, seaWrap, "route-map-leg route-map-leg-sea", unit);
           group.appendChild(straight(b, qAt, "route-map-leg route-map-leg-land"));
           [crossing.start, crossing.end].forEach(function (key, side) {
             var place = side ? b : a;
