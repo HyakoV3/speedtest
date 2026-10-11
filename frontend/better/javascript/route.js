@@ -743,8 +743,10 @@
     if (data === null) return;
     // A route goes to the direction it has: the way back to "You → server", the other one to "Server → you"
     var way = data.direction === "client_to_server" ? "back" : "there";
-    if (direction !== way) setDirection(way, true);
+    if (direction !== way) setDirection(way, way === "there" || capsState === "on");
     if (way === "back") {
+      // What is on its way for a text that was pasted must not come over the route that is shown now
+      if (backPanelApi) backPanelApi.forget();
       backData = lastData = data;
       backShownT = entry.t;
       backReady = true;
@@ -759,7 +761,7 @@
     }
     if (mapFiles.ready()) window.LibreSpeedRouteMap.resetView();
     draw(lastData);
-    if (capsState === "off") setStatus("route.unavailable");
+    if (capsState === "off" && way === "there") setStatus("route.unavailable");
     resultsBox.scrollIntoView({ block: "start" });
     var target = showingBox.hidden ? document.getElementById("routeSummaryTitle") : showingBox;
     target.tabIndex = -1;
@@ -832,13 +834,23 @@
   // The route that the visitor traced and pasted: drawn now, and again when the networks and countries arrive
   function drawSave() {
     saveButton.textContent = t(backSaved ? "route.back.saved" : "route.back.save");
-    saveButton.disabled = !routeHistory || !backData || !backReady || backSaved;
+    // aria-disabled, not disabled: the button is pressed with the keyboard, and a button that turns disabled takes the focus away from the
+    // person (and the screen reader does not tell that it is saved)
+    saveButton.setAttribute("aria-disabled", String(!routeHistory || !backData || !backReady || backSaved));
   }
 
   // The way back goes to the history only when the person says so, with the networks it has by then
   function saveBack() {
-    if (!backData || backSaved || !backReady) return;
-    if (record(backData) !== null) backSaved = true;
+    if (!backData || backSaved || !backReady || saveButton.getAttribute("aria-disabled") === "true") return;
+    var time = record(backData);
+    // The history swallows an error of the storage (it is full or blocked): that it is saved is only said when it is there
+    var kept =
+      time !== null &&
+      readRows().some(function (row) {
+        return row && row.t === time;
+      });
+    if (kept) backSaved = true;
+    else if (backPanelApi) backPanelApi.note("route.back.save-failed");
     drawSave();
   }
 
@@ -879,8 +891,24 @@
     if (!window.LibreSpeedHistory || !window.LibreSpeedRouteHistory || !window.LibreSpeedPeriods) return;
     var data = window.LibreSpeedRouteHistory;
     var periods = window.LibreSpeedPeriods;
+    // The medians of a period are the ones of the way from the server, unless the group of the way back is the one chosen: "All" does
+    // not mix the two directions (the way back is told apart in its own group)
+    function pick(rows) {
+      var select = document.getElementById("historyGroup");
+      if (!select || select.hidden || /b$/.test(select.value)) return rows;
+      // With only way-back routes in the history, "All" has nothing to keep apart: it shows them instead of nothing
+      if (
+        !readRows().some(function (row) {
+          return row && row.d !== "b";
+        })
+      )
+        return rows;
+      return rows.filter(function (row) {
+        return row.d !== "b";
+      });
+    }
     function median(rows, field) {
-      return figure(periods.median(periods.values(rows, field)));
+      return figure(periods.median(periods.values(pick(rows), field)));
     }
     repairStorage();
     routeHistory = window.LibreSpeedHistory.create({
@@ -918,7 +946,11 @@
           [t("route.stat.networks"), number(entry.nets) === null ? "–" : String(entry.nets)],
           [t("route.stat.time"), number(entry.ms) === null ? "–" : entry.ms.toFixed(1) + " ms"],
           [t("route.history.mtu"), number(entry.mtu) === null ? unknown : String(entry.mtu)],
-          [t("route.history.answered"), entry.reached === true ? t("route.history.yes") : t("route.history.no")],
+          // In the way back who answers is the server, and the text may not say
+          [
+            t(entry.d === "b" ? "route.history.server-answered" : "route.history.answered"),
+            entry.reached === true ? t("route.history.yes") : entry.reached === null ? unknown : t("route.history.no")
+          ],
           [t("route.chart.key.jump"), jumpText(entry.jump)],
           [t("route.history.network"), typeof entry.as === "string" && entry.as ? entry.as : unknown],
           [t("route.groups"), typeof entry.path === "string" && entry.path ? entry.path.split(">").join(" → ") : "–"]
@@ -937,7 +969,9 @@
       },
       // Only the routes that still have their hops can be shown again
       actions: function (entry) {
-        return data.trim(entry && entry.data)
+        var kept = data.trim(entry && entry.data);
+        // A route that says one direction in its row and another in its data is not shown: it would open in the wrong place
+        return kept && (entry.d === "b") === (kept.direction === "client_to_server")
           ? [
               {
                 icon: "route",
@@ -972,7 +1006,7 @@
           }
         },
         trend: function (rows) {
-          return periods.median(periods.values(rows, "ms"));
+          return periods.median(periods.values(pick(rows), "ms"));
         },
         csvColumns: [
           {
@@ -1014,7 +1048,7 @@
           {
             label: "target_answered",
             value: function (row) {
-              return row.reached ? 1 : 0;
+              return row.reached === null ? "" : row.reached ? 1 : 0;
             }
           },
           {
@@ -1048,7 +1082,9 @@
               return t("route.history.col-routes");
             },
             value: function (rows) {
-              return String(rows.length);
+              var shown = pick(rows).length;
+              var more = rows.length - shown;
+              return String(shown) + (more > 0 ? " (+" + more + " " + t("route.history.back") + ")" : "");
             }
           },
           {
@@ -1072,7 +1108,7 @@
               return t("route.history.col-time");
             },
             value: function (rows) {
-              var value = periods.median(periods.values(rows, "ms"));
+              var value = periods.median(periods.values(pick(rows), "ms"));
               return value === null ? "--" : value.toFixed(1);
             }
           },
@@ -1082,7 +1118,7 @@
               return t("route.history.col-mtu");
             },
             value: function (rows) {
-              var list = periods.values(rows, "mtu");
+              var list = periods.values(pick(rows), "mtu");
               return list.length ? String(Math.min.apply(null, list)) : "--";
             }
           },
@@ -1092,7 +1128,7 @@
             },
             value: function (rows) {
               return String(
-                rows.filter(function (row) {
+                pick(rows).filter(function (row) {
                   return row.changed === true;
                 }).length
               );

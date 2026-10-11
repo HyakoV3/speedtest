@@ -4,7 +4,7 @@
  *
  * A web page cannot trace a route (no TTL, no ICMP), so the visitor traces it on their own device and pastes the text. It is read in the
  * browser (route-parse.js). Only the public addresses of the routers are sent to the server, and only to look up their network and
- * country (backend/route_enrich.php); the answer is not stored.
+ * country (backend/route_enrich.php); the addresses and the answer are not stored (only a keyed hash of the visitor and the times of the requests, for up to an hour, to apply the limits).
  *
  * LibreSpeedRouteBack.commands(system, host, family) is { main, alt } (alt may be null), or null when the host is not one that can be
  *   written in a command
@@ -15,7 +15,7 @@
  * LibreSpeedRouteBack.merge(data, answer) is the route with the network and the country of the answer put in (a new object), or the same
  *   route when the answer is not one
  * LibreSpeedRouteBack.create(options) wires the panel; options: t(key, parameters), host, family() (4, 6 or null), onRoute(data, first),
- *   onSettled() (the networks arrived, or will not), onClear(), endpoint
+ *   onSettled() (the networks arrived, or will not), onClear(), endpoint; it gives forget() and note(key)
  */
 var LibreSpeedRouteBack = (function () {
   "use strict";
@@ -286,8 +286,7 @@ var LibreSpeedRouteBack = (function () {
       }
       if (current && current.text === textarea.value) {
         // The same text again: what is known of it is shown, and nothing is asked
-        options.onRoute(current.merged || current.data, true);
-        if (current.settled && options.onSettled) options.onSettled();
+        options.onRoute(current.merged || current.data, false);
         return;
       }
       ticket++;
@@ -331,6 +330,16 @@ var LibreSpeedRouteBack = (function () {
     drawCommand();
 
     return {
+      // Another route took the screen (a saved one was shown): what is on its way for the pasted one is no longer wanted
+      forget: function () {
+        ticket++;
+        current = null;
+        setNotes([]);
+      },
+      note: function (key) {
+        notes.push({ key: key, error: true });
+        drawNotes();
+      },
       refresh: function () {
         drawCommand();
         drawNotes();

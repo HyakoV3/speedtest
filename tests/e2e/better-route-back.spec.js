@@ -778,8 +778,181 @@ test("the history of the way back: the data, one by one", async ({ page }) => {
   expect(result.rowThere).not.toHaveProperty("d");
   // The way back: the direction and the tool are kept, "does not say" stays that way, the network of the visitor is the first one
   expect(result.trimmed).toMatchObject({ direction: "client_to_server", tool: "tracert", target_reached: null });
-  expect(result.entryBack).toMatchObject({ d: "b", as: "AS7", reached: false, changed: null });
+  // "does not say" stays that way in the entry and in the row
+  expect(result.entryBack).toMatchObject({ d: "b", as: "AS7", reached: null, changed: null });
+  expect(result.rowBack.reached).toBeNull();
   expect(result.rowBack.d).toBe("b");
   // Compared with the one before it of the same direction, and not with the other direction
   expect(result.second).toEqual({ changed: true, d: "b" });
+});
+
+const saveBackNow = async page => {
+  await expect(page.locator("#routeBackSave")).toHaveAttribute("aria-disabled", "false");
+  await page.locator("#routeBackSave").click();
+};
+
+test("pressing Show again after saving does not offer to save the same route twice", async ({ page }) => {
+  await openRoute(page);
+  await goBack(page);
+  await paste(page, sample("linux-traceroute-names.txt"));
+  await expect(rows(page).nth(9)).toContainText("Net 80");
+  await saveBackNow(page);
+  await expect(page.locator("#routeBackSave")).toHaveText("Saved to history");
+  await page.locator("#routeBackShow").click();
+  await expect(rows(page)).toHaveCount(10);
+  await expect(page.locator("#routeBackSave")).toHaveAttribute("aria-disabled", "true");
+  await expect(page.locator("#routeBackSave")).toHaveText("Saved to history");
+  await page.locator("#routeBackSave").click({ force: true });
+  expect(await stored(page, HISTORY)).toHaveLength(1);
+});
+
+test("the keyboard stays on the button when it is pressed, and the button says that it is saved", async ({ page }) => {
+  await openRoute(page);
+  await goBack(page);
+  await paste(page, sample("linux-traceroute-names.txt"));
+  await expect(rows(page).nth(9)).toContainText("Net 80");
+  await expect(page.locator("#routeBackSave")).toHaveAttribute("aria-disabled", "false");
+  await page.locator("#routeBackSave").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#routeBackSave")).toHaveText("Saved to history");
+  expect(await page.evaluate(() => document.activeElement && document.activeElement.id)).toBe("routeBackSave");
+});
+
+test("an answer that arrives after a saved route was opened does not take the screen back", async ({ page }) => {
+  let release;
+  const gate = new Promise(resolve => {
+    release = resolve;
+  });
+  let calls = 0;
+  const seen = await openRoute(page);
+  await page.unroute("**/backend/route_enrich.php");
+  await page.route("**/backend/route_enrich.php", async route => {
+    calls++;
+    seen.enrich.push(JSON.parse(route.request().postData()));
+    // The first (the one that is saved) answers at once; the second waits
+    if (calls > 1) await gate;
+    await route.fulfill({ json: ENRICH(JSON.parse(route.request().postData())) });
+  });
+  await goBack(page);
+  await paste(page, sample("linux-traceroute-names.txt"));
+  await expect(rows(page).nth(9)).toContainText("Net 80");
+  await saveBackNow(page);
+  await paste(page, sample("linux-traceroute-n.txt"));
+  await expect(rows(page)).toHaveCount(11);
+  await page.locator("#historyList .history-panel").first().locator(".history-action-btn").click();
+  await expect(rows(page)).toHaveCount(10);
+  release();
+  await page.waitForTimeout(700);
+  await expect(rows(page)).toHaveCount(10);
+  await expect(page.locator("#routeShowing")).toBeVisible();
+  await expect(page.locator("#routeBackSave")).toHaveText("Saved to history");
+  await expect(page.locator("#routeBackNotes")).toHaveText("");
+});
+
+test("the summary with All keeps the medians of the way from the server, and says that there is a way back", async ({
+  page
+}) => {
+  const data = fixture("normal");
+  const old = {
+    t: Date.parse("2026-10-08T12:00:00Z"),
+    f: 4,
+    hops: 13,
+    nets: 4,
+    ms: 16.9,
+    mtu: 1480,
+    reached: true,
+    as: "AS80",
+    path: "AS1>AS2",
+    changed: null,
+    jump: null
+  };
+  await page.addInitScript(
+    ([entry, summary]) => {
+      if (window.sessionStorage.getItem("__seeded")) return;
+      window.sessionStorage.setItem("__seeded", "1");
+      window.localStorage.setItem("librespeed-better-route-history", JSON.stringify([entry]));
+      window.localStorage.setItem("librespeed-better-route-history-summary", JSON.stringify({ v: 1, rows: [summary] }));
+      window.localStorage.setItem("librespeed-better-history-view", "month");
+    },
+    [{ ...old, data }, old]
+  );
+  await openRoute(page);
+  const cells = () => page.locator("#historySummary .history-table tbody tr").first().locator("td").allTextContents();
+  await expect(page.locator("#historySummary .history-table tbody tr")).toHaveCount(1);
+  const before = await cells();
+  await goBack(page);
+  await paste(page, sample("linux-traceroute-names.txt"));
+  await expect(rows(page).nth(9)).toContainText("Net 80");
+  await saveBackNow(page);
+  await expect(page.locator("#historyGroup")).toBeVisible();
+  await expect(page.locator("#historyGroup")).toHaveValue(/all/i);
+  const after = await cells();
+  // The numbers are the ones of the way from the server; the way back is counted apart, and has its own group
+  expect(after.slice(1)).toEqual(before.slice(1));
+  expect(after[0]).toBe(`${before[0]} (+1 way back)`);
+  await page.locator("#historyGroup").selectOption({ label: "IPv4 · way back" });
+  const back = await cells();
+  expect(back[0]).toBe("1");
+  expect(back[1]).toBe("10");
+});
+
+test("a history that cannot be written is not said to be saved", async ({ page }) => {
+  await page.addInitScript(() => {
+    const original = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) {
+      if (String(key).startsWith("librespeed-better-route-history")) throw new Error("full");
+      return original.call(this, key, value);
+    };
+  });
+  await openRoute(page);
+  await goBack(page);
+  await paste(page, sample("linux-traceroute-names.txt"));
+  await expect(rows(page).nth(9)).toContainText("Net 80");
+  await saveBackNow(page);
+  await expect(page.locator("#routeBackNotes")).toContainText("Could not save");
+  await expect(page.locator("#routeBackSave")).toHaveText("Save to history");
+});
+
+test("when the text does not say whether the server answered, the history does not say it either", async ({ page }) => {
+  await openRoute(page);
+  await goBack(page);
+  await paste(page, sample("windows-ptbr-tracert-lines-only.txt"));
+  await expect(rows(page)).toHaveCount(4);
+  await saveBackNow(page);
+  await expect(page.locator("#routeBackSave")).toHaveText("Saved to history");
+  const entries = await stored(page, HISTORY);
+  expect(entries[0].reached).toBeNull();
+  const summary = await stored(page, SUMMARY);
+  expect(summary.rows[0].reached).toBeNull();
+  await page.locator("#historyList .history-panel").first().locator(".history-bar").first().click();
+  await expect(page.locator("#historyList .history-panel").first()).toContainText("The server answered");
+  await expect(page.locator("#historyList .history-panel").first()).not.toContainText("Your address answered");
+});
+
+test("a saved way back reopened where the server has no route: the way back is shown, with no 'not available' over it", async ({
+  page,
+  browser
+}) => {
+  await openRoute(page);
+  await goBack(page);
+  await paste(page, sample("linux-traceroute-names.txt"));
+  await expect(rows(page).nth(9)).toContainText("Net 80");
+  await saveBackNow(page);
+  const entries = await stored(page, HISTORY);
+  // Another browser: it has its own storage, with the saved way back in it
+  const other = await (await browser.newContext()).newPage();
+  await other.addInitScript(
+    ([history]) => {
+      if (window.sessionStorage.getItem("__seeded")) return;
+      window.sessionStorage.setItem("__seeded", "1");
+      window.localStorage.setItem("librespeed-better-route-history", JSON.stringify(history));
+    },
+    [entries]
+  );
+  await openRoute(other, { caps: { v: 1, enabled: false } });
+  await other.locator("#historyList .history-panel").first().locator(".history-action-btn").click();
+  await expect(other.locator("#routeTable tbody tr")).toHaveCount(10);
+  await expect(other.locator("#routeStatus")).not.toContainText("not available");
+  // Looking at it did not make the way back the choice for the next visit
+  expect(await other.evaluate(key => localStorage.getItem(key), KEY)).toBeNull();
 });

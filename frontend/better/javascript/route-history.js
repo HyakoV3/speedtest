@@ -156,7 +156,8 @@ var LibreSpeedRouteHistory = (function () {
       nets: window.LibreSpeedRouteView.groups(kept.hops).length,
       ms: last === null ? null : Math.round(last.ms * 100) / 100,
       mtu: kept.pmtu,
-      reached: kept.target_reached === true,
+      // The way from the server either reached the visitor or not; the way back may also not say
+      reached: back ? kept.target_reached : kept.target_reached === true,
       as: asn,
       path: signature(kept),
       changed: null,
@@ -177,7 +178,8 @@ var LibreSpeedRouteHistory = (function () {
       nets: finite(entry.nets) ? entry.nets : 0,
       ms: finite(entry.ms) ? entry.ms : null,
       mtu: finite(entry.mtu) ? entry.mtu : null,
-      reached: entry.reached === true,
+      // null (only the way back has it): the text did not say whether the server answered
+      reached: entry.reached === true ? true : entry.reached === null && entry.d === "b" ? null : false,
       as: typeof entry.as === "string" && AS.test(entry.as) ? entry.as : null,
       path: typeof entry.path === "string" ? entry.path : "",
       changed: entry.changed === true ? true : entry.changed === false ? false : null
