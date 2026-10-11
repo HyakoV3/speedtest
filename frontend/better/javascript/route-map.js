@@ -40,9 +40,13 @@ var LibreSpeedRouteMap = (function () {
   var RADIUS = 7;
   var FONT = 9.5;
   var SPACING = 20;
+  // The least distance between the dots of the other way and the points near them
+  var DOT_SPACING = 12;
 
   var host = null;
   var data = null;
+  // The other way of the route (mapData of it), drawn under the one of data: a dashed line of another colour, no numbers
+  var second = null;
   var observer = null;
   var onResize = null;
   // How much one step of the zoom changes the width of the frame, and the smallest and the largest frame
@@ -220,8 +224,9 @@ var LibreSpeedRouteMap = (function () {
   }
 
   // Where each network is drawn, { n: [x, y] } in units of the map, for a scale of unit (units per px): the networks of a
-  // country on one short line through its middle, in order, SPACING px apart; then the ones that still touch are separated
-  function layout(nodes, unit, crossings) {
+  // country on one short line through its middle, in order, SPACING px apart; then the ones that still touch are separated.
+  // directions, when it is given, gets the direction of the line of each country
+  function layout(nodes, unit, crossings, directions) {
     var byCountry = {};
     var order = [];
     nodes.forEach(function (node) {
@@ -238,6 +243,7 @@ var LibreSpeedRouteMap = (function () {
       var list = byCountry[code];
       var here = position(code);
       var dir = directionOf(code, list, nodes, crossings);
+      if (directions) directions[code] = dir;
       list.forEach(function (node, i) {
         var k = (i - (list.length - 1) / 2) * SPACING * unit;
         at[node.n] = [here[0] + dir[0] * k, here[1] + dir[1] * k];
@@ -439,7 +445,9 @@ var LibreSpeedRouteMap = (function () {
           number(-3.5 * unit),
         transform: "translate(" + number(mid[0]) + " " + number(mid[1]) + ") rotate(" + number(angle) + ")"
       },
-      "route-map-arrow" + (className.indexOf("tail") >= 0 ? " route-map-leg-tail" : "")
+      "route-map-arrow" +
+        (className.indexOf("tail") >= 0 ? " route-map-leg-tail" : "") +
+        (className.indexOf("route-map-leg-other") >= 0 ? " route-map-leg-other" : "")
     );
     group.appendChild(arrow);
   }
@@ -469,13 +477,67 @@ var LibreSpeedRouteMap = (function () {
     if (host) host.textContent = "";
     host = null;
     data = null;
+    second = null;
+  }
+
+  // The countries of the two ways, each once; one is in doubt only when it is in all of the ways that have it
+  function unionCountries(a, b) {
+    var list = [];
+    var byCode = {};
+    a.countries.concat(b.countries).forEach(function (country) {
+      var found = byCode[country.code];
+      if (found) {
+        found.doubt = found.doubt && country.doubt;
+        return;
+      }
+      found = { code: country.code, doubt: country.doubt };
+      byCode[country.code] = found;
+      list.push(found);
+    });
+    return list;
+  }
+
+  // Where the networks are drawn at a scale of scale (units per px). The ones of md as layout() puts them, and the numbers do not
+  // move when there is another way. The ones of the other way (second) that are also in md (joinNodes) are at the place of the
+  // one in md; the others are dots, laid out the same way and then pushed away from everything, with the points of md fixed.
+  //   { at, atOther (by the n of the other way, or null), dots (the n of the other way that have a dot of their own), points }
+  function placement(md, other, scale) {
+    var at = layout(md.nodes, scale, md.crossings);
+    var points = Object.keys(at).map(function (n) {
+      return at[n];
+    });
+    var result = { at: at, atOther: null, dots: [], points: points };
+    if (!other) return result;
+    var join = window.LibreSpeedRouteView.joinNodes(md, other);
+    var directions = {};
+    var where = layout(other.nodes, scale, other.crossings, directions);
+    var extra = [];
+    result.atOther = {};
+    other.nodes.forEach(function (node, i) {
+      if (!where[node.n]) return;
+      if (join[i] !== null && at[join[i]]) {
+        result.atOther[node.n] = at[join[i]];
+        return;
+      }
+      // A dot is beside the line of the numbers of its country (to the left of the way), not on it: between two numbers there is no
+      // place that is far enough from both
+      var dir = directions[node.country] || [1, 0];
+      var place = [where[node.n][0] - dir[1] * DOT_SPACING * scale, where[node.n][1] + dir[0] * DOT_SPACING * scale];
+      result.atOther[node.n] = place;
+      result.dots.push(node.n);
+      extra.push(place);
+    });
+    result.points = points.concat(extra);
+    separate(result.points, DOT_SPACING * scale, points.length);
+    return result;
   }
 
   // One way of the route on the map: the line between the networks it links (a straight piece inside a country, a curve between
   // countries, the sea of a crossing) and its tail. at is where each network of md is drawn. It returns the legs and the landings of
   // the crossings, the places of the line (linked) and where the ring of the visitor goes (ringAt, and ring: the n of the network or
   // "center")
-  function drawWay(group, md, at, unit) {
+  function drawWay(group, md, at, unit, extra) {
+    extra = extra || "";
     // The line: between the networks it links, a straight piece inside a country and a curve between countries
     var linked = sequenceOf(md);
     var legs = [];
@@ -488,7 +550,7 @@ var LibreSpeedRouteMap = (function () {
       var qAt = placeOf(q, at);
       if (p.country === q.country) {
         legs.push({ from: p.n, to: q.n, kind: "near", wrap: false });
-        group.appendChild(straight(pAt, qAt, "route-map-leg route-map-leg-near"));
+        group.appendChild(straight(pAt, qAt, "route-map-leg route-map-leg-near" + extra));
       } else {
         var wrap = Math.abs(position(q.country)[0] - position(p.country)[0]) > LibreSpeedWorld.width / 2;
         var crossing = crossingFor(md, p, q, used);
@@ -499,16 +561,16 @@ var LibreSpeedRouteMap = (function () {
           var b = regionAt(crossing.end);
           var seaWrap = Math.abs(b[0] - a[0]) > LibreSpeedWorld.width / 2;
           legs.push({ from: p.n, to: q.n, kind: "cross", wrap: seaWrap, via: [crossing.start, crossing.end] });
-          group.appendChild(straight(pAt, a, "route-map-leg route-map-leg-land"));
-          drawFar(group, a, b, seaWrap, "route-map-leg route-map-leg-sea", unit);
-          group.appendChild(straight(b, qAt, "route-map-leg route-map-leg-land"));
+          group.appendChild(straight(pAt, a, "route-map-leg route-map-leg-land" + extra));
+          drawFar(group, a, b, seaWrap, "route-map-leg route-map-leg-sea" + extra, unit);
+          group.appendChild(straight(b, qAt, "route-map-leg route-map-leg-land" + extra));
           [crossing.start, crossing.end].forEach(function (key, side) {
             var place = side ? b : a;
             landings.push({ key: key, x: number(place[0]), y: number(place[1]) });
           });
         } else {
           legs.push({ from: p.n, to: q.n, kind: "path", wrap: wrap });
-          drawFar(group, pAt, qAt, wrap, "route-map-leg", unit);
+          drawFar(group, pAt, qAt, wrap, "route-map-leg" + extra, unit);
         }
       }
     }
@@ -530,7 +592,7 @@ var LibreSpeedRouteMap = (function () {
     if (md.tail && last && ringAt) {
       var tailWrap = Math.abs(youAt[0] - position(last.country)[0]) > LibreSpeedWorld.width / 2;
       legs.push({ from: last.n, to: "you", kind: "tail", wrap: tailWrap });
-      drawFar(group, placeOf(last, at), ringAt, tailWrap, "route-map-leg route-map-leg-tail", unit);
+      drawFar(group, placeOf(last, at), ringAt, tailWrap, "route-map-leg route-map-leg-tail" + extra, unit);
     }
     return { legs: legs, landings: landings, linked: linked, ringAt: ringAt, ring: ring };
   }
@@ -542,20 +604,23 @@ var LibreSpeedRouteMap = (function () {
     var aspect = width >= 600 ? 2 : 1.5;
     var unplaced = [];
     // Where the networks are drawn at a scale of unit: the places that the frame has to take in
+    var other = second;
     var placesAt = function (scale) {
-      var where = layout(md.nodes, scale, md.crossings);
-      return Object.keys(where).map(function (n) {
-        return where[n];
-      });
+      return placement(md, other, scale).points;
     };
-    var automatic = frameOf(md, wraps(md), aspect, width, unplaced, placesAt);
+    // The frame takes in the countries and the crossings of the two ways
+    var seen = other
+      ? { countries: unionCountries(md, other), crossings: (md.crossings || []).concat(other.crossings || []) }
+      : md;
+    var automatic = frameOf(seen, wraps(md) || (other !== null && wraps(other)), aspect, width, unplaced, placesAt);
     var frame = user ? userFrame(aspect) : automatic;
     var unit = frame[2] / width;
     var hatch = 6 * unit;
     // The sea fills all of the frame (more than the world when the frame is the whole world in the shape of the host)
     var seaTop = Math.min(0, frame[1]);
     var world = [0, seaTop, LibreSpeedWorld.width, Math.max(LibreSpeedWorld.height, frame[1] + frame[3]) - seaTop];
-    var at = layout(md.nodes, unit, md.crossings);
+    var placed = placement(md, other, unit);
+    var at = placed.at;
 
     var svg = el("svg", {
       viewBox: frame.map(number).join(" "),
@@ -584,7 +649,7 @@ var LibreSpeedRouteMap = (function () {
     svg.appendChild(el("rect", { x: world[0], y: world[1], width: world[2], height: world[3] }, "route-map-sea"));
     var painted = {};
     var kinds = {};
-    md.countries.forEach(function (country) {
+    seen.countries.forEach(function (country) {
       kinds[country.code] = country.doubt ? "doubt" : "on";
     });
     LibreSpeedWorld.shapes.forEach(function (shape) {
@@ -600,6 +665,8 @@ var LibreSpeedRouteMap = (function () {
 
     var group = el("g", { "clip-path": "url(#routeMapClip)" });
 
+    // The other way is under the one of the numbers
+    var wayOther = other ? drawWay(group, other, placed.atOther, unit, " route-map-leg-other") : null;
     var way = drawWay(group, md, at, unit);
     var legs = way.legs;
     var landings = way.landings;
@@ -608,7 +675,7 @@ var LibreSpeedRouteMap = (function () {
     var linked = way.linked;
 
     // The countries with no shape are a spot
-    md.countries.forEach(function (country) {
+    seen.countries.forEach(function (country) {
       var place = position(country.code);
       if (place && !LibreSpeedWorld.centers[country.code]) {
         group.appendChild(
@@ -620,6 +687,14 @@ var LibreSpeedRouteMap = (function () {
         );
       }
     });
+    if (wayOther && wayOther.ringAt)
+      group.appendChild(
+        el(
+          "circle",
+          { cx: wayOther.ringAt[0], cy: wayOther.ringAt[1], r: number((RADIUS + 3.5) * unit) },
+          "route-map-you route-map-you-other"
+        )
+      );
     if (ringAt)
       group.appendChild(
         el("circle", { cx: ringAt[0], cy: ringAt[1], r: number((RADIUS + 3.5) * unit) }, "route-map-you")
@@ -627,21 +702,25 @@ var LibreSpeedRouteMap = (function () {
 
     // The ends of a crossing: a small diamond with no number
     var side = 5 * unit;
-    landings.forEach(function (landing) {
-      group.appendChild(
-        el(
-          "rect",
-          {
-            x: number(-side / 2),
-            y: number(-side / 2),
-            width: number(side),
-            height: number(side),
-            transform: "translate(" + landing.x + " " + landing.y + ") rotate(45)"
-          },
-          "route-map-landing"
-        )
-      );
-    });
+    function diamonds(list, className) {
+      list.forEach(function (landing) {
+        group.appendChild(
+          el(
+            "rect",
+            {
+              x: number(-side / 2),
+              y: number(-side / 2),
+              width: number(side),
+              height: number(side),
+              transform: "translate(" + landing.x + " " + landing.y + ") rotate(45)"
+            },
+            className
+          )
+        );
+      });
+    }
+    if (wayOther) diamonds(wayOther.landings, "route-map-landing route-map-landing-other");
+    diamonds(landings, "route-map-landing");
 
     // The countries a network goes through besides the one of its number: a small dot with no number
     var waypoints = [];
@@ -653,6 +732,40 @@ var LibreSpeedRouteMap = (function () {
       );
       waypoints.push({ n: point.n, code: point.country });
     });
+
+    // The other way: the countries a network goes through, and a dot for each network that is not in the first way
+    var otherState = null;
+    if (wayOther) {
+      var otherWaypoints = [];
+      wayOther.linked.forEach(function (point) {
+        if (point.marker) return;
+        var place = position(point.country);
+        group.appendChild(
+          el(
+            "circle",
+            { cx: number(place[0]), cy: number(place[1]), r: number(3.5 * unit) },
+            "route-map-via route-map-via-other"
+          )
+        );
+        otherWaypoints.push({ n: point.n, code: point.country });
+      });
+      var dots = [];
+      placed.dots.forEach(function (n) {
+        var place = placed.atOther[n];
+        var network = other.nodes[n - 1];
+        group.appendChild(
+          el("circle", { cx: number(place[0]), cy: number(place[1]), r: number(3.5 * unit) }, "route-map-dot-other")
+        );
+        dots.push({ n: n, code: network.country, x: number(place[0]), y: number(place[1]) });
+      });
+      otherState = {
+        legs: wayOther.legs,
+        dots: dots,
+        waypoints: otherWaypoints,
+        landings: wayOther.landings,
+        ring: wayOther.ring
+      };
+    }
 
     // The numbers, in order: the last one is on top
     var shown = [];
@@ -691,6 +804,7 @@ var LibreSpeedRouteMap = (function () {
       landings: landings,
       waypoints: waypoints
     };
+    if (otherState) state.other = otherState;
     updateControls();
   }
 
@@ -859,10 +973,11 @@ var LibreSpeedRouteMap = (function () {
     listen(host, "pointercancel", release);
   }
 
-  function render(target, md, panel) {
+  function render(target, md, panel, other) {
     destroy();
     host = target;
     data = md;
+    second = other || null;
     controls = panel || null;
     draw(host, data);
     bind();

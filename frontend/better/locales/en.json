@@ -297,6 +297,7 @@
   "route.map.zoom-out": "Zoom out",
   "route.map.zoom-world": "World",
   "route.map.zoom-fit": "Route",
+  "route.map.both": "Show both directions",
   "privacy.route": "Route page: when you press Start, your IP address is given to a command on this server that sends test packets to it. The result is shown only to you and is not stored on the server; your browser keeps your latest routes (Route history) until you clear them. To limit how often routes are traced, a keyed hash of your address is kept for up to a minute.",
   "privacy.route-back": "Route page, your route to the server: the text you paste is read in your browser. When you press Show my route, only the public addresses of the routers are sent to this server to look up their network and country; they are not stored, and your internal addresses never leave the browser. To limit how often this can be asked, a keyed hash of your address and the times of your requests are kept for up to an hour.",
   "route.history.title": "Route history",

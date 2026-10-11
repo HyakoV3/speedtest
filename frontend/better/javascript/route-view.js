@@ -492,6 +492,29 @@
     return result;
   }
 
+  // The networks of the other way as the ones of this way: for each network of other.nodes (in order), the n of the network of
+  // main.nodes that is the same one, or null. The same one is a network with a number (kind "as") with the same ASN and the same
+  // country (the country is where it hands the route on: a carrier that crosses a country one way and leaves it the other is not
+  // in the same place). The first network of main that fits is taken; the ones of the internal network and with no network (or
+  // without a country) are never the same.
+  function joinNodes(main, other) {
+    var result = [];
+    ((other && other.nodes) || []).forEach(function (node) {
+      var found = null;
+      if (node.kind === "as" && node.asn && node.country) {
+        ((main && main.nodes) || []).some(function (candidate) {
+          if (candidate.kind === "as" && candidate.asn === node.asn && candidate.country === node.country) {
+            found = candidate.n;
+            return true;
+          }
+          return false;
+        });
+      }
+      result.push(found);
+    });
+    return result;
+  }
+
   function mtuText(pmtu, drops) {
     if (pmtu === null || pmtu === undefined) return { key: "route.mtu-unknown", params: {} };
     if (!drops || !drops.length) return { key: "route.mtu", params: { mtu: pmtu } };
@@ -522,6 +545,7 @@
     niceMax: niceMax,
     asPath: asPath,
     compareDirections: compareDirections,
+    joinNodes: joinNodes,
     mtuText: mtuText,
     countryName: countryName
   };

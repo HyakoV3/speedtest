@@ -278,6 +278,12 @@
                 <button type="button" data-zoom="world" data-i18n="route.map.zoom-world">World</button>
                 <button type="button" data-zoom="fit" data-i18n="route.map.zoom-fit">Route</button>
               </div>
+              <div id="routeMapBoth" class="route-map-both route-chin" hidden>
+                <button type="button" id="routeMapBothButton" aria-pressed="true" data-i18n="route.map.both">
+                  Show both directions
+                </button>
+                <ul id="routeMapLegend" class="route-map-legend" hidden></ul>
+              </div>
             </div>
             <p id="routeMapNone" class="route-map-none" data-i18n="route.map.none" hidden>
               No router on the way has a country in the database.

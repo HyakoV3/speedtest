@@ -297,6 +297,7 @@
   "route.map.zoom-out": "Alejar",
   "route.map.zoom-world": "Mundo",
   "route.map.zoom-fit": "Ruta",
+  "route.map.both": "Mostrar los dos sentidos",
   "privacy.route": "Página de ruta: al pulsar Iniciar, tu dirección IP se entrega a un comando de este servidor que le envía paquetes de prueba. El resultado se muestra solo a ti y no se guarda en el servidor; tu navegador conserva tus últimas rutas (Historial de rutas) hasta que las borres. Para limitar la frecuencia de las rutas, se conserva hasta un minuto un hash con clave de tu dirección.",
   "privacy.route-back": "Página de ruta, tu ruta hasta el servidor: el texto que pegas se lee en tu navegador. Al pulsar Mostrar mi ruta, solo las direcciones públicas de los routers se envían a este servidor para buscar su red y su país; no se guardan, y tus direcciones internas nunca salen del navegador. Para limitar la frecuencia de las peticiones, un hash con clave de tu dirección y las horas de tus peticiones se conservan hasta una hora.",
   "route.history.title": "Historial de rutas",
