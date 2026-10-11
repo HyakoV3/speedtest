@@ -262,7 +262,8 @@
   // the rise is from the start of the run of networks in the first country to the end of the run in the second one, so a
   // crossing inside a network that the database puts in one of the two countries is counted. Each one is
   // { from, to (the n of the two networks), key "AA-BB", start and end (the region of each side, in the way of the route), ms }.
-  // Without a table, or with a table that cannot be used, there is none.
+  // Without a table, or with a table that cannot be used, there is none. Only a change of country between two networks of the line,
+  // or inside the first one, is looked for: a sea crossed inside a later network that has routers in three countries is not.
   function crossingsOf(hops, nodes, line, table) {
     var result = [];
     var corridors = corridorsOf(table);
@@ -309,19 +310,51 @@
         });
       }
     }
+    // The first and the last hop of the run of firm hops of a network in one country (the first run for "first", else the last one),
+    // as the time floor of that hop; null when the network has no such hop
+    function runTime(node, code, first) {
+      var runs = [];
+      hops.forEach(function (hop, i) {
+        if (hop.ttl < node.from || hop.ttl > node.to || hop.scope !== "public" || hop.country_doubt === true) return;
+        if (countryOf(hop.country) === null || floor[i] === null) return;
+        var run = runs[runs.length - 1];
+        if (!run || run.code !== hop.country) runs.push({ code: hop.country, first: floor[i], last: floor[i] });
+        else run.last = floor[i];
+      });
+      var wanted = runs.filter(function (run) {
+        return run.code === code;
+      });
+      if (!wanted.length) return null;
+      return first ? wanted[wanted.length - 1].first : wanted[0].last;
+    }
     for (var i = 1; i < linked.length; i++) {
       var p = linked[i - 1];
       var q = linked[i];
       if (p.country === q.country) continue;
-      var key = [p.country, q.country].sort().join("-");
+      // The country the route goes to from the one of p: the first country of q that is not the one of p (a network that goes
+      // through a third country first does not cross the sea of p to q.country, and the step from that country on is not looked for)
+      var entry = q.country;
+      for (var v = 0; v < q.via.length; v++) {
+        if (q.via[v] !== p.country) {
+          entry = q.via[v];
+          break;
+        }
+      }
+      var key = [p.country, entry].sort().join("-");
       var corridor = corridors[key];
       if (!corridor) continue;
       var start = i - 1;
       while (start > 0 && linked[start - 1].country === p.country) start--;
       var end = i;
-      while (end < linked.length - 1 && linked[end + 1].country === q.country) end++;
-      var t0 = timeAt(linked[start], false);
-      var t1 = timeAt(linked[end], true);
+      if (entry === q.country) while (end < linked.length - 1 && linked[end + 1].country === q.country) end++;
+      // The rise is from the first hop in the country of p to the last one in the country of q. A network that has hops in more
+      // than one country counts only its hops in that country, so a rise it already made is not made again
+      var t0 = linked[start].via.length > 1 ? runTime(linked[start], p.country, true) : timeAt(linked[start], false);
+      var t1 =
+        linked[end].via.length > 1 || entry !== q.country
+          ? runTime(linked[end], entry, false)
+          : timeAt(linked[end], true);
+      if (t0 === null) t0 = timeAt(linked[start], false);
       if (t0 === null || t1 === null) continue;
       var side = p.country === corridor.countries[0] ? 0 : 1;
       var min = Math.round((CROSSING_ROOM * 2 * kmBetween(corridor.points[0], corridor.points[1])) / FIBER_KM_PER_MS);

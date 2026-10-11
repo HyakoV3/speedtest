@@ -430,7 +430,7 @@ test("W6 the first network of the line that goes through the two countries is a 
   await expect(page.locator("#routeMapHost rect.route-map-landing")).toHaveCount(2);
 });
 
-test("W7 every corridor of the table, both ways: a crossing just over its least rise, none just under it", async ({
+test("W7 every corridor of the table, both ways: a crossing at its least rise, none a millisecond under it", async ({
   page
 }) => {
   await page.goto(`${staticRepositoryUrl}/route-better.html`);
@@ -469,6 +469,7 @@ test("W7 every corridor of the table, both ways: a crossing just over its least 
         [x, y, corridor.ends[0], corridor.ends[1]],
         [y, x, corridor.ends[1], corridor.ends[0]]
       ].forEach(([from, to, start, end]) => {
+        // The rise that is measured is from the first hop to the last hop of the second country, one more than the first hop of it
         const run = rise => {
           const hops = [
             hop(1, from, 2, 1001),
@@ -479,7 +480,7 @@ test("W7 every corridor of the table, both ways: a crossing just over its least 
           return window.LibreSpeedRouteView.mapData({ hops, target_country: to, target_reached: false }, table)
             .crossings;
         };
-        out.push({ pair: `${from}-${to}`, over: run(least + 3), under: run(least - 3), start, end, least });
+        out.push({ pair: `${from}-${to}`, over: run(least - 1), under: run(least - 2), start, end, least });
       });
     });
     return out;
@@ -491,4 +492,82 @@ test("W7 every corridor of the table, both ways: a crossing just over its least 
     expect(item.over[0].end, item.pair).toBe(item.end);
     expect(item.under, item.pair).toEqual([]);
   });
+});
+
+// What the review of the Pacific found (X1 to X4)
+const traceTo = async (page, hops, country) => {
+  await openRoute(page, { post: route(hops, { target_reached: false, target_country: country }) });
+  await trace(page);
+  return info(page);
+};
+
+test("X1 a network with routers in two countries makes its crossing once, not again on the next step", async ({
+  page
+}) => {
+  // One network, Brazil then the United States (the sea is in it); then a network in Great Britain 3 ms later
+  const hops = [
+    asn(1, "BR", 2, 1001, "Net A"),
+    asn(2, "BR", 3, 1001, "Net A"),
+    asn(3, "US", 125, 1001, "Net A"),
+    asn(4, "US", 126, 1001, "Net A"),
+    asn(5, "GB", 129, 1002, "Net B")
+  ];
+  const md = await crossingsFor(page, hops);
+  expect(md.crossings.map(item => item.key)).toEqual(["BR-US"]);
+  const map = await traceTo(page, hops, "GB");
+  expect(map.legs.filter(leg => leg.kind === "cross")).toHaveLength(1);
+});
+
+test("X2 a hop in another country inside the first network is not the sea: the cable goes on the real step", async ({
+  page
+}) => {
+  // Net A: Japan, one hop that the database puts in the United States, Japan; then the United States
+  const hops = [
+    asn(1, "JP", 2, 1001, "Net A"),
+    asn(2, "US", 3, 1001, "Net A"),
+    asn(3, "JP", 4, 1001, "Net A"),
+    asn(4, "US", 110, 1002, "Net B"),
+    asn(5, "US", 111, 1002, "Net B")
+  ];
+  const md = await crossingsFor(page, hops);
+  expect(md.crossings).toHaveLength(1);
+  expect(md.crossings[0]).toMatchObject({ from: 1, to: 2, key: "JP-US" });
+  const map = await traceTo(page, hops, "US");
+  const crosses = map.legs.filter(leg => leg.kind === "cross");
+  expect(crosses).toHaveLength(1);
+  expect(crosses[0]).toMatchObject({ from: 1, to: 2 });
+});
+
+test("X3 after a crossing in the first network the networks of the country come in from the coast the route reached", async ({
+  page
+}) => {
+  const hops = [
+    asn(1, "JP", 2, 1001, "Net A"),
+    asn(2, "JP", 3, 1001, "Net A"),
+    asn(3, "US", 110, 1001, "Net A"),
+    asn(4, "US", 111, 1002, "Net B"),
+    asn(5, "US", 112, 1003, "Net C"),
+    asn(6, "US", 113, 1004, "Net D")
+  ];
+  const map = await traceTo(page, hops, "US");
+  const xs = map.nodes.map(node => node.x);
+  expect(xs).toHaveLength(4);
+  // From the west coast (where the cable lands) to the east: left to right
+  expect(xs[0]).toBeLessThan(xs[1]);
+  expect(xs[1]).toBeLessThan(xs[2]);
+  expect(xs[2]).toBeLessThan(xs[3]);
+});
+
+test("X4 a network that goes through a third country does not make a crossing between the countries around it", async ({
+  page
+}) => {
+  // Great Britain, then a network with routers in France and then in the United States: there is no GB-US cable on this route
+  const hops = [
+    asn(1, "GB", 2, 1001, "Net A"),
+    asn(2, "GB", 3, 1001, "Net A"),
+    asn(3, "FR", 80, 1002, "Net B"),
+    asn(4, "US", 81, 1002, "Net B"),
+    asn(5, "US", 82, 1002, "Net B")
+  ];
+  expect((await crossingsFor(page, hops)).crossings).toEqual([]);
 });
