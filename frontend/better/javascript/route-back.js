@@ -1,0 +1,344 @@
+/**
+ * The route from the visitor to the server (route-better.html, "You → server"): the commands to run, the box to paste what they print,
+ * and the route that comes out of it in the shape that route.php gives for the other direction
+ *
+ * A web page cannot trace a route (no TTL, no ICMP), so the visitor traces it on their own device and pastes the text. It is read in the
+ * browser (route-parse.js). Only the public addresses of the routers are sent to the server, and only to look up their network and
+ * country (backend/route_enrich.php); the answer is not stored.
+ *
+ * LibreSpeedRouteBack.commands(system, host, family) is { main, alt } (alt may be null), or null when the host is not one that can be
+ *   written in a command
+ * LibreSpeedRouteBack.detect(userAgent, platform) is { system: "windows" | "macos" | "linux", mobile }
+ * LibreSpeedRouteBack.build(parsed) is the route (as route.php gives it, "client_to_server") of the result of LibreSpeedRouteParse.parse
+ * LibreSpeedRouteBack.enrichBody(data, targetIp) is what is sent to the server: the numbers and the public addresses of the hops, and
+ *   the address of the target when it is public; no more
+ * LibreSpeedRouteBack.merge(data, answer) is the route with the network and the country of the answer put in (a new object), or the same
+ *   route when the answer is not one
+ * LibreSpeedRouteBack.create(options) wires the panel; options: t(key, parameters), host, family() (4, 6 or null), onRoute(data, first),
+ *   onSettled() (the networks arrived, or will not), onClear(), endpoint
+ */
+var LibreSpeedRouteBack = (function () {
+  "use strict";
+
+  var HOST = /^[A-Za-z0-9._:-]{1,253}$/;
+  var TIMEOUT_MS = 10000;
+  var AS = /^AS\d{1,10}$/;
+
+  function commands(system, host, family) {
+    if (typeof host !== "string") return null;
+    var name = host.replace(/^\[|\]$/g, "");
+    if (!HOST.test(name) || name.charAt(0) === "-") return null;
+    var flag = family === 4 ? " -4" : family === 6 ? " -6" : "";
+    if (system === "windows") return { main: "tracert -d -h 30 -w 1000" + flag + " " + name, alt: null };
+    if (system === "macos") {
+      return {
+        main: family === 6 ? "traceroute6 -n -m 30 " + name : "traceroute -n -m 30 -w 1 " + name,
+        alt: null
+      };
+    }
+    return { main: "traceroute -n -m 30 -w 1" + flag + " " + name, alt: "tracepath -n" + flag + " " + name };
+  }
+
+  function detect(userAgent, platform) {
+    var text = String(userAgent || "") + " " + String(platform || "");
+    var mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(text);
+    var system = "linux";
+    if (/Win/i.test(platform || "") || /Windows/i.test(text)) system = "windows";
+    else if (/iPhone|iPad|iPod|Mac/i.test(text)) system = "macos";
+    return { system: system, mobile: mobile };
+  }
+
+  function build(parsed) {
+    var hops = parsed.hops.map(function (hop) {
+      var copy = {};
+      Object.keys(hop).forEach(function (key) {
+        copy[key] = hop[key];
+      });
+      copy.alt_ips = hop.alt_ips.slice();
+      copy.flags = hop.flags.slice();
+      return copy;
+    });
+    var answered = null;
+    for (var i = hops.length - 1; i >= 0; i--) {
+      if (hops[i].scope !== "none" && hops[i].answered > 0) {
+        answered = i;
+        break;
+      }
+    }
+    // Whether the target answered: true or false when the text tells it (the address of the target in the first line, "reached" in
+    // tracepath, the end of an mtr report), null when it does not (only the lines of the hops were pasted)
+    var reached = null;
+    if (parsed.target_ip && answered !== null) reached = hops[answered].ip === parsed.target_ip;
+    else if (typeof parsed.reached === "boolean") reached = answered !== null && parsed.reached;
+    hops.forEach(function (hop, index) {
+      if (hop.scope === "public") hop.is_target = reached === true && index === answered;
+    });
+    return {
+      v: 1,
+      direction: "client_to_server",
+      source: "paste",
+      tool: parsed.tool,
+      family: parsed.family,
+      target_reached: reached,
+      target_as: null,
+      target_country: null,
+      pmtu: null,
+      pmtu_drops: [],
+      hops: hops
+    };
+  }
+
+  function enrichBody(data, targetIp) {
+    var list = [];
+    data.hops.forEach(function (hop) {
+      if (hop.scope === "public" && hop.ip) list.push({ ttl: hop.ttl, ip: hop.ip, rtt_min: hop.rtt_min });
+    });
+    var target = null;
+    if (targetIp && window.LibreSpeedRouteParse.scope(targetIp) === "public") target = targetIp;
+    return { v: 1, target: target, hops: list };
+  }
+
+  function text(value, limit) {
+    return typeof value === "string" && value.length > 0 && value.length <= limit ? value : null;
+  }
+
+  function merge(data, answer) {
+    if (!answer || answer.v !== 1 || !Array.isArray(answer.hops)) return data;
+    var byTtl = {};
+    answer.hops.forEach(function (item) {
+      if (item && typeof item.ttl === "number") byTtl[item.ttl] = item;
+    });
+    var copy = {};
+    Object.keys(data).forEach(function (key) {
+      copy[key] = data[key];
+    });
+    copy.hops = data.hops.map(function (hop) {
+      var item = byTtl[hop.ttl];
+      if (hop.scope !== "public" || !item) return hop;
+      var next = {};
+      Object.keys(hop).forEach(function (key) {
+        next[key] = hop[key];
+      });
+      next.asn = typeof item.asn === "string" && AS.test(item.asn) ? item.asn : null;
+      next.as_name = text(item.as_name, 200);
+      next.country = typeof item.country === "string" && /^[A-Z]{2}$/.test(item.country) ? item.country : null;
+      next.country_doubt = item.country_doubt === true;
+      return next;
+    });
+    var as = answer.target_as;
+    if (as && typeof as.asn === "string" && AS.test(as.asn)) {
+      copy.target_as = { asn: as.asn, as_name: text(as.as_name, 200) };
+    }
+    if (typeof answer.target_country === "string" && /^[A-Z]{2}$/.test(answer.target_country)) {
+      copy.target_country = answer.target_country;
+    }
+    return copy;
+  }
+
+  function create(options) {
+    var t = options.t;
+    var byId = function (id) {
+      return document.getElementById(id);
+    };
+    var textarea = byId("routeBackText");
+    var notesBox = byId("routeBackNotes");
+    var commandBox = byId("routeBackCommand");
+    var altBox = byId("routeBackAlt");
+    var altCommand = byId("routeBackAltCommand");
+    var mobileBox = byId("routeBackMobile");
+    var copyButton = byId("routeBackCopy");
+    var systems = byId("routeBackSystems");
+    var showButton = byId("routeBackShow");
+    var seen = detect(
+      navigator.userAgent,
+      (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform
+    );
+    var system = seen.system;
+    var notes = [];
+    var ticket = 0;
+    var copiedTimer = null;
+
+    function drawNotes() {
+      notesBox.textContent = "";
+      notes.forEach(function (note) {
+        var line = document.createElement("p");
+        line.textContent = t(note.key, note.parameters);
+        if (note.error) line.className = "route-error";
+        notesBox.appendChild(line);
+      });
+    }
+
+    function setNotes(list) {
+      notes = list;
+      drawNotes();
+    }
+
+    function drawCommand() {
+      var found = commands(system, options.host, options.family());
+      commandBox.textContent = found ? found.main : "";
+      copyButton.disabled = !found;
+      altBox.hidden = !(found && found.alt);
+      altCommand.textContent = found && found.alt ? found.alt : "";
+      Array.prototype.forEach.call(systems.querySelectorAll("[data-system]"), function (button) {
+        button.setAttribute("aria-pressed", String(button.dataset.system === system));
+      });
+      mobileBox.hidden = !seen.mobile;
+    }
+
+    function copy() {
+      var found = commands(system, options.host, options.family());
+      if (!found) return;
+      var done = function () {
+        copyButton.textContent = t("route.back.copied");
+        window.clearTimeout(copiedTimer);
+        copiedTimer = window.setTimeout(function () {
+          copyButton.textContent = t("route.back.copy");
+        }, 1500);
+      };
+      var fallback = function () {
+        var range = document.createRange();
+        range.selectNodeContents(commandBox);
+        var selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(found.main).then(done, fallback);
+      } else {
+        fallback();
+      }
+    }
+
+    // The answer (or the request that is on its way) for the text that is shown: the same text pressed again, or pressed twice, does not
+    // ask again (the server answers one request in 5 seconds for each visitor)
+    var current = null;
+
+    function settle(mine) {
+      if (mine !== ticket || !current) return;
+      current.settled = true;
+      if (options.onSettled) options.onSettled();
+    }
+
+    function enrich(data, parsed, mine, retried) {
+      var controller = new AbortController();
+      var timer = window.setTimeout(function () {
+        controller.abort();
+      }, TIMEOUT_MS);
+      var body = enrichBody(data, parsed.target_ip);
+      if (!body.hops.length && !body.target) {
+        window.clearTimeout(timer);
+        settle(mine);
+        return;
+      }
+      var wait = 0;
+      fetch(options.endpoint, {
+        method: "POST",
+        headers: { "X-LibreSpeed-Route": "1", "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        cache: "no-store",
+        signal: controller.signal
+      })
+        .then(function (response) {
+          if (response.status === 429 && !retried) {
+            // Once more, when the server says it can be asked again
+            return response.json().then(function (answer) {
+              wait = Math.min(10, Math.max(1, Number(answer && answer.retry_after) || 5));
+              throw new Error("later");
+            });
+          }
+          if (response.status !== 200) throw new Error("status");
+          return response.json();
+        })
+        .then(function (answer) {
+          if (mine !== ticket) return;
+          var merged = merge(data, answer);
+          if (current) current.merged = merged;
+          options.onRoute(merged, false);
+          settle(mine);
+        })
+        .catch(function () {
+          if (mine !== ticket) return;
+          if (wait) {
+            window.setTimeout(function () {
+              if (mine === ticket) enrich(data, parsed, mine, true);
+            }, wait * 1000);
+            return;
+          }
+          notes = notes.filter(function (note) {
+            return note.key !== "route.back.enrich-failed";
+          });
+          notes.push({ key: "route.back.enrich-failed" });
+          drawNotes();
+          settle(mine);
+        })
+        .then(function () {
+          window.clearTimeout(timer);
+        });
+    }
+
+    function show() {
+      var parsed = window.LibreSpeedRouteParse.parse(textarea.value);
+      if (parsed.error) {
+        // A text that is not a route says so and leaves the route that is on the screen as it is
+        var key = parsed.error === "too_long" ? "too-long" : parsed.error;
+        setNotes([{ key: "route.back.error." + key, error: true }]);
+        return;
+      }
+      if (current && current.text === textarea.value) {
+        // The same text again: what is known of it is shown, and nothing is asked
+        options.onRoute(current.merged || current.data, true);
+        if (current.settled && options.onSettled) options.onSettled();
+        return;
+      }
+      ticket++;
+      var data = build(parsed);
+      current = { text: textarea.value, data: data, merged: null, settled: false };
+      var list = [];
+      var host = String(options.host || "")
+        .replace(/^\[|\]$/g, "")
+        .toLowerCase();
+      // Only a name: when the tool was run with an address, or the text is the one of the app, there is nothing to compare it with
+      if (
+        parsed.target_name &&
+        window.LibreSpeedRouteParse.normalize(parsed.target_name) === null &&
+        parsed.target_name.toLowerCase() !== host
+      ) {
+        list.push({ key: "route.back.other-host", parameters: { name: parsed.target_name, host: options.host } });
+      }
+      if (parsed.skipped > 0) list.push({ key: "route.back.skipped", parameters: { n: parsed.skipped } });
+      setNotes(list);
+      options.onRoute(data, true);
+      enrich(data, parsed, ticket, false);
+    }
+
+    function clear() {
+      ticket++;
+      current = null;
+      textarea.value = "";
+      setNotes([]);
+      options.onClear();
+    }
+
+    Array.prototype.forEach.call(systems.querySelectorAll("[data-system]"), function (button) {
+      button.addEventListener("click", function () {
+        system = button.dataset.system;
+        drawCommand();
+      });
+    });
+    copyButton.addEventListener("click", copy);
+    showButton.addEventListener("click", show);
+    byId("routeBackClear").addEventListener("click", clear);
+    drawCommand();
+
+    return {
+      refresh: function () {
+        drawCommand();
+        drawNotes();
+        copyButton.textContent = t("route.back.copy");
+      },
+      clear: clear
+    };
+  }
+
+  return { commands: commands, detect: detect, build: build, enrichBody: enrichBody, merge: merge, create: create };
+})();

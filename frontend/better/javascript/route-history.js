@@ -10,9 +10,10 @@
  * LibreSpeedRouteHistory.signature(data) is the path as the public networks in order ("AS3356>AS15169"), or "". The internal network, the
  *   hops that did not answer, a router with no network, the address of the router and the visitor's own hop do not change it; the
  *   network of the visitor goes at the end.
- * LibreSpeedRouteHistory.compare(current, rows) is true when the path is not the one of the last route from the same IP version and
- *   the same network of the visitor, false when it is, null when there is nothing to compare (rows: the summary, newest first).
- * LibreSpeedRouteHistory.entryOf(data, time, rows) is what the history saves for a route, or null.
+ * LibreSpeedRouteHistory.compare(current, rows) is true when the path is not the one of the last route from the same IP version, the same
+ *   direction and the same network of the visitor, false when it is, null when there is nothing to compare (rows: the summary, newest first).
+ * LibreSpeedRouteHistory.entryOf(data, time, rows) is what the history saves for a route, or null. The route that the visitor traced on
+ *   their own device and pasted (direction "client_to_server") has d: "b", and the network of the visitor in it is the one of its first router.
  * LibreSpeedRouteHistory.rowOf(entry) is the row of the summary of an entry (no address), or null.
  * LibreSpeedRouteHistory.slim(entry) is the entry without the route (and so without any address).
  */
@@ -73,9 +74,14 @@ var LibreSpeedRouteHistory = (function () {
       hops.push(hop);
     }
     var as = data.target_as && typeof data.target_as === "object" ? data.target_as : null;
-    return {
+    var result = {
       family: data.family === 6 ? 6 : 4,
-      target_reached: data.target_reached === true,
+      target_reached:
+        data.target_reached === true
+          ? true
+          : data.direction === "client_to_server" && data.target_reached === null
+            ? null
+            : false,
       target_as: as ? { asn: text(as.asn, 16), as_name: text(as.as_name, 200) } : null,
       target_country: text(data.target_country, 8),
       pmtu: finite(data.pmtu) ? data.pmtu : null,
@@ -89,6 +95,12 @@ var LibreSpeedRouteHistory = (function () {
         }),
       hops: hops
     };
+    // The way back is kept as it is told: a route that is reopened is drawn the way it was. Only what it needs: the direction and the tool
+    if (data.direction === "client_to_server") {
+      result.direction = "client_to_server";
+      result.tool = text(data.tool, 16) || "";
+    }
+    return result;
   }
 
   function signature(data) {
@@ -114,6 +126,8 @@ var LibreSpeedRouteHistory = (function () {
     for (var i = 0; i < list.length; i++) {
       var row = list[i];
       if (!row || typeof row !== "object" || row.f !== current.f || !sameNetwork(row.as, current.as)) continue;
+      // The way from the server and the way back are two paths: one is never compared with the other
+      if ((row.d === "b") !== (current.d === "b")) continue;
       if (typeof row.path === "string" && row.path !== "") return row.path !== current.path;
     }
     return null;
@@ -123,10 +137,18 @@ var LibreSpeedRouteHistory = (function () {
     var kept = trim(data);
     if (kept === null || !finite(time)) return null;
     var last = window.LibreSpeedRouteView.chartData(kept).last;
-    var asn =
-      kept.target_as && typeof kept.target_as.asn === "string" && AS.test(kept.target_as.asn)
-        ? kept.target_as.asn
-        : null;
+    var back = kept.direction === "client_to_server";
+    // The network of the visitor: the one the database gives for the address of the visitor in the way from the server, the one of the
+    // first public router in the way back (the end of that one is the server)
+    var asn = null;
+    if (back) {
+      for (var i = 0; i < kept.hops.length && asn === null; i++) {
+        var hop = kept.hops[i];
+        if (hop.scope === "public" && typeof hop.asn === "string" && AS.test(hop.asn)) asn = hop.asn;
+      }
+    } else if (kept.target_as && typeof kept.target_as.asn === "string" && AS.test(kept.target_as.asn)) {
+      asn = kept.target_as.asn;
+    }
     var entry = {
       t: time,
       f: kept.family,
@@ -134,20 +156,21 @@ var LibreSpeedRouteHistory = (function () {
       nets: window.LibreSpeedRouteView.groups(kept.hops).length,
       ms: last === null ? null : Math.round(last.ms * 100) / 100,
       mtu: kept.pmtu,
-      reached: kept.target_reached,
+      reached: kept.target_reached === true,
       as: asn,
       path: signature(kept),
       changed: null,
       jump: window.LibreSpeedRouteView.biggestJump(kept.hops),
       data: kept
     };
+    if (back) entry.d = "b";
     entry.changed = compare(entry, rows);
     return entry;
   }
 
   function rowOf(entry) {
     if (!entry || typeof entry !== "object" || !finite(entry.t)) return null;
-    return {
+    var row = {
       t: entry.t,
       f: entry.f === 6 ? 6 : 4,
       hops: finite(entry.hops) ? entry.hops : 0,
@@ -159,6 +182,8 @@ var LibreSpeedRouteHistory = (function () {
       path: typeof entry.path === "string" ? entry.path : "",
       changed: entry.changed === true ? true : entry.changed === false ? false : null
     };
+    if (entry.d === "b") row.d = "b";
+    return row;
   }
 
   function slim(entry) {

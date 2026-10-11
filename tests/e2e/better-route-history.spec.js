@@ -396,9 +396,9 @@ test("P4 the latest routes are saved as a CSV with fixed columns, a name of its 
   const file = await download(page);
   expect(file.name).toBe("route_history_results_2026-10-09.csv");
   expect(file.text.split("\r\n")).toEqual([
-    "date,ip_version,hops,networks,last_answer_ms,mtu,target_answered,your_as,path,path_changed",
-    "2026-10-09 12:00,4,13,4,16.9,1480,1,AS64500,AS3356>AS15169,1",
-    "2026-10-08 12:00,4,13,4,16.9,,0,,AS3356>AS15169,",
+    "date,ip_version,hops,networks,last_answer_ms,mtu,target_answered,your_as,path,path_changed,direction",
+    "2026-10-09 12:00,4,13,4,16.9,1480,1,AS64500,AS3356>AS15169,1,there",
+    "2026-10-08 12:00,4,13,4,16.9,,0,,AS3356>AS15169,,there",
     ""
   ]);
   expect(file.text).not.toMatch(IP);

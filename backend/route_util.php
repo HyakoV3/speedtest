@@ -462,6 +462,140 @@ function routeEnrich(array $hops, callable $lookup)
 }
 
 /**
+ * The answer of the database of networks and countries for an address
+ *
+ * @param string $address
+ *
+ * @return array|null null when there is no database or no answer
+ */
+function routeLookup($address)
+{
+    static $reader = false;
+    if (false === $reader) {
+        $reader = null;
+        $file = __DIR__.'/country_asn.mmdb';
+        if (PHP_VERSION_ID >= 80100 && is_readable($file) && is_readable(__DIR__.'/geoip2.phar')) {
+            try {
+                require_once __DIR__.'/geoip2.phar';
+                $reader = new MaxMind\Db\Reader($file);
+            } catch (Throwable $e) {
+                $reader = null;
+            }
+        }
+    }
+    if (null === $reader) {
+        return null;
+    }
+    try {
+        $data = $reader->get($address);
+    } catch (Throwable $e) {
+        return null;
+    }
+
+    return is_array($data) ? $data : null;
+}
+
+/**
+ * The body of a request to route_enrich.php, checked: nothing in it is trusted, and anything that is not exactly what is expected
+ * makes the whole request wrong
+ *
+ * { "v": 1, "target": "<address or null>", "hops": [ { "ttl": 1..64, "ip": "<address>", "rtt_min": <0..60000 or null> } ] }, up to 64
+ * hops and 8192 bytes. The scope of each address is not in it: it is worked out here.
+ *
+ * @param mixed $raw the body
+ *
+ * @return array|null ['target' => string|null, 'hops' => [['ttl' => int, 'ip' => string, 'rtt_min' => float|null]]], or null
+ */
+function routeEnrichInput($raw)
+{
+    if (!is_string($raw) || '' === $raw || strlen($raw) > 8192) {
+        return null;
+    }
+    $body = json_decode($raw, true, 5);
+    if (!is_array($body) || !isset($body['v']) || 1 !== $body['v'] || !isset($body['hops']) || !is_array($body['hops'])) {
+        return null;
+    }
+    $count = count($body['hops']);
+    if ($count > 64 || ($count > 0 && array_keys($body['hops']) !== range(0, $count - 1))) {
+        return null;
+    }
+    $target = null;
+    if (array_key_exists('target', $body) && null !== $body['target']) {
+        $target = routeCleanIp($body['target']);
+        if (false === $target) {
+            return null;
+        }
+    }
+    $hops = [];
+    $seen = [];
+    foreach ($body['hops'] as $item) {
+        if (!is_array($item) || !isset($item['ttl'], $item['ip']) || !is_int($item['ttl']) || $item['ttl'] < 1 || $item['ttl'] > 64) {
+            return null;
+        }
+        $ip = routeCleanIp($item['ip']);
+        if (false === $ip || isset($seen[$item['ttl']])) {
+            return null;
+        }
+        $rtt = null;
+        if (isset($item['rtt_min'])) {
+            if ((!is_int($item['rtt_min']) && !is_float($item['rtt_min'])) || $item['rtt_min'] < 0 || $item['rtt_min'] > 60000) {
+                return null;
+            }
+            $rtt = (float) $item['rtt_min'];
+        }
+        $seen[$item['ttl']] = true;
+        $hops[] = ['ttl' => $item['ttl'], 'ip' => $ip, 'rtt_min' => $rtt];
+    }
+
+    return ['target' => $target, 'hops' => $hops];
+}
+
+/**
+ * What route_enrich.php answers: the network and the country of each public address, and of the target. No address is in the answer
+ *
+ * @param array    $input  routeEnrichInput()
+ * @param callable $lookup address => ['asn', 'as_name', 'country', 'continent'] or null
+ *
+ * @return array
+ */
+function routeEnrichAnswer(array $input, callable $lookup)
+{
+    $hops = [];
+    foreach ($input['hops'] as $hop) {
+        $scope = routeHopScope($hop['ip']);
+        $hops[] = [
+            'ttl' => $hop['ttl'],
+            'ip' => $hop['ip'],
+            'scope' => $scope,
+            'rtt_min' => $hop['rtt_min'],
+            'answered' => 1,
+        ];
+    }
+    $out = [];
+    foreach (routeEnrich($hops, $lookup) as $hop) {
+        $public = 'public' === $hop['scope'];
+        $out[] = [
+            'ttl' => $hop['ttl'],
+            'asn' => $public ? $hop['asn'] : null,
+            'as_name' => $public ? $hop['as_name'] : null,
+            'country' => $public ? $hop['country'] : null,
+            'country_doubt' => $public && true === $hop['country_doubt'],
+        ];
+    }
+    $targetAs = null;
+    $targetCountry = null;
+    if (null !== $input['target'] && 'public' === routeHopScope($input['target'])) {
+        $data = $lookup($input['target']);
+        $targetAs = is_array($data) && !empty($data['asn']) && is_string($data['asn'])
+            ? ['asn' => $data['asn'], 'as_name' => isset($data['as_name']) && is_string($data['as_name']) ? $data['as_name'] : null]
+            : null;
+        $targetCountry = routeTargetCountry($data);
+    }
+
+    return ['v' => 1, 'hops' => $out, 'target_as' => $targetAs, 'target_country' => $targetCountry];
+}
+
+/**
  * The country of the visitor, from what the database gave for the address of the visitor (the same answer as target_as)
  *
  * @param mixed $data the answer of the database, or null
@@ -558,6 +692,53 @@ function routeAdmit($dir, $key, $now, $window, $hourly)
         touch($mine, $now);
         $hours[] = $now;
         file_put_contents($dir.'/hourly.json', json_encode($hours));
+    }
+    flock($lock, LOCK_UN);
+    fclose($lock);
+
+    return $result;
+}
+
+/**
+ * Lets a visitor ask no more than $limit times in an hour, whatever the time between the requests: the limits of routeAdmit() are
+ * for all visitors together, and one visitor asking every few seconds would use up all of the hour of the others
+ *
+ * @param string $dir
+ * @param string $key   routeClientKey()
+ * @param int    $now
+ * @param int    $limit
+ *
+ * @return array|null null when the request can go on, otherwise ["rate_client", seconds to wait]
+ */
+function routeClientHourly($dir, $key, $now, $limit)
+{
+    if (1 !== preg_match('/^[0-9a-f]{1,64}\z/', $key)) {
+        $key = md5($key);
+    }
+    $lock = fopen($dir.'/hourly.lock', 'c');
+    if (false === $lock || !flock($lock, LOCK_EX)) {
+        return ['rate_client', 60];
+    }
+    foreach (glob($dir.'/hc-*') ?: [] as $file) {
+        if ((int) filemtime($file) < $now - 3600) {
+            @unlink($file);
+        }
+    }
+    $mine = $dir.'/hc-'.$key;
+    $times = [];
+    $saved = is_file($mine) ? json_decode((string) file_get_contents($mine), true) : null;
+    foreach (is_array($saved) ? $saved : [] as $time) {
+        if (is_int($time) && $time > $now - 3600) {
+            $times[] = $time;
+        }
+    }
+    $result = null;
+    if (count($times) >= $limit) {
+        $result = ['rate_client', max(1, min($times) + 3600 - $now)];
+    } else {
+        $times[] = $now;
+        file_put_contents($mine, json_encode($times));
+        touch($mine, $now);
     }
     flock($lock, LOCK_UN);
     fclose($lock);

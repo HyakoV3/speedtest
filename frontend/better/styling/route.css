@@ -658,3 +658,175 @@
     aspect-ratio: 2 / 1;
   }
 }
+
+/* The direction: "Server → you" or "You → server", over the action */
+.route-direction {
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  margin: 1.4em auto 0;
+}
+
+.route-direction button:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+.route-direction button {
+  flex: 1 1 auto;
+}
+
+/* The route the visitor traced: the commands to run, and the box to paste what they print */
+.route-back {
+  padding: 1em 1.2em;
+  margin: 1.2em 0 0;
+  text-align: left;
+  background: var(--surface);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-card);
+}
+
+.route-back h3 {
+  margin: 0 0 0.6em;
+  font-size: 1em;
+}
+
+.route-back p {
+  margin: 0.6em 0;
+  font-size: 0.9em;
+}
+
+.route-back .route-views {
+  margin: 0.4em 0;
+}
+
+.route-command {
+  display: flex;
+  gap: 0.6em;
+  align-items: flex-start;
+  margin: 0.5em 0;
+}
+
+.route-back code {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.5em 0.7em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85em;
+  line-height: 1.4;
+  color: var(--text);
+  overflow-wrap: anywhere;
+  user-select: all;
+  background: var(--surface-muted);
+  border: 0.0625rem solid var(--border);
+  border-radius: calc(var(--radius-card) / 2);
+}
+
+p.route-hint code {
+  display: inline;
+  padding: 0.1em 0.4em;
+}
+
+.route-back label {
+  display: block;
+  margin: 1em 0 0.3em;
+  font-size: 0.9em;
+  font-weight: 600;
+}
+
+.route-paste {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  min-height: 9rem;
+  padding: 0.6em 0.7em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8em;
+  line-height: 1.4;
+  color: var(--text);
+  resize: vertical;
+  background: var(--surface-muted);
+  border: 0.0625rem solid var(--border);
+  border-radius: calc(var(--radius-card) / 2);
+}
+
+.route-paste:focus-visible {
+  outline: 0.1875rem solid var(--text);
+  outline-offset: 0;
+}
+
+.route-paste-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8em;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.8em;
+}
+
+.route-button-small {
+  width: auto;
+  min-width: 10em;
+  height: 2.9rem;
+  padding: 0 1.2em;
+  line-height: 1;
+}
+
+.route-back-notes p {
+  margin: 0.4em 0;
+}
+
+.route-back-notes .route-error {
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* The networks of the two directions: two lists side by side, one under the other on a narrow screen; the networks that are in only one of
+   them have a mark and are bold (so it is not only a color) */
+.route-compare {
+  padding: 1em 1.2em;
+  background: var(--surface);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-card);
+}
+
+.route-compare h3 {
+  margin: 0 0 0.6em;
+  font-size: 0.85em;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.route-compare p {
+  margin: 0.4em 0;
+  font-size: 0.9em;
+}
+
+.route-compare-lists {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14em, 1fr));
+  gap: 0.8em 1.4em;
+  margin-top: 0.6em;
+}
+
+.route-compare-lists h4 {
+  margin: 0 0 0.3em;
+  font-size: 0.85em;
+  color: var(--muted);
+}
+
+.route-compare-lists ol {
+  padding-left: 1.4em;
+  margin: 0;
+  font-size: 0.9em;
+}
+
+.route-compare-only {
+  font-weight: 600;
+}
+
+.route-compare-mark {
+  margin-right: 0.3em;
+  color: var(--primary);
+}

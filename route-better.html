@@ -41,6 +41,76 @@
     </header>
 
     <main id="routeArea">
+      <div
+        id="routeDirection"
+        class="route-views route-direction"
+        role="group"
+        aria-label="Direction"
+        data-i18n-attr="aria-label:route.direction.label"
+        hidden
+      >
+        <button type="button" data-direction="there" aria-pressed="true" data-i18n="route.direction.there">
+          Server → you
+        </button>
+        <button type="button" data-direction="back" aria-pressed="false" data-i18n="route.direction.back">
+          You → server
+        </button>
+      </div>
+      <section id="routeBack" class="route-back" aria-labelledby="routeBackTitle" hidden>
+        <h3 id="routeBackTitle" data-i18n="route.back.title">Your route to the server</h3>
+        <p data-i18n="route.back.intro">
+          A web page cannot trace this route, so run the command below on your computer and paste what it prints. The
+          text is read here, in your browser.
+        </p>
+        <div
+          id="routeBackSystems"
+          class="route-views"
+          role="group"
+          aria-label="System"
+          data-i18n-attr="aria-label:route.back.system"
+        >
+          <button type="button" data-system="windows" aria-pressed="false">Windows</button>
+          <button type="button" data-system="macos" aria-pressed="false">macOS</button>
+          <button type="button" data-system="linux" aria-pressed="false">Linux</button>
+        </div>
+        <div class="route-command">
+          <code id="routeBackCommand" tabindex="0"></code>
+          <button type="button" id="routeBackCopy" class="history-action" data-i18n="route.back.copy">Copy</button>
+        </div>
+        <p id="routeBackAlt" class="route-hint" hidden>
+          <span data-i18n="route.back.linux-alt">Without traceroute installed:</span>
+          <code id="routeBackAltCommand"></code>
+        </p>
+        <p class="route-hint" data-i18n="route.back.wait">It can take up to a minute.</p>
+        <p id="routeBackMobile" class="route-hint" data-i18n="route.back.mobile" hidden>
+          Phones have no traceroute command. Use a network tools app that has traceroute and paste its result here, or
+          use a computer.
+        </p>
+        <label for="routeBackText" data-i18n="route.back.paste-label">Paste the output here</label>
+        <textarea
+          id="routeBackText"
+          class="route-paste"
+          rows="8"
+          maxlength="32768"
+          spellcheck="false"
+          autocomplete="off"
+          autocapitalize="off"
+        ></textarea>
+        <p class="route-hint" data-i18n="route.back.privacy">
+          When you press Show my route, only the public addresses of the routers (never your internal network) are sent
+          to this server, to look up their network and country. Nothing is saved.
+        </p>
+        <div id="routeBackNotes" class="route-back-notes" role="status" aria-live="polite"></div>
+        <div class="route-paste-actions">
+          <button type="button" id="routeBackShow" class="route-button route-button-small" data-i18n="route.back.show">
+            Show my route
+          </button>
+          <button type="button" id="routeBackSave" class="history-action" data-i18n="route.back.save" disabled>
+            Save to history
+          </button>
+          <button type="button" id="routeBackClear" class="history-action" data-i18n="route.back.clear">Clear</button>
+        </div>
+      </section>
       <div class="route-action">
         <button type="button" id="routeStart" class="route-button" data-i18n="classic.start" disabled>Start</button>
         <div id="routeStatus" role="status" aria-live="polite"></div>
@@ -72,6 +142,11 @@
             <p id="routeEnd" hidden></p>
             <div id="routeMtu" hidden></div>
             <div id="routeGroups" hidden></div>
+          </section>
+          <section id="routeCompare" class="route-compare" aria-labelledby="routeCompareTitle" hidden>
+            <h3 id="routeCompareTitle" data-i18n="route.compare.title">Networks in both directions</h3>
+            <p id="routeCompareText"></p>
+            <div id="routeCompareLists" class="route-compare-lists"></div>
           </section>
           <div
             id="routeViews"
@@ -341,6 +416,11 @@
         to it. The result is shown only to you and is not stored. To limit how often routes are traced, a keyed hash of
         your address is kept for up to a minute.
       </p>
+      <p data-i18n="privacy.route-back">
+        Route page, your route to the server: the text you paste is read in your browser. When you press Show my route,
+        only the public addresses of the routers are sent to this server to look up their network and country; they are
+        not stored, and your internal addresses never leave the browser.
+      </p>
       <p data-i18n="privacy.telemetry">This HTML5 speed test server is configured with telemetry enabled.</p>
       <h4 data-i18n="privacy.collect-title">What data we collect</h4>
       <p data-i18n="privacy.collect-intro">At the end of the test, the following data is collected and stored:</p>
@@ -392,8 +472,10 @@
       </div>
     </div>
 
+    <script src="frontend/better/javascript/route-parse.js"></script>
     <script src="frontend/better/javascript/route-view.js"></script>
     <script src="frontend/better/javascript/route-history.js"></script>
+    <script src="frontend/better/javascript/route-back.js"></script>
     <script src="frontend/better/javascript/route.js"></script>
     <script src="frontend/better/javascript/theme-panel.js"></script>
   </body>

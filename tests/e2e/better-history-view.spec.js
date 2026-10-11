@@ -383,3 +383,28 @@ test("stability: targets that are not in the list are one Unknown option, not se
   await expect(page.locator("#historyGroup")).toBeHidden();
   expect(await tableLines(page)).toHaveLength(3);
 });
+
+test("a line of the table of days is as tall as the line of a week, on a wide screen", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await openSpeed(page, {
+    [SPEED_SUMMARY]: {
+      v: 1,
+      rows: [
+        speedRow("2026-10-09T14:00:00Z", 20),
+        speedRow("2026-10-08T14:00:00Z", 30),
+        speedRow("2026-09-30T14:00:00Z", 40),
+        speedRow("2026-09-22T14:00:00Z", 50)
+      ]
+    }
+  });
+  const line = async kind => {
+    await page.locator("#historyPeriod").selectOption(kind);
+    return page
+      .locator(".history-table tbody tr")
+      .first()
+      .evaluate(row => row.getBoundingClientRect().height);
+  };
+  const day = await line("day");
+  const week = await line("week");
+  expect(Math.abs(day - week)).toBeLessThan(2);
+});

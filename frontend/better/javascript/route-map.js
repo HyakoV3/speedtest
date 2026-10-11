@@ -39,7 +39,7 @@ var LibreSpeedRouteMap = (function () {
   // The points of the networks, in px: a number of two digits fits in the circle, and two centres are never nearer than SPACING
   var RADIUS = 7;
   var FONT = 9.5;
-  var SPACING = 17;
+  var SPACING = 20;
 
   var host = null;
   var data = null;
