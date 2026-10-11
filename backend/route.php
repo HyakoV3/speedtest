@@ -99,29 +99,7 @@ $run = routeRun(
 );
 fclose($slot);
 
-$lookup = function ($address) {
-    static $reader = false;
-    if (false === $reader) {
-        $reader = null;
-        $file = __DIR__.'/country_asn.mmdb';
-        if (PHP_VERSION_ID >= 80100 && is_readable($file) && is_readable(__DIR__.'/geoip2.phar')) {
-            try {
-                require_once __DIR__.'/geoip2.phar';
-                $reader = new MaxMind\Db\Reader($file);
-            } catch (Throwable $e) {
-                $reader = null;
-            }
-        }
-    }
-    if (null === $reader) {
-        return null;
-    }
-    try {
-        return $reader->get($address);
-    } catch (Throwable $e) {
-        return null;
-    }
-};
+$lookup = 'routeLookup';
 
 $quick = routeParse($run['quick']['out']);
 $mtu = routeParse($run['mtu']['out']);

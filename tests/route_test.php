@@ -288,8 +288,83 @@ check("out\n", $r['e']['out'], 'the error output is not read by default');
 $r = routeRun(['e' => ['/bin/sh', '-c', 'echo out; echo err >&2']], microtime(true) + 5, 16384, [], true);
 check(true, false !== strpos($r['e']['out'], 'err'), 'the error output is read when it is asked for');
 
+// routeEnrichInput: the body of route_enrich.php is checked, and anything that is not exactly what is expected is refused
+$body = function (array $change = []) {
+    return json_encode(array_merge(['v' => 1, 'target' => '8.8.8.8', 'hops' => [['ttl' => 1, 'ip' => '1.1.1.1', 'rtt_min' => 1.5]]], $change));
+};
+check(
+    ['target' => '8.8.8.8', 'hops' => [['ttl' => 1, 'ip' => '1.1.1.1', 'rtt_min' => 1.5]]],
+    routeEnrichInput($body()),
+    'a good body'
+);
+check(['target' => null, 'hops' => []], routeEnrichInput($body(['target' => null, 'hops' => []])), 'no target and no hops');
+check(null, routeEnrichInput(''), 'an empty body');
+check(null, routeEnrichInput('not json'), 'a body that is not JSON');
+check(null, routeEnrichInput($body(['v' => 2])), 'another version');
+check(null, routeEnrichInput($body(['target' => 'x.example'])), 'a target that is not an address');
+check(null, routeEnrichInput($body(['hops' => array_fill(0, 65, ['ttl' => 1, 'ip' => '1.1.1.1', 'rtt_min' => 1])])), '65 hops');
+$many = [];
+for ($i = 1; $i <= 64; ++$i) {
+    $many[] = ['ttl' => $i, 'ip' => '1.1.1.'.$i, 'rtt_min' => 1];
+}
+check(64, count(routeEnrichInput($body(['hops' => $many]))['hops']), '64 hops');
+check(null, routeEnrichInput($body(['hops' => [['ttl' => 1, 'ip' => 'nope', 'rtt_min' => 1]]])), 'a hop with an address that is not one');
+check(null, routeEnrichInput($body(['hops' => [['ttl' => 0, 'ip' => '1.1.1.1', 'rtt_min' => 1]]])), 'the hop 0');
+check(null, routeEnrichInput($body(['hops' => [['ttl' => 65, 'ip' => '1.1.1.1', 'rtt_min' => 1]]])), 'the hop 65');
+check(null, routeEnrichInput($body(['hops' => [['ttl' => '1', 'ip' => '1.1.1.1', 'rtt_min' => 1]]])), 'a hop number that is text');
+check(null, routeEnrichInput($body(['hops' => [['ttl' => 1, 'ip' => '1.1.1.1', 'rtt_min' => -1]]])), 'a negative time');
+check(null, routeEnrichInput($body(['hops' => [['ttl' => 1, 'ip' => '1.1.1.1', 'rtt_min' => 60001]]])), 'a time over a minute');
+check(null, routeEnrichInput($body(['hops' => [['ttl' => 1, 'ip' => '1.1.1.1', 'rtt_min' => 'x']]])), 'a time that is text');
+check(null, routeEnrichInput($body(['hops' => [['ttl' => 1, 'ip' => '1.1.1.1', 'rtt_min' => 1], ['ttl' => 1, 'ip' => '1.1.1.2', 'rtt_min' => 1]]])), 'the same hop twice');
+check(null, routeEnrichInput($body(['hops' => ['a' => ['ttl' => 1, 'ip' => '1.1.1.1', 'rtt_min' => 1]]])), 'hops that are not a list');
+check(null, routeEnrichInput(str_repeat(' ', 8193)), 'a body over 8192 bytes');
+check(['target' => null, 'hops' => [['ttl' => 2, 'ip' => '2001:db8::1', 'rtt_min' => null]]], routeEnrichInput($body(['target' => null, 'hops' => [['ttl' => 2, 'ip' => '2001:db8::1']]])), 'an IPv6 hop with no time');
+
+// routeEnrichAnswer: the scope is worked out here, an internal address is not asked about, and no address is in the answer
+$asked = [];
+$database = function ($address) use (&$asked) {
+    $asked[] = $address;
+
+    return ['asn' => 'AS15169', 'as_name' => 'Google LLC', 'country' => 'US', 'continent' => 'NA'];
+};
+$answer = routeEnrichAnswer(
+    ['target' => '8.8.8.8', 'hops' => [
+        ['ttl' => 1, 'ip' => '192.168.0.1', 'rtt_min' => 1.0],
+        ['ttl' => 2, 'ip' => '100.64.0.1', 'rtt_min' => 2.0],
+        ['ttl' => 3, 'ip' => '8.8.4.4', 'rtt_min' => 10.0],
+    ]],
+    $database
+);
+check(['8.8.4.4', '8.8.8.8'], $asked, 'only the public addresses are looked up');
+check(null, $answer['hops'][0]['asn'], 'the internal address has no network');
+check(null, $answer['hops'][1]['country'], 'the CGNAT address has no country');
+check(['ttl' => 3, 'asn' => 'AS15169', 'as_name' => 'Google LLC', 'country' => 'US', 'country_doubt' => false], $answer['hops'][2], 'the public address has them');
+check(['asn' => 'AS15169', 'as_name' => 'Google LLC'], $answer['target_as'], 'the network of the target');
+check('US', $answer['target_country'], 'the country of the target');
+check(false, false !== strpos(json_encode($answer), '8.8.4.4'), 'no address is in the answer');
+check(false, false !== strpos(json_encode($answer), '192.168'), 'and no internal one either');
+$answer = routeEnrichAnswer(['target' => '10.0.0.1', 'hops' => []], $database);
+check(null, $answer['target_as'], 'a target that is not public is not looked up');
+$answer = routeEnrichAnswer(['target' => null, 'hops' => [['ttl' => 1, 'ip' => '8.8.8.8', 'rtt_min' => null]]], function ($address) {
+    return null;
+});
+check(['ttl' => 1, 'asn' => null, 'as_name' => null, 'country' => null, 'country_doubt' => false], $answer['hops'][0], 'with no database there is nothing to say');
+
+// routeClientHourly: one visitor cannot use up the hour of the others
+$hdir = sys_get_temp_dir().'/route-hourly-test-'.getmypid();
+@mkdir($hdir, 0700, true);
+$t0 = 1000000;
+for ($i = 0; $i < 3; ++$i) {
+    check(null, routeClientHourly($hdir, 'aa11', $t0 + $i * 10, 3), 'the request '.($i + 1).' of 3 in an hour passes');
+}
+check(['rate_client', 3600 - 30], routeClientHourly($hdir, 'aa11', $t0 + 30, 3), 'the fourth in an hour waits until the first is an hour old');
+check(null, routeClientHourly($hdir, 'bb22', $t0 + 30, 3), 'another visitor is not held back');
+check(null, routeClientHourly($hdir, 'aa11', $t0 + 3601, 3), 'an hour later it passes again');
+array_map('unlink', glob($hdir.'/*') ?: []);
+@rmdir($hdir);
+
 // Static audit: nothing that goes through a shell, and proc_open only with an array
-foreach (['route.php', 'route_util.php'] as $file) {
+foreach (['route.php', 'route_util.php', 'route_enrich.php'] as $file) {
     $code = file_get_contents(__DIR__.'/../backend/'.$file);
     $calls = [];
     $backtick = false;
