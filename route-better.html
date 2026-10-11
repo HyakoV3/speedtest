@@ -98,14 +98,21 @@
         ></textarea>
         <p class="route-hint" data-i18n="route.back.privacy">
           When you press Show my route, only the public addresses of the routers (never your internal network) are sent
-          to this server, to look up their network and country. Nothing is saved.
+          to this server, to look up their network and country. They are not saved; only a keyed hash of your own
+          address is kept, for up to an hour, to limit how often this can be asked.
         </p>
         <div id="routeBackNotes" class="route-back-notes" role="status" aria-live="polite"></div>
         <div class="route-paste-actions">
           <button type="button" id="routeBackShow" class="route-button route-button-small" data-i18n="route.back.show">
             Show my route
           </button>
-          <button type="button" id="routeBackSave" class="history-action" data-i18n="route.back.save" disabled>
+          <button
+            type="button"
+            id="routeBackSave"
+            class="history-action"
+            data-i18n="route.back.save"
+            aria-disabled="true"
+          >
             Save to history
           </button>
           <button type="button" id="routeBackClear" class="history-action" data-i18n="route.back.clear">Clear</button>
@@ -419,7 +426,8 @@
       <p data-i18n="privacy.route-back">
         Route page, your route to the server: the text you paste is read in your browser. When you press Show my route,
         only the public addresses of the routers are sent to this server to look up their network and country; they are
-        not stored, and your internal addresses never leave the browser.
+        not stored, and your internal addresses never leave the browser. To limit how often this can be asked, a keyed
+        hash of your address and the times of your requests are kept for up to an hour.
       </p>
       <p data-i18n="privacy.telemetry">This HTML5 speed test server is configured with telemetry enabled.</p>
       <h4 data-i18n="privacy.collect-title">What data we collect</h4>

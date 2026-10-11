@@ -6,7 +6,7 @@
  *   POST route_enrich.php  { "v": 1, "target": "<address or null>", "hops": [ { "ttl": 1, "ip": "<address>", "rtt_min": 1.2 } ] }
  *
  * It only reads the database of networks and countries: it sends nothing to anyone, runs nothing and writes down nothing about the
- * addresses it is given. It is the same data that route.php puts in the route it traces, so it tells nothing that was not public.
+ * addresses it is given. The only thing kept is for the limits: a keyed hash of the visitor and the times of the requests, for up to an hour. It is the same data that route.php puts in the route it traces, so it tells nothing that was not public.
  */
 
 require __DIR__.'/route_settings.php';

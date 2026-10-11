@@ -830,3 +830,13 @@ p.route-hint code {
   margin-right: 0.3em;
   color: var(--primary);
 }
+
+/* "Save to history" while it cannot be pressed: it looks off but stays a button the keyboard can stay on */
+.route-paste-actions .history-action[aria-disabled="true"],
+.route-paste-actions .history-action[aria-disabled="true"]:hover {
+  color: var(--muted);
+  cursor: default;
+  background: none;
+  border-color: var(--border);
+  opacity: 0.8;
+}
