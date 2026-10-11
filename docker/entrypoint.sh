@@ -11,6 +11,7 @@ echo "ENABLE_ID_OBFUSCATION: $ENABLE_ID_OBFUSCATION"
 echo "GDPR_EMAIL: $GDPR_EMAIL"
 echo "ENABLE_ROUTE: $ENABLE_ROUTE"
 echo "ROUTE_IPV6: $ROUTE_IPV6"
+echo "ROUTE_CLI_URL: $ROUTE_CLI_URL"
 
 set -e
 #set -x
@@ -182,6 +183,14 @@ if [[ "$ENABLE_ROUTE" == "true" && ( "$MODE" == "standalone" || "$MODE" == "dual
   fi
   if [ "$ROUTE_IPV6" == "true" ]; then
     sed -i 's/^\$route_ipv6 = false;/$route_ipv6 = true;/' /var/www/html/backend/route_settings.php
+  fi
+  # The address to get librespeed-route from: empty turns the offer off; anything that is not a plain https address is ignored
+  if [ -z "$ROUTE_CLI_URL" ]; then
+    sed -i "s|^\$route_cli_url = '.*';|\$route_cli_url = '';|" /var/www/html/backend/route_settings.php
+  elif [[ "$ROUTE_CLI_URL" =~ ^https://[A-Za-z0-9.-]+(:[0-9]{1,5})?(/[A-Za-z0-9._~:/%+-]*)?$ ]]; then
+    sed -i "s|^\$route_cli_url = '.*';|\$route_cli_url = '$ROUTE_CLI_URL';|" /var/www/html/backend/route_settings.php
+  else
+    echo "WARNING: ROUTE_CLI_URL is not a plain https address, ignored" >&2
   fi
   sed -i 's/<a id="routeLink" hidden /<a id="routeLink" /' /var/www/html/index-better.html /var/www/html/stability-better.html
 fi

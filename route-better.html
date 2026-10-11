@@ -63,6 +63,34 @@
           text is read here, in your browser.
         </p>
         <div
+          id="routeBackTool"
+          class="route-views"
+          role="group"
+          aria-label="Way to get the route"
+          data-i18n-attr="aria-label:route.back.tool"
+          hidden
+        >
+          <button type="button" data-tool="system" aria-pressed="true" data-i18n="route.back.tool-system">
+            System command
+          </button>
+          <button type="button" data-tool="cli" aria-pressed="false">librespeed-route</button>
+        </div>
+        <p id="routeBackCli" class="route-hint" hidden>
+          <span data-i18n="route.back.cli-about">
+            A small program that runs the tracert/traceroute of your own system and writes the result for this page,
+            without the addresses of your own network.
+          </span>
+          <a
+            id="routeBackCliLink"
+            href="#"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-i18n="route.back.cli-download"
+          >
+            Download for Windows, macOS and Linux
+          </a>
+        </p>
+        <div
           id="routeBackSystems"
           class="route-views"
           role="group"
@@ -77,7 +105,10 @@
           <code id="routeBackCommand" tabindex="0"></code>
           <button type="button" id="routeBackCopy" class="history-action" data-i18n="route.back.copy">Copy</button>
         </div>
-        <label class="route-back-clip">
+        <p id="routeBackCliRun" class="route-hint" data-i18n="route.back.cli-run" hidden>
+          Run it, then press Paste and show.
+        </p>
+        <label id="routeBackClipLabel" class="route-back-clip">
           <input type="checkbox" id="routeBackClip" />
           <span data-i18n="route.back.clip-label">Send the result to the clipboard</span>
         </label>

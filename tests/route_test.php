@@ -144,6 +144,21 @@ check('none', $s[11]['scope'], 'the hop 12 is none');
 $s = routeSummarize([], routeParse(fixture('mtu-q1-1.1.1.1')));
 check(12, count($s), 'the mtu list is the reserve');
 
+// routeCliUrl: the address that the page may offer to get librespeed-route from
+check('https://github.com/HyakoV3/librespeed-route/releases', routeCliUrl('https://github.com/HyakoV3/librespeed-route/releases'), 'a releases page');
+check('https://example.org', routeCliUrl('https://example.org'), 'a host alone');
+check('https://example.org:8443/a/b-c_d.e~f%20g+h', routeCliUrl('https://example.org:8443/a/b-c_d.e~f%20g+h'), 'a port and a path');
+foreach (['', 'http://example.org/x', 'javascript:alert(1)', 'https://user@example.org/', 'https://user:pass@example.org/', 'https://example.org/?a=b',
+    'https://example.org/#top', "https://example.org/x'y", 'https://example.org/x"y', 'https://example.org/x y', "https://example.org/x\n",
+    'https://example.org/x<y', 'https://', 'https:///x', 'ftp://example.org', 'HTTPS://example.org', '//example.org', 'https://exa mple.org',
+    'https://example.org:99999999/', str_repeat('a', 201), 'https://example.org/'.str_repeat('a', 200)] as $bad) {
+    check(null, routeCliUrl($bad), 'not offered: '.substr(var_export($bad, true), 0, 40));
+}
+check(null, routeCliUrl(null), 'null is not offered');
+check(null, routeCliUrl(['https://example.org']), 'an array is not offered');
+check(null, routeCliUrl(42), 'a number is not offered');
+check('https://example.org/'.str_repeat('a', 180), routeCliUrl('https://example.org/'.str_repeat('a', 180)), 'an address of exactly 200 characters is offered');
+
 // routeEnrich
 $lookup = function ($ip) {
     $data = [

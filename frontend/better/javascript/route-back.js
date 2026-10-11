@@ -22,6 +22,7 @@ var LibreSpeedRouteBack = (function () {
 
   var HOST = /^[A-Za-z0-9._:-]{1,253}$/;
   // The longest text that the box and the parser take (route-parse.js, MAX_TEXT), and the biggest file that can hold it
+  var TOOL_KEY = "librespeed-better-route-back-tool";
   var MAX_TEXT = 32768;
   var MAX_FILE_BYTES = 131072;
   var TIMEOUT_MS = 10000;
@@ -30,12 +31,24 @@ var LibreSpeedRouteBack = (function () {
   // What sends the output of the command to the clipboard, in each system (the paste button reads it from there)
   var CLIPBOARD = { windows: " | clip", macos: " | pbcopy", linux: " | xclip -selection clipboard" };
 
-  // The command to run, with clip true: with its output sent to the clipboard (the terminal shows nothing until it ends)
-  function commands(system, host, family, clip) {
+  // The address that the server offers to get librespeed-route from (route.php?caps, cli_url): https only, no user name, no query, no quote.
+  // The same rule as routeCliUrl() of the PHP, because the page does not trust what it was given
+  var CLI_URL = /^https:\/\/[A-Za-z0-9.-]+(:[0-9]{1,5})?(\/[A-Za-z0-9._~:/%+-]*)?$/;
+
+  function cliUrl(value) {
+    return typeof value === "string" && value.length <= 200 && CLI_URL.test(value) ? value : null;
+  }
+
+  // The command to run, with clip true: with its output sent to the clipboard (the terminal shows nothing until it ends). With tool "cli":
+  // librespeed-route, which writes one line for the page to its output and its table to the error output, so it is always piped
+  function commands(system, host, family, clip, tool) {
     if (typeof host !== "string") return null;
     var name = host.replace(/^\[|\]$/g, "");
     if (!HOST.test(name) || name.charAt(0) === "-") return null;
     var flag = family === 4 ? " -4" : family === 6 ? " -6" : "";
+    if (tool === "cli") {
+      return CLIPBOARD[system] ? { main: "librespeed-route" + flag + " " + name + CLIPBOARD[system], alt: null } : null;
+    }
     var tail = clip === true && CLIPBOARD[system] ? CLIPBOARD[system] : "";
     if (system === "windows") return { main: "tracert -d -h 30 -w 1000" + flag + " " + name + tail, alt: null };
     if (system === "macos") {
@@ -173,6 +186,14 @@ var LibreSpeedRouteBack = (function () {
     var clipHint = byId("routeBackClipHint");
     var clipLinux = byId("routeBackClipLinux");
     var pasteClipButton = byId("routeBackPasteClip");
+    var toolBox = byId("routeBackTool");
+    var clipLabel = byId("routeBackClipLabel");
+    var cliBox = byId("routeBackCli");
+    var cliLink = byId("routeBackCliLink");
+    var cliRun = byId("routeBackCliRun");
+    // "system": the tracert/traceroute of the system; "cli": librespeed-route (only when the server offers it)
+    var tool = "system";
+    var cliAddress = null;
     var noCommandBox = byId("routeBackNoCommand");
     var altCommand = byId("routeBackAltCommand");
     var mobileBox = byId("routeBackMobile");
@@ -204,9 +225,17 @@ var LibreSpeedRouteBack = (function () {
     }
 
     function drawCommand() {
-      var found = commands(system, options.host, options.family(), clipBox.checked);
+      var found = commands(system, options.host, options.family(), clipBox.checked, tool);
       commandBox.textContent = found ? found.main : "";
-      clipHint.hidden = !(found && clipBox.checked);
+      var cli = tool === "cli";
+      cliBox.hidden = !cli;
+      cliRun.hidden = !cli;
+      clipLabel.hidden = cli;
+      toolBox.hidden = cliAddress === null;
+      Array.prototype.forEach.call(toolBox.querySelectorAll("[data-tool]"), function (button) {
+        button.setAttribute("aria-pressed", String(button.dataset.tool === tool));
+      });
+      clipHint.hidden = cli || !(found && clipBox.checked);
       clipLinux.hidden = system !== "linux";
       copyButton.disabled = !found;
       noCommandBox.hidden = !!found;
@@ -219,7 +248,7 @@ var LibreSpeedRouteBack = (function () {
     }
 
     function copy() {
-      var found = commands(system, options.host, options.family(), clipBox.checked);
+      var found = commands(system, options.host, options.family(), clipBox.checked, tool);
       if (!found) return;
       var done = function () {
         copyButton.textContent = t("route.back.copied");
@@ -404,6 +433,17 @@ var LibreSpeedRouteBack = (function () {
       takeFile(files[0]);
     });
     clipBox.addEventListener("change", drawCommand);
+    Array.prototype.forEach.call(toolBox.querySelectorAll("[data-tool]"), function (button) {
+      button.addEventListener("click", function () {
+        tool = button.dataset.tool === "cli" && cliAddress !== null ? "cli" : "system";
+        try {
+          window.localStorage.setItem(TOOL_KEY, tool);
+        } catch (error) {
+          // The choice only lasts until the page is closed
+        }
+        drawCommand();
+      });
+    });
     pasteClipButton.addEventListener("click", pasteFromClipboard);
 
     Array.prototype.forEach.call(systems.querySelectorAll("[data-system]"), function (button) {
@@ -418,6 +458,23 @@ var LibreSpeedRouteBack = (function () {
     drawCommand();
 
     return {
+      // The address that the server offers to get librespeed-route from (null or anything that is not a plain https address: not offered)
+      setCli: function (value) {
+        cliAddress = cliUrl(value);
+        if (cliAddress === null) {
+          tool = "system";
+        } else {
+          cliLink.href = cliAddress;
+          var saved = null;
+          try {
+            saved = window.localStorage.getItem(TOOL_KEY);
+          } catch (error) {
+            saved = null;
+          }
+          tool = saved === "cli" ? "cli" : "system";
+        }
+        drawCommand();
+      },
       // Another route took the screen (a saved one was shown): what is on its way for the pasted one is no longer wanted
       forget: function () {
         ticket++;
@@ -439,6 +496,7 @@ var LibreSpeedRouteBack = (function () {
 
   return {
     commands: commands,
+    cliUrl: cliUrl,
     decode: decode,
     detect: detect,
     build: build,
