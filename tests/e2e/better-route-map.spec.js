@@ -461,7 +461,7 @@ test("the points are never nearer than the circles at 360 px, and the same route
   expect(narrow.frame[2]).toBeLessThan(45);
   for (let i = 0; i < narrow.nodes.length; i++)
     for (let j = i + 1; j < narrow.nodes.length; j++)
-      expect(px(narrow, narrow.nodes[i], narrow.nodes[j])).toBeGreaterThanOrEqual(16.5);
+      expect(px(narrow, narrow.nodes[i], narrow.nodes[j])).toBeGreaterThanOrEqual(19.5);
 
   await page.setViewportSize({ width: 1000, height: 740 });
   await expect.poll(async () => (await info(page)).width).toBeGreaterThan(narrow.width);
@@ -483,7 +483,7 @@ test("the points are never nearer than the circles at 360 px, and the same route
   const spot = await info(second);
   for (let i = 0; i < spot.nodes.length; i++)
     for (let j = i + 1; j < spot.nodes.length; j++)
-      expect(px(spot, spot.nodes[i], spot.nodes[j])).toBeGreaterThanOrEqual(16.5);
+      expect(px(spot, spot.nodes[i], spot.nodes[j])).toBeGreaterThanOrEqual(19.5);
   expect(errors).toEqual([]);
 });
 
@@ -500,8 +500,8 @@ test("a country that comes back: its networks are on one line, in order, and the
   expect(n2.x).toBeLessThan(n5.x);
   expect(n5.x).toBeLessThan(n6.x);
   [n2, n5, n6].forEach(item => expect(Math.abs(item.y - n1.y)).toBeLessThan(0.01));
-  expect(px(map, n2, n5)).toBeGreaterThan(16.5);
-  expect(px(map, n2, n5)).toBeLessThan(17.5);
+  expect(px(map, n2, n5)).toBeGreaterThan(19.5);
+  expect(px(map, n2, n5)).toBeLessThan(20.5);
   expect(map.legs.map(leg => `${leg.from}>${leg.to}:${leg.kind}`)).toEqual([
     "1>2:near",
     "2>3:path",
