@@ -68,18 +68,25 @@ if (null !== $error) {
 }
 
 $dir = routeStateDir();
-$denied = routeAdmit($dir, routeClientKey($dir, $ip), time(), ROUTE_WINDOW, ROUTE_HOURLY);
-if (null !== $denied) {
-    header('Retry-After: '.$denied[1]);
-    routeAnswer(429, ['error' => $denied[0], 'retry_after' => $denied[1]]);
-}
-$slot = routeAcquireSlot($dir, ROUTE_SLOTS);
-if (false === $slot) {
-    header('Retry-After: 15');
-    routeAnswer(429, ['error' => 'busy', 'retry_after' => 15]);
-}
-if (!routeToolOk(ROUTE_BIN, $dir)) {
+// The place and the tool come before the limits are written down: a "busy" or a "tool_missing" answer uses up nothing of the visitor's
+// minute or of the hour of the server
+list($refused, $wait, $slot) = routeBegin(
+    $dir,
+    routeClientKey($dir, $ip),
+    time(),
+    ROUTE_WINDOW,
+    ROUTE_HOURLY,
+    ROUTE_SLOTS,
+    function () use ($dir) {
+        return routeToolOk(ROUTE_BIN, $dir);
+    }
+);
+if ('tool_missing' === $refused) {
     routeAnswer(503, ['error' => 'tool_missing']);
+}
+if (null !== $refused) {
+    header('Retry-After: '.$wait);
+    routeAnswer(429, ['error' => $refused, 'retry_after' => $wait]);
 }
 
 $family = false !== strpos($ip, ':') ? 6 : 4;

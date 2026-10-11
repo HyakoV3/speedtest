@@ -207,6 +207,59 @@ $again = routeAcquireSlot($dir, 2);
 check(true, is_resource($again), 'a place is free after fclose');
 fclose($again);
 fclose($b);
+
+// routeBegin: a route that does not run uses nothing up
+$dir3 = sys_get_temp_dir().'/route-test-'.bin2hex(random_bytes(4));
+mkdir($dir3, 0700);
+$yes = function () {
+    return true;
+};
+$no = function () {
+    return false;
+};
+$files = function ($folder) {
+    return array_values(array_diff(scandir($folder), ['.', '..', 'state.lock', 'slot-0.lock', 'slot-1.lock']));
+};
+// All the places are taken: "busy", and nothing of the visitor or of the hour is written down
+$p0 = routeAcquireSlot($dir3, 2);
+$p1 = routeAcquireSlot($dir3, 2);
+check(['busy', 15, null], routeBegin($dir3, 'bb22', $now, 60, 60, 2, $yes), 'no place: busy');
+check([], $files($dir3), 'a busy answer writes nothing down (no file of the visitor, no hourly.json)');
+fclose($p0);
+fclose($p1);
+// The tool is missing: 503, nothing written down, and the place is free again
+check(['tool_missing', null, null], routeBegin($dir3, 'bb22', $now, 60, 60, 2, $no), 'no traceroute');
+check([], $files($dir3), 'a tool_missing answer writes nothing down');
+$q0 = routeAcquireSlot($dir3, 2);
+$q1 = routeAcquireSlot($dir3, 2);
+check(true, is_resource($q0) && is_resource($q1), 'the places are free after a tool_missing answer');
+fclose($q0);
+fclose($q1);
+// A route that starts is written down, and keeps its place
+$started = routeBegin($dir3, 'bb22', $now, 60, 60, 2, $yes);
+check([null, null], [$started[0], $started[1]], 'a route starts');
+check(true, is_resource($started[2]), 'with a place');
+check(['hourly.json', 'rl-bb22'], $files($dir3), 'and it is written down');
+// The same visitor again: refused by the limit, and the place goes back
+$again = routeBegin($dir3, 'bb22', $now, 60, 60, 2, $yes);
+check(['rate_client', 60, null], $again, 'the same visitor has to wait');
+$spare = routeAcquireSlot($dir3, 2);
+check(true, is_resource($spare), 'a refusal by the limit gives the place back');
+fclose($spare);
+fclose($started[2]);
+// A busy answer does not use up the minute of the visitor: the next try, with a place, is let in
+$dir4 = sys_get_temp_dir().'/route-test-'.bin2hex(random_bytes(4));
+mkdir($dir4, 0700);
+$h0 = routeAcquireSlot($dir4, 1);
+check('busy', routeBegin($dir4, 'cc33', $now, 60, 60, 1, $yes)[0], 'busy once');
+fclose($h0);
+$retry = routeBegin($dir4, 'cc33', $now + 15, 60, 60, 1, $yes);
+check(null, $retry[0], 'the retry after the 15 seconds that were told is let in');
+fclose($retry[2]);
+array_map('unlink', glob($dir3.'/*') ?: []);
+array_map('unlink', glob($dir4.'/*') ?: []);
+rmdir($dir3);
+rmdir($dir4);
 check(32, strlen(routeClientKey($dir, '203.0.113.5')), 'the key has 32 characters');
 check(routeClientKey($dir, '203.0.113.5'), routeClientKey($dir, '203.0.113.5'), 'the key is stable');
 check(true, routeClientKey($dir, '203.0.113.5') !== routeClientKey($dir, '203.0.113.6'), 'the key tells visitors apart');

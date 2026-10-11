@@ -590,6 +590,44 @@ function routeAcquireSlot($dir, $slots)
 }
 
 /**
+ * Lets a route start, in an order in which a route that does not run uses nothing up: first a free place, then the tool, and only
+ * then the limits of the visitor and of the server are written down. A visitor that finds all the places taken, or a server
+ * with no traceroute, has not spent its minute or one of the routes of the hour; a visitor that is refused by a limit gives
+ * the place back.
+ *
+ * @param string   $dir
+ * @param string   $key    routeClientKey()
+ * @param int      $now
+ * @param int      $window
+ * @param int      $hourly
+ * @param int      $slots
+ * @param callable $toolOk returns whether traceroute can be used
+ *
+ * @return array [null|"busy"|"tool_missing"|"rate_client"|"rate_server", seconds to wait or null, the place (close it when the route
+ *               is done) or null]
+ */
+function routeBegin($dir, $key, $now, $window, $hourly, $slots, callable $toolOk)
+{
+    $slot = routeAcquireSlot($dir, $slots);
+    if (false === $slot) {
+        return ['busy', 15, null];
+    }
+    if (!$toolOk()) {
+        fclose($slot);
+
+        return ['tool_missing', null, null];
+    }
+    $denied = routeAdmit($dir, $key, $now, $window, $hourly);
+    if (null !== $denied) {
+        fclose($slot);
+
+        return [$denied[0], $denied[1], null];
+    }
+
+    return [null, null, $slot];
+}
+
+/**
  * Runs the commands at the same time and reads what they write
  *
  * Each command is an array of arguments for proc_open(): no shell, nothing of the visitor in a string. A command is stopped
