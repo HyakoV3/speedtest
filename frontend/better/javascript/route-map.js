@@ -110,6 +110,9 @@ var LibreSpeedRouteMap = (function () {
     for (var i = 0; i < list.length; i++) {
       var c = list[i];
       if (used[i] || c.from > p.n || q.n > c.to) continue;
+      // A crossing between two networks ends in the network it goes to: a step of the first one that only looks like it (a hop of the
+      // database in another country) is not the sea
+      if (c.from !== c.to && q.n !== c.to) continue;
       if (regionCountry(c.start) !== p.country || regionCountry(c.end) !== q.country) continue;
       if (!regionAt(c.start) || !regionAt(c.end)) continue;
       used[i] = true;
@@ -166,7 +169,10 @@ var LibreSpeedRouteMap = (function () {
           return node.n === (side === "in" ? item.to : item.from);
         });
         var place = side === "in" ? regionAt(item.end) : regionAt(item.start);
-        if (inside && place) return place;
+        // The end must be in the country of the list: the crossing of a network that has its routers in two countries comes in by its
+        // second one, and does not go out by its first
+        var country = regionCountry(side === "in" ? item.end : item.start);
+        if (inside && place && country === code) return place;
       }
       return null;
     }
