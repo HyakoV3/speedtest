@@ -383,3 +383,44 @@ test("three real outputs of tracert of a Windows in Portuguese, checked against 
   expect(silent.hops[0]).toMatchObject({ ip: "192.168.0.1", sent: 3, answered: 2 });
   expect(silent.hops.slice(1).every(h => h.sent === 3 && h.answered === 3)).toBe(true);
 });
+
+test("the output of tracert sent through '| clip' (the accents of the messages are '?'), checked against the text by hand", async ({
+  page
+}) => {
+  await open(page);
+  const clip = await parse(page, fs.readFileSync(path.join(DIR, "windows-ptbr-real-clip.txt"), "utf8"));
+  expect(clip).toMatchObject({
+    tool: "tracert",
+    family: 4,
+    target_name: "better.hdl.hv4.xyz",
+    target_ip: "77.42.65.55"
+  });
+  expect(clip.hops).toHaveLength(15);
+  expect(clip.hops[5]).toMatchObject({ ip: "100.65.61.62", scope: "cgnat" });
+  // The jump of the sea: 3 ms and then 236 ms
+  expect(clip.hops[6]).toMatchObject({ ip: "8.242.72.137", rtt_min: 2, scope: "public" });
+  expect(clip.hops[7]).toMatchObject({ ip: "171.75.10.35", rtt_min: 236, sent: 3, answered: 2 });
+  // Two silent hops in the middle are kept (only the ones at the end are cut)
+  expect(clip.hops[11]).toMatchObject({ ttl: 12, ip: null, answered: 0 });
+  expect(clip.hops[12]).toMatchObject({ ttl: 13, ip: null, answered: 0 });
+  expect(clip.hops[14]).toMatchObject({ ttl: 15, ip: "77.42.65.55", rtt_min: 232 });
+});
+
+test("two real outputs from a GitHub runner: macOS with the routers of a hop in lines of their own, and a Windows that nothing answers", async ({
+  page
+}) => {
+  await open(page);
+  const mac = await parse(page, fs.readFileSync(path.join(DIR, "macos-traceroute-real-ci.txt"), "utf8"));
+  expect(mac).toMatchObject({ tool: "traceroute", family: 4, skipped: 0 });
+  expect(mac.hops).toHaveLength(13);
+  // A silent first hop is kept: the others are after it
+  expect(mac.hops[0]).toMatchObject({ ttl: 1, ip: null, answered: 0, scope: "none" });
+  expect(mac.hops[2]).toMatchObject({ ip: "4.136.205.220", alt_ips: ["4.136.205.216"], answered: 3 });
+  expect(mac.hops[3]).toMatchObject({ ip: "100.83.24.101", scope: "cgnat" });
+  expect(mac.hops[4]).toMatchObject({ ip: "10.58.77.18", scope: "private" });
+  expect(mac.hops[6]).toMatchObject({ ip: "51.10.22.207", sent: 3, answered: 1 });
+  expect(mac.hops[12]).toMatchObject({ ttl: 13, ip: "8.8.8.8", answered: 3 });
+  // When no hop answers, there is no route to show
+  const silent = await parse(page, fs.readFileSync(path.join(DIR, "windows-en-real-allsilent-ci.txt"), "utf8"));
+  expect(silent).toEqual({ error: "unknown" });
+});

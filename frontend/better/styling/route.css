@@ -716,6 +716,13 @@ html.high-contrast .route-map-dot-other {
   margin-top: 2em;
 }
 
+.route-back-clip {
+  display: flex;
+  gap: 0.5em;
+  align-items: center;
+  margin: 0.5em 0;
+}
+
 .route-visually-hidden {
   position: absolute;
   width: 1px;

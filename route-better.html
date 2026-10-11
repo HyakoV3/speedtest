@@ -77,6 +77,19 @@
           <code id="routeBackCommand" tabindex="0"></code>
           <button type="button" id="routeBackCopy" class="history-action" data-i18n="route.back.copy">Copy</button>
         </div>
+        <label class="route-back-clip">
+          <input type="checkbox" id="routeBackClip" />
+          <span data-i18n="route.back.clip-label">Send the result to the clipboard</span>
+        </label>
+        <p id="routeBackClipHint" class="route-hint" hidden>
+          <span data-i18n="route.back.clip-hint">
+            The terminal shows nothing until the command ends (it can take up to two minutes). Then press Paste and
+            show.
+          </span>
+          <span id="routeBackClipLinux" data-i18n="route.back.clip-linux" hidden>
+            On Linux this uses xclip; with Wayland, use wl-copy in its place.
+          </span>
+        </p>
         <p id="routeBackNoCommand" class="route-hint" data-i18n="route.back.no-command" hidden>
           No command is shown: the name of this server has a character that a command line should not get. Trace to it
           by hand and paste the output.
@@ -100,13 +113,24 @@
           autocomplete="off"
           autocapitalize="off"
         ></textarea>
+        <p class="route-hint" data-i18n="route.back.drop-hint">
+          You can also drop a .txt file with the output on the box.
+        </p>
         <p class="route-hint" data-i18n="route.back.privacy">
-          When you press Show my route, only the public addresses of the routers (never your internal network) are sent
-          to this server, to look up their network and country. They are not saved; only a keyed hash of your own
-          address is kept, for up to an hour, to limit how often this can be asked.
+          When you press Show my route or Paste and show, only the public addresses of the routers (never your internal
+          network) are sent to this server, to look up their network and country. They are not saved; only a keyed hash
+          of your own address is kept, for up to an hour, to limit how often this can be asked.
         </p>
         <div id="routeBackNotes" class="route-back-notes" role="status" aria-live="polite"></div>
         <div class="route-paste-actions">
+          <button
+            type="button"
+            id="routeBackPasteClip"
+            class="route-button route-button-small"
+            data-i18n="route.back.paste-clip"
+          >
+            Paste and show
+          </button>
           <button type="button" id="routeBackShow" class="route-button route-button-small" data-i18n="route.back.show">
             Show my route
           </button>

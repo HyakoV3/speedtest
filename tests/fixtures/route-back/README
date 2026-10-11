@@ -14,6 +14,14 @@ linux-*, REAL: run on Linux (Ubuntu), here. The hostname of mtr was changed to "
   windows-ptbr-real-silent.txt   tracert -d -h 30 -w 1000 192.0.2.1: a hop with one lost probe among answers, then 26 hops with no
                                  answer ("Esgotado o tempo limite do pedido."), which the parser cuts at the end of the route
                                  (The three came from PowerShell as UTF-16 files and were converted to UTF-8; the text is the same.)
+  windows-ptbr-real-clip.txt     tracert to a name ("better.hdl.hv4.xyz [77.42.65.55]") with "| clip", pasted from the clipboard: the accents of
+                                 the Windows messages came out as "?" ("m?ximo", "conclu?do"); a jump from 3 ms to 236 ms at hop 8, a probe lost
+                                 in two hops, two silent hops in the middle, the destination at the end
+  macos-traceroute-real-ci.txt   REAL macOS: traceroute -n -m 30 -w 1 8.8.8.8 on a GitHub Actions runner (the header goes to stderr, so it is not
+                                 here), with the routers of a hop in lines of their own, one probe lost in the middle of a hop, internal
+                                 and CGNAT addresses, and a silent first hop
+  windows-en-real-allsilent-ci.txt  REAL Windows in English: tracert -d -h 30 -w 1000 8.8.8.8 on a runner, through a pipe (CRLF): every hop is
+                                 "Request timed out." (the network drops the packets), so the page says it does not look like a route
   linux-traceroute-v6-real.txt   traceroute -n -m 30 -w 1 -6 2001:4860:4860::8888 run on the server of a hosting provider, over IPv6
                                  (two and three routers in one hop, the destination at the end)
 
