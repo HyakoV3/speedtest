@@ -896,6 +896,13 @@
     function pick(rows) {
       var select = document.getElementById("historyGroup");
       if (!select || select.hidden || /b$/.test(select.value)) return rows;
+      // With only way-back routes in the history, "All" has nothing to keep apart: it shows them instead of nothing
+      if (
+        !readRows().some(function (row) {
+          return row && row.d !== "b";
+        })
+      )
+        return rows;
       return rows.filter(function (row) {
         return row.d !== "b";
       });
