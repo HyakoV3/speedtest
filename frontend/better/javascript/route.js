@@ -36,9 +36,13 @@
   var compareBox = document.getElementById("routeCompare");
   var compareText = document.getElementById("routeCompareText");
   var compareLists = document.getElementById("routeCompareLists");
+  var bothBox = document.getElementById("routeMapBoth");
+  var bothButton = document.getElementById("routeMapBothButton");
+  var legendList = document.getElementById("routeMapLegend");
 
   var VIEW_KEY = "librespeed-better-route-view";
   var DIRECTION_KEY = "librespeed-better-route-direction";
+  var BOTH_KEY = "librespeed-better-route-map-both";
   var ENRICH_ENDPOINT = "backend/route_enrich.php";
   var HISTORY_KEY = "librespeed-better-route-history";
   var SUMMARY_KEY = "librespeed-better-route-history-summary";
@@ -182,6 +186,7 @@
     });
     document.getElementById("routeMapHost").hidden = false;
     document.getElementById("routeMapNone").hidden = true;
+    bothBox.hidden = true;
     var zoom = document.getElementById("routeMapZoom");
     zoom.hidden = false;
     Array.prototype.forEach.call(zoom.querySelectorAll("[data-zoom]"), function (button) {
@@ -479,6 +484,18 @@
   };
   var current = firstView();
 
+  // Whether the map draws the other direction too (when there is one): on, until the person turns it off
+  var mapBoth = savedBoth();
+  bothButton.setAttribute("aria-pressed", String(mapBoth));
+
+  function savedBoth() {
+    try {
+      return window.localStorage.getItem(BOTH_KEY) !== "off";
+    } catch (error) {
+      return true;
+    }
+  }
+
   function savedView() {
     try {
       return window.localStorage.getItem(VIEW_KEY);
@@ -610,8 +627,46 @@
     );
   }
 
+  // The route of the other direction, when there is one: the one that the person does not have on the screen
+  function otherData() {
+    return direction === "there" ? backOf() : thereOf();
+  }
+
+  // The button and the legend of the two directions on the map: the button when there is another direction to show, the legend when it
+  // is drawn. The label of the first direction is next to the line of the numbers, the one of the other next to the line under it
+  function drawBoth(has, drawn) {
+    bothBox.hidden = !has;
+    bothButton.setAttribute("aria-pressed", String(mapBoth));
+    legendList.hidden = !drawn;
+    legendList.textContent = "";
+    if (!drawn) return;
+    [
+      { other: false, key: direction === "there" ? "route.direction.there" : "route.direction.back" },
+      { other: true, key: direction === "there" ? "route.direction.back" : "route.direction.there" }
+    ].forEach(function (way) {
+      var item = document.createElement("li");
+      var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.setAttribute("viewBox", "0 0 28 10");
+      svg.setAttribute("aria-hidden", "true");
+      svg.setAttribute("focusable", "false");
+      var line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.setAttribute("x1", "1");
+      line.setAttribute("x2", "27");
+      line.setAttribute("y1", "5");
+      line.setAttribute("y2", "5");
+      line.setAttribute("class", "route-map-leg" + (way.other ? " route-map-leg-other" : ""));
+      svg.appendChild(line);
+      item.appendChild(svg);
+      item.appendChild(document.createTextNode(t(way.key)));
+      legendList.appendChild(item);
+    });
+  }
+
   function renderMap() {
     var md = view.mapData(lastData, window.LibreSpeedRouteCrossings);
+    var second = otherData();
+    var other = second ? view.mapData(second, window.LibreSpeedRouteCrossings) : null;
+    if (other && !other.countries.length) other = null;
     var host = document.getElementById("routeMapHost");
     var zoom = document.getElementById("routeMapZoom");
     var none = document.getElementById("routeMapNone");
@@ -623,9 +678,12 @@
     none.hidden = !empty;
     if (empty) {
       map.destroy();
+      bothBox.hidden = true;
       return;
     }
-    map.render(host, md, zoom);
+    var drawn = mapBoth ? other : null;
+    drawBoth(other !== null, drawn !== null);
+    map.render(host, md, zoom, drawn || undefined);
   }
 
   function label() {
@@ -863,7 +921,13 @@
       backSaved = false;
     }
     drawSave();
-    if (direction !== "back") return;
+    if (direction !== "back") {
+      // The networks of the way back arrive when the person may be looking at the way from the server: the map and the comparison
+      // show them as soon as they are there
+      if (lastData && current === "map" && mapFiles.ready()) renderMap();
+      drawCompare();
+      return;
+    }
     lastData = data;
     if (first && mapFiles.ready()) window.LibreSpeedRouteMap.resetView();
     draw(data);
@@ -875,7 +939,11 @@
     backReady = false;
     backSaved = false;
     drawSave();
-    if (direction !== "back") return;
+    if (direction !== "back") {
+      if (lastData && current === "map" && mapFiles.ready()) renderMap();
+      drawCompare();
+      return;
+    }
     lastData = null;
     clear();
     setStatus(null);
@@ -1274,5 +1342,15 @@
     if (lastData) draw(lastData);
   });
   saveButton.addEventListener("click", saveBack);
+  bothButton.addEventListener("click", function () {
+    mapBoth = !mapBoth;
+    try {
+      window.localStorage.setItem(BOTH_KEY, mapBoth ? "on" : "off");
+    } catch (error) {
+      // The choice only lasts until the page is closed
+    }
+    if (lastData && current === "map" && mapFiles.ready()) renderMap();
+    else bothButton.setAttribute("aria-pressed", String(mapBoth));
+  });
   Promise.resolve(window.LibreSpeedI18n && window.LibreSpeedI18n.ready).then(init);
 })();

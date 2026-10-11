@@ -235,6 +235,7 @@
   "route.map.zoom-out": "Zooma ut",
   "route.map.zoom-world": "Världen",
   "route.map.zoom-fit": "Vägen",
+  "route.map.both": "Visa båda riktningarna",
   "privacy.route": "Vägsidan: när du trycker på Starta lämnas din IP-adress till ett kommando på den här servern som skickar testpaket till den. Resultatet visas bara för dig och sparas inte på servern; din webbläsare behåller dina senaste vägar (Väghistorik) tills du rensar dem. För att begränsa hur ofta vägar spåras sparas en nyckelbaserad hash av din adress i upp till en minut.",
   "privacy.route-back": "Ruttsidan, din väg till servern: texten du klistrar in läses i din webbläsare. När du trycker på Visa min väg skickas bara routrarnas offentliga adresser till den här servern för att slå upp deras nätverk och land; de sparas inte, och dina interna adresser lämnar aldrig webbläsaren. För att begränsa hur ofta det kan begäras sparas en nyckelbaserad hash av din adress och tidpunkterna för dina förfrågningar i upp till en timme.",
   "route.history.title": "Väghistorik",

@@ -537,6 +537,69 @@
   border-radius: var(--radius-button);
 }
 
+/* In high contrast --secondary is white, the colour of the first line: the other direction takes the yellow */
+html.high-contrast .route-map-leg.route-map-leg-other,
+html.high-contrast .route-map-you.route-map-you-other,
+html.high-contrast .route-map-landing.route-map-landing-other {
+  stroke: var(--primary);
+}
+
+html.high-contrast .route-map-arrow.route-map-leg-other,
+html.high-contrast .route-map-via.route-map-via-other,
+html.high-contrast .route-map-dot-other {
+  fill: var(--primary);
+}
+
+.route-map-both {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em 1em;
+  align-items: center;
+}
+
+.route-map-both button {
+  min-height: 2.5rem;
+  padding: 0.2em 0.8em;
+  font: inherit;
+  color: var(--text);
+  cursor: pointer;
+  background: var(--surface);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-button);
+}
+
+.route-map-both button[aria-pressed="true"] {
+  background: var(--primary-subtle);
+  border-color: var(--primary);
+}
+
+.route-map-both button:focus-visible {
+  outline: 0.1875rem solid var(--text);
+  outline-offset: 0.125rem;
+}
+
+.route-map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3em 1em;
+  padding: 0;
+  margin: 0;
+  font-size: 0.85em;
+  list-style: none;
+}
+
+.route-map-legend li {
+  display: flex;
+  gap: 0.4em;
+  align-items: center;
+}
+
+.route-map-legend svg {
+  flex: none;
+  width: 1.8em;
+  height: 0.7em;
+}
+
 .route-map-zoom button:disabled {
   cursor: default;
   opacity: 0.45;
@@ -591,6 +654,34 @@
   fill: var(--surface);
   stroke: var(--text);
   stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+}
+
+/* The other way of the route, under the one of the numbers: the colour is another one, and the dashes are the same (land, sea, tail) */
+.route-map-leg.route-map-leg-other {
+  stroke: var(--secondary);
+  stroke-opacity: 0.9;
+}
+
+.route-map-arrow.route-map-leg-other {
+  fill: var(--secondary);
+  stroke: none;
+}
+
+.route-map-you.route-map-you-other {
+  stroke: var(--secondary);
+  stroke-dasharray: 3 2;
+}
+
+.route-map-landing.route-map-landing-other {
+  stroke: var(--secondary);
+}
+
+.route-map-via.route-map-via-other,
+.route-map-dot-other {
+  fill: var(--secondary);
+  stroke: var(--surface);
+  stroke-width: 1.5px;
   vector-effect: non-scaling-stroke;
 }
 
