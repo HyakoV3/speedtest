@@ -159,7 +159,7 @@ test("the choice of the period is kept after a reload", async ({ page }) => {
   expect((await tableLines(page))[0][0]).toBe("01/10 – 31/10/2026");
 });
 
-test("speed test: with single and multiple results the group can be chosen, the most recent first", async ({
+test("speed test: with single and multiple results the group is All, and can be chosen, the most recent first", async ({
   page
 }) => {
   await openSpeed(page, {
@@ -174,7 +174,10 @@ test("speed test: with single and multiple results the group can be chosen, the 
   await page.locator("#historyPeriod").selectOption("day");
   await expect(page.locator("#historyGroup")).toBeVisible();
   await expect(page.locator("#historyGroup option")).toHaveCount(3);
-  await expect(page.locator("#historyGroup")).toHaveValue("single");
+  // Until one is chosen, it is All: both of them
+  await expect(page.locator("#historyGroup option:checked")).toHaveText("All");
+  expect((await tableLines(page)).map(line => line[0])).toEqual(["09/10/2026", "08/10/2026"]);
+  await page.locator("#historyGroup").selectOption("single");
   expect(await tableLines(page)).toEqual([["09/10/2026", "1", "20.0", "10.0", "5.00", "--"]]);
   await page.locator("#historyGroup").selectOption("multi");
   expect(await tableLines(page)).toEqual([["08/10/2026", "1", "300", "10.0", "5.00", "--"]]);

@@ -153,7 +153,9 @@ test("the single and the multiple connections have their own trend", async ({ pa
     }
   });
   await page.locator("#historyPeriod").selectOption("week");
-  await expect(page.locator("#historyGroup")).toHaveValue("single");
+  // Until one is chosen, it is All
+  await expect(page.locator("#historyGroup option:checked")).toHaveText("All");
+  await page.locator("#historyGroup").selectOption("single");
   expect((await tableLines(page)).map(line => line[line.length - 1])).toEqual(["--"]);
   await page.locator("#historyGroup").selectOption("multi");
   expect((await tableLines(page)).map(line => line[line.length - 1])).toEqual(["+100.0%", "--"]);
