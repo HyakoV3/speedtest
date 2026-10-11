@@ -102,9 +102,7 @@ for (const { name, path, start } of pages) {
       expect(await rootStyle(page, "--brand-h")).toBe("255");
     });
 
-    test("the language is chosen with the URL or the panel and kept, with English for what is missing", async ({
-      page
-    }) => {
+    test("the language is chosen with the URL or the panel and kept", async ({ page }) => {
       await open(page, path, "?lang=pt");
       await expect(page.locator("html")).toHaveAttribute("lang", "pt");
       await expect(page.locator(start)).toHaveText("Iniciar");
@@ -118,9 +116,9 @@ for (const { name, path, start } of pages) {
 
       await page.goto(`${staticRepositoryUrl}${path}?lang=sv`);
       await expect(page.locator("html")).toHaveAttribute("lang", "sv");
-      // The panel has no Swedish text yet, so it shows the English one
+      // The panel is in Swedish too
       await page.locator(".panel-button").click();
-      await expect(page.locator(".panel-title").first()).toHaveText("Mode");
+      await expect(page.locator(".panel-title").first()).toHaveText("Läge");
     });
 
     test("a font set, the text size and high contrast work from the panel", async ({ page }) => {
