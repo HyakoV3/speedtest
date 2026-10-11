@@ -466,6 +466,8 @@
             var mark = cell("span", "◆", "route-compare-mark");
             mark.setAttribute("aria-hidden", "true");
             item.insertBefore(mark, item.firstChild);
+            // The mark is only a picture: the same is said, for whoever does not see it, after the name
+            item.appendChild(cell("span", " (" + t("route.compare.only-mark") + ")", "route-visually-hidden"));
           }
           items.appendChild(item);
         });

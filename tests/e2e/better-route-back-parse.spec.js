@@ -303,3 +303,83 @@ test("a name that ends in a number and a letter is not a time, and a word that l
     rtt_min: 1.5
   });
 });
+
+test("two real outputs of Linux, checked against the text by hand: a home connection over IPv4 and a server over IPv6", async ({
+  page
+}) => {
+  await open(page);
+  const read = name => parse(page, fs.readFileSync(path.join(DIR, name), "utf8"));
+
+  // From a home connection: internal networks, then the CGNAT of the provider, a hop of three routers, a silent hop, the destination
+  const home = await read("linux-traceroute-v4-cgnat.txt");
+  expect(home).toMatchObject({ tool: "traceroute", family: 4, target_ip: "8.8.8.8", skipped: 0 });
+  expect(home.hops).toHaveLength(12);
+  expect(home.hops.map(h => h.scope)).toEqual([
+    "private",
+    "private",
+    "private",
+    "private",
+    "private",
+    "cgnat",
+    "cgnat",
+    "cgnat",
+    "cgnat",
+    "public",
+    "none",
+    "public"
+  ]);
+  expect(home.hops[7]).toMatchObject({
+    ttl: 8,
+    ip: "100.64.10.69",
+    alt_ips: ["100.64.10.88", "100.64.10.51"],
+    rtt_min: 17.86,
+    answered: 3
+  });
+  expect(home.hops[10]).toMatchObject({ ttl: 11, ip: null, answered: 0, sent: 3 });
+  expect(home.hops[11]).toMatchObject({ ttl: 12, ip: "8.8.8.8", rtt_min: 16.8 });
+
+  // Over IPv6 from a hosting provider: two and three routers in one hop, the destination at the end
+  const v6 = await read("linux-traceroute-v6-real.txt");
+  expect(v6).toMatchObject({ tool: "traceroute", family: 6, target_ip: "2001:4860:4860::8888", skipped: 0 });
+  expect(v6.hops.map(h => h.ip)).toEqual([
+    "2602:fdb8:131:c001::1",
+    "2602:fdb8:132:101::1",
+    "2620:b8:4000:2f01::1",
+    "2607:f8b0:8482:40::1",
+    "2607:f8b0:8484:c0::1",
+    "2001:4860:4860::8888"
+  ]);
+  expect(v6.hops[1].alt_ips).toEqual(["2602:fdb8:1f3:200::1"]);
+  expect(v6.hops[3].alt_ips).toEqual(["2607:f8b0:8484:40::1", "2607:f8b0:8484:80::1"]);
+  expect(v6.hops[4].alt_ips).toEqual(["2607:f8b0:8482:140::1", "2607:f8b0:8482:c0::1"]);
+  expect(v6.hops.every(h => h.scope === "public" && h.answered === 3)).toBe(true);
+  expect(v6.hops[5]).toMatchObject({ rtt_min: 0.48 });
+});
+
+test("three real outputs of tracert of a Windows in Portuguese, checked against the text by hand", async ({ page }) => {
+  await open(page);
+  const read = name => parse(page, fs.readFileSync(path.join(DIR, name), "utf8"));
+
+  const v4 = await read("windows-ptbr-real-v4.txt");
+  expect(v4).toMatchObject({ tool: "tracert", family: 4, target_ip: "8.8.8.8", skipped: 0 });
+  expect(v4.hops).toHaveLength(13);
+  expect(v4.hops[0]).toMatchObject({ ip: "192.168.0.1", rtt_min: 0.5, sent: 3, answered: 3 });
+  expect(v4.hops[5].scope).toBe("cgnat");
+  expect(v4.hops[7]).toMatchObject({ ttl: 8, ip: "100.64.10.88", rtt_min: 15 });
+  expect(v4.hops[12]).toMatchObject({ ttl: 13, ip: "8.8.8.8", scope: "public" });
+
+  // The header is in two lines and the first router has a name
+  const names = await read("windows-ptbr-real-names.txt");
+  expect(names).toMatchObject({ tool: "tracert", target_name: "dns.google", target_ip: "8.8.8.8" });
+  expect(names.hops).toHaveLength(12);
+  expect(names.hops[0].ip).toBe("192.168.0.1");
+  expect(names.hops[11].ip).toBe("192.178.240.77");
+
+  // A hop with a lost probe among answers, then 26 hops with no answer: the ones at the end are cut, as the parser does with any
+  // silent hop at the end of a route (they say nothing)
+  const silent = await read("windows-ptbr-real-silent.txt");
+  expect(silent).toMatchObject({ tool: "tracert", target_ip: "192.0.2.1" });
+  expect(silent.hops).toHaveLength(4);
+  expect(silent.hops[0]).toMatchObject({ ip: "192.168.0.1", sent: 3, answered: 2 });
+  expect(silent.hops.slice(1).every(h => h.sent === 3 && h.answered === 3)).toBe(true);
+});

@@ -6,6 +6,16 @@ linux-*, REAL: run on Linux (Ubuntu), here. The hostname of mtr was changed to "
   linux-traceroute-names.txt    traceroute -m 10 -w 1 8.8.8.8  (names and "(address)", three routers in one hop)
   linux-tracepath-n.txt         tracepath -n -m 12 1.1.1.1  (the same hop twice, "pmtu", "asymm", "no reply")
   linux-mtr.txt                 mtr -rwn -c 3 -m 12 1.1.1.1
+  linux-traceroute-v4-cgnat.txt  traceroute -n -m 30 -w 1 8.8.8.8 from a home connection (private and CGNAT hops, three routers in one
+                                 hop of 100.64.x.x, a silent hop, the destination)
+  windows-ptbr-real-v4.txt       tracert -d -h 30 -w 1000 8.8.8.8, Windows in Portuguese (Brazil), CRLF, 13 hops, destination reached
+  windows-ptbr-real-names.txt    tracert -h 12 -w 1000 8.8.8.8: a two-line header ("dns.google [8.8.8.8]", "com no maximo 12 saltos:"), the
+                                 name of the first router in the form "router [192.168.0.1]", the destination not reached
+  windows-ptbr-real-silent.txt   tracert -d -h 30 -w 1000 192.0.2.1: a hop with one lost probe among answers, then 26 hops with no
+                                 answer ("Esgotado o tempo limite do pedido."), which the parser cuts at the end of the route
+                                 (The three came from PowerShell as UTF-16 files and were converted to UTF-8; the text is the same.)
+  linux-traceroute-v6-real.txt   traceroute -n -m 30 -w 1 -6 2001:4860:4860::8888 run on the server of a hosting provider, over IPv6
+                                 (two and three routers in one hop, the destination at the end)
 
 Written by hand from the documented format of each tool. They are NOT output of a real machine, and must be replaced by the real
 ones when someone has them (the roadmap asks for tracert in pt-BR, en, es and sv; traceroute and traceroute6 of macOS):
