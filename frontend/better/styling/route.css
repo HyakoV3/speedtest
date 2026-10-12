@@ -2,7 +2,8 @@
    the speed test and of the stability test: a centered column, the primary action in the same outlined button, the numbers in the primary color. */
 
 /* Some rules below set a display, and that would win over the hidden attribute: hidden has to keep meaning hidden */
-#routeArea [hidden] {
+#routeArea [hidden],
+#routeSide [hidden] {
   display: none !important;
 }
 
@@ -774,17 +775,17 @@ html.high-contrast .route-map-dot-other {
   flex: 1 1 auto;
 }
 
-/* The route the visitor traced: the commands to run, and the box to paste what they print */
+/* The route the visitor traced: the commands to run, and the box to paste what they print. It lives in the panel at the side. */
 .route-back {
   padding: 1em 1.2em;
-  margin: 1.2em 0 0;
+  margin: 0;
   text-align: left;
   background: var(--surface);
   border: 0.0625rem solid var(--border);
   border-radius: var(--radius-card);
 }
 
-.route-back h3 {
+.route-back h2 {
   margin: 0 0 0.6em;
   font-size: 1em;
 }
@@ -992,5 +993,111 @@ p.route-hint code {
 @media (prefers-reduced-motion: reduce) {
   .route-toast {
     animation: none;
+  }
+}
+
+/* The panel at the side. It is not a dialog: it floats over the right of the page, does not push it, and the page behind stays usable.
+   Under the red box of the errors (500) and the panel of the themes (1000) and the privacy dialog, over everything else of the page. */
+.route-side {
+  position: fixed;
+  top: 4.5rem;
+  right: 1rem;
+  bottom: 4.5rem;
+  z-index: 400;
+  box-sizing: border-box;
+  width: min(24rem, calc(100vw - 2rem));
+  padding: 0.4rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--surface);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: 0 0.4rem 1.6rem rgb(0 0 0 / 30%);
+}
+
+.route-side[hidden],
+.route-side-toggle[hidden] {
+  display: none;
+}
+
+.route-side .route-back {
+  border: 0;
+}
+
+.route-side-close {
+  position: sticky;
+  top: 0;
+  float: right;
+  z-index: 1;
+  width: 2em;
+  height: 2em;
+  padding: 0;
+  margin: 0 0 0 0.5em;
+  font: inherit;
+  font-size: 1.3em;
+  line-height: 1;
+  color: var(--text);
+  cursor: pointer;
+  background: var(--surface);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-button);
+}
+
+.route-side-close:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.route-side-toggle {
+  position: fixed;
+  right: calc(1rem + env(safe-area-inset-right, 0px));
+  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  z-index: 400;
+  padding: 0.6em 1.1em;
+  font: inherit;
+  font-weight: 600;
+  color: var(--primary);
+  cursor: pointer;
+  background: var(--surface);
+  border: 0.15em solid var(--primary);
+  border-radius: 2em;
+  box-shadow: 0 0.2rem 0.8rem rgb(0 0 0 / 35%);
+}
+
+/* The button on the edge never covers the last links of the page */
+body.route-side-on {
+  padding-bottom: 4.5rem;
+}
+
+@media (max-width: 37.5em) {
+  /* A sheet that comes up from the bottom */
+  .route-side {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: auto;
+    max-height: 85dvh;
+    padding-bottom: calc(0.4rem + env(safe-area-inset-bottom, 0px));
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: var(--radius-card) var(--radius-card) 0 0;
+  }
+}
+
+@media (forced-colors: active) {
+  .route-side,
+  .route-side-toggle,
+  .route-toast {
+    border: 0.125rem solid CanvasText;
+  }
+}
+
+@media print {
+  .route-side,
+  .route-side-toggle,
+  .route-toast {
+    display: none;
   }
 }

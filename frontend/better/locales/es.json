@@ -237,6 +237,7 @@
   "route.back.cli-run": "Ejecútalo y luego pulsa Pegar y mostrar.",
   "route.back.extension-hint": "Con la extensión del navegador: pulsa su icono en esta página y Trazar; la ruta llega aquí sola.",
   "route.back.from-extension": "Ruta recibida de la extensión del navegador.",
+  "route.side.toggle": "Probar la vuelta",
   "route.back.trace": "Trazar la vuelta",
   "route.back.trace-cancel": "Cancelar",
   "route.back.trace-setup": "Este botón funciona con la extensión del navegador una vez que permites este sitio: pulsa el icono de la extensión en esta página y “Permitir este sitio”.",

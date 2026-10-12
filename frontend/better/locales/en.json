@@ -237,6 +237,7 @@
   "route.back.cli-run": "Run it, then press Paste and show.",
   "route.back.extension-hint": "With the browser extension: click its icon on this page and press Trace; the route comes here by itself.",
   "route.back.from-extension": "Route received from the browser extension.",
+  "route.side.toggle": "Test the way back",
   "route.back.trace": "Trace the way back",
   "route.back.trace-cancel": "Cancel",
   "route.back.trace-setup": "This button works with the browser extension once you allow this site: click the icon of the extension on this page and press “Allow this site”.",

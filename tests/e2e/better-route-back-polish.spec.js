@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { test, expect } = require("@playwright/test");
+const { openBackPanel, showRoute } = require("./helpers/route-side");
 
 const staticRepositoryUrl = "http://127.0.0.1:18184";
 
@@ -58,11 +59,7 @@ async function openRoute(page, base = staticRepositoryUrl) {
   await page.waitForFunction(() => !!window.LibreSpeedI18n);
   await page.evaluate(() => window.LibreSpeedI18n.ready);
 }
-const goBack = async page => {
-  await expect(page.locator("#routeDirection")).toBeVisible();
-  await page.locator('[data-direction="back"]').click();
-  await expect(page.locator("#routeBack")).toBeVisible();
-};
+const goBack = openBackPanel;
 
 test("P1 the wait is told as up to two minutes, in the four languages: a tracert to a silent host takes about 90 s", async ({
   page

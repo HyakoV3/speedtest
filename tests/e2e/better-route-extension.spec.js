@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { test, expect } = require("@playwright/test");
+const { openBackPanel, showRoute } = require("./helpers/route-side");
 
 const staticRepositoryUrl = "http://127.0.0.1:18184";
 
@@ -39,7 +40,7 @@ async function openRoute(page, caps = CAPS, { waitForSwitch = true } = {}) {
   await page.goto(`${staticRepositoryUrl}/route-better.html`);
   await page.waitForFunction(() => !!window.LibreSpeedI18n);
   await page.evaluate(() => window.LibreSpeedI18n.ready);
-  if (waitForSwitch) await expect(page.locator("#routeDirection")).toBeVisible();
+  if (waitForSwitch) await expect(page.locator("#routeSideToggle")).toBeVisible();
   return seen;
 }
 // What the extension does: the page gets a message of its own window, for its own origin
@@ -51,9 +52,11 @@ test("M1 a route handed over by the extension is shown at once, on the way back,
   page
 }) => {
   const seen = await openRoute(page);
-  await expect(page.locator('[data-direction="there"]')).toHaveAttribute("aria-pressed", "true");
+  // Nothing is shown and no panel is open: the route comes and is shown at once, as the way back
+  await expect(rows(page)).toHaveCount(0);
+  await expect(page.locator("#routeSide")).toBeHidden();
   await hand(page, message(LSR1));
-  await expect(page.locator('[data-direction="back"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#routeTable caption")).toHaveText("Hops from you to this server");
   await expect(rows(page)).toHaveCount(14);
   await expect(page.locator("#routeBackNotes")).toContainText("Route received from the browser extension.");
   await expect(page.locator("#routeBackText")).toHaveValue(LSR1);
@@ -107,7 +110,7 @@ test("M2 only a message of this window, of this origin, of exactly this shape an
   await expect(page.locator("#routeBackText")).toHaveValue("");
   await expect(rows(page)).toHaveCount(0);
   expect(seen.enrich).toHaveLength(0);
-  await expect(page.locator('[data-direction="there"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(rows(page)).toHaveCount(0);
   // The same message, well formed, is taken
   await hand(page, message(LSR1));
   await expect(rows(page)).toHaveCount(14);
@@ -144,7 +147,7 @@ test("M5 the hint and the note are in the four languages, and the privacy text n
     es: ["Con la extensión del navegador", "Ruta recibida de la extensión del navegador.", "extensión de tu navegador"],
     sv: ["Med webbläsartillägget", "Vägen togs emot från webbläsartillägget.", "webbläsartillägg"]
   };
-  await page.locator('[data-direction="back"]').click();
+  await openBackPanel(page);
   for (const [language, [hint, note, privacy]] of Object.entries(texts)) {
     await page.evaluate(code => window.LibreSpeedI18n.set(code, false), language);
     await expect(page.locator("#routeBackExtension")).toContainText(hint);
@@ -158,7 +161,7 @@ test("M5 the hint and the note are in the four languages, and the privacy text n
 test("M6 at 360 px the hint fits, in Swedish", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 740 });
   await openRoute(page);
-  await page.locator('[data-direction="back"]').click();
+  await openBackPanel(page);
   await page.evaluate(() => window.LibreSpeedI18n.set("sv", false));
   await expect(page.locator("#routeBackExtension")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(

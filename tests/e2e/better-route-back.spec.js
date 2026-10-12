@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { test, expect } = require("@playwright/test");
+const { openBackPanel, showRoute } = require("./helpers/route-side");
 
 const staticRepositoryUrl = "http://127.0.0.1:18184";
 
@@ -9,6 +10,7 @@ const sample = name => fs.readFileSync(path.join(__dirname, "..", "fixtures", "r
 
 const CAPS = { v: 1, enabled: true, ipv6: false, window_s: 60 };
 const KEY = "librespeed-better-route-direction";
+const SIDE = "librespeed-better-route-side";
 
 // The networks that the test gives to the routers: by the last number of the address ("9.9.9.<n>" is AS<n>)
 const ENRICH = body => ({
@@ -45,26 +47,26 @@ async function openRoute(page, { post = fixture("normal"), enrich = ENRICH, quer
   return seen;
 }
 
-const goBack = async page => {
-  await expect(page.locator("#routeDirection")).toBeVisible();
-  await page.locator('[data-direction="back"]').click();
-  await expect(page.locator("#routeBack")).toBeVisible();
-};
+const goBack = openBackPanel;
 const paste = async (page, text) => {
   await page.locator("#routeBackText").fill(text);
   await page.locator("#routeBackShow").click();
 };
 const rows = page => page.locator("#routeTable tbody tr");
 
-test("the direction is only there when the server can trace routes, and starts at 'Server → you'", async ({ page }) => {
+test("the panel of the way back is only there when the server can trace routes, and the page starts at 'Server → you'", async ({
+  page
+}) => {
   await openRoute(page, { caps: { v: 1, enabled: false } });
   await expect(page.locator("#routeStatus")).toContainText("not available");
-  await expect(page.locator("#routeDirection")).toBeHidden();
+  await expect(page.locator("#routeSideToggle")).toBeHidden();
+  await expect(page.locator("#routeSide")).toBeHidden();
   const other = await page.context().newPage();
   await openRoute(other);
-  await expect(other.locator("#routeDirection")).toBeVisible();
-  await expect(other.locator('[data-direction="there"]')).toHaveAttribute("aria-pressed", "true");
-  await expect(other.locator("#routeBack")).toBeHidden();
+  await expect(other.locator("#routeSideToggle")).toBeVisible();
+  // The panel is closed, and the selector of the two routes is not there while there is only one
+  await expect(other.locator("#routeSide")).toBeHidden();
+  await expect(other.locator("#routeShown")).toBeHidden();
   await expect(other.locator("#routeStart")).toBeVisible();
 });
 
@@ -73,7 +75,8 @@ test("the tracert of a Portuguese Windows is drawn: a line for each hop, the sil
 }) => {
   const seen = await openRoute(page);
   await goBack(page);
-  await expect(page.locator("#routeStart")).toBeHidden();
+  // Start is on the page while the panel is open: the way from the server can be traced at any time
+  await expect(page.locator("#routeStart")).toBeVisible();
   await paste(page, sample("windows-ptbr-tracert.txt"));
   await expect(rows(page)).toHaveCount(7);
   await expect(rows(page).nth(2)).toHaveClass(/hop-none/);
@@ -154,7 +157,7 @@ test("when the networks cannot be looked up the route is still drawn, and it say
   await expect(rows(page).nth(9)).toContainText("72.14.208.80");
 });
 
-test("each direction keeps its route, the choice is kept for the next visit, and nothing is traced by the change", async ({
+test("each route keeps its own, the panel is remembered for the next visit, and nothing is traced by the change", async ({
   page
 }) => {
   const seen = await openRoute(page);
@@ -162,23 +165,29 @@ test("each direction keeps its route, the choice is kept for the next visit, and
   await page.locator("#routeStart").click();
   await expect(rows(page)).toHaveCount(fixture("normal").hops.length);
   await goBack(page);
-  // Nothing of the other direction is on the screen while this one has no route
-  await expect(rows(page)).toHaveCount(0);
+  // Opening the panel changes nothing on the screen: the route from the server is still there, and there is nothing to choose between yet
+  await expect(rows(page)).toHaveCount(fixture("normal").hops.length);
+  await expect(page.locator("#routeShown")).toBeHidden();
+  // A route pasted in the panel is shown at once, and now there are two to choose from
   await paste(page, sample("linux-traceroute-n.txt"));
   await expect(rows(page)).toHaveCount(11);
-  expect(await page.evaluate(key => localStorage.getItem(key), KEY)).toBe("back");
-  await page.locator('[data-direction="there"]').click();
+  await expect(page.locator("#routeShown")).toBeVisible();
+  await expect(page.locator('[data-shown="back"]')).toHaveAttribute("aria-pressed", "true");
+  expect(await page.evaluate(key => localStorage.getItem(key), SIDE)).toBe("open");
+  expect(await page.evaluate(key => localStorage.getItem(key), KEY)).toBeNull();
+  await showRoute(page, "there");
   await expect(rows(page)).toHaveCount(fixture("normal").hops.length);
   await expect(page.locator("#routeTable caption")).toHaveText("Hops from this server to you");
-  await expect(page.locator("#routeBack")).toBeHidden();
-  await page.locator('[data-direction="back"]').click();
+  // The panel stays open: it is not a dialog
+  await expect(page.locator("#routeBack")).toBeVisible();
+  await showRoute(page, "back");
   await expect(rows(page)).toHaveCount(11);
   expect(seen.enrich).toHaveLength(1);
-  // The next visit opens on the way back
+  // The next visit opens the panel again (on a wide screen), and no route
   await page.reload();
   await page.waitForFunction(() => !!window.LibreSpeedI18n);
   await expect(page.locator("#routeBack")).toBeVisible();
-  await expect(page.locator('[data-direction="back"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#routeShown")).toBeHidden();
 });
 
 test("the commands carry the host of the page and the IP version of the route from the server, and can be copied", async ({
@@ -264,19 +273,25 @@ test("a narrow screen: nothing scrolls sideways and the commands break inside th
   await paste(page, sample("windows-ptbr-tracert.txt"));
   await expect(rows(page)).toHaveCount(7);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
+  // On a phone the sheet goes down when the route is drawn: it is opened again to see the command
+  await expect(page.locator("#routeSide")).toBeHidden();
+  await goBack(page);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
   const box = await page.locator("#routeBackCommand").boundingBox();
   expect(box.x + box.width).toBeLessThanOrEqual(360);
 });
 
 test("the four languages: the way back is drawn again with their texts, and no key shows", async ({ page }) => {
   await openRoute(page);
+  await page.locator("#routeStart").click();
+  await expect(rows(page)).toHaveCount(fixture("normal").hops.length);
   await goBack(page);
   await paste(page, sample("windows-ptbr-tracert.txt"));
   await expect(rows(page)).toHaveCount(7);
   const texts = { pt: "Você → servidor", es: "Tú → servidor", sv: "Du → servern", en: "You → server" };
   for (const lang of ["pt", "es", "sv", "en"]) {
     await page.evaluate(code => window.LibreSpeedI18n.set(code, false), lang);
-    await expect(page.locator('[data-direction="back"]')).toHaveText(texts[lang]);
+    await expect(page.locator('[data-shown="back"]')).toHaveText(texts[lang]);
     await expect(page.locator("#routeArea")).not.toContainText("route.back.");
     await expect(page.locator("#routeArea")).not.toContainText("route.compare.");
     await expect(page.locator("#routeArea")).not.toContainText("route.server");
@@ -284,15 +299,15 @@ test("the four languages: the way back is drawn again with their texts, and no k
   }
 });
 
-test("a saved route that is reopened brings the page back to the way from the server", async ({ page }) => {
+test("the other route can be chosen again after a paste, and the panel stays where it is", async ({ page }) => {
   await openRoute(page);
   await page.locator("#routeStart").click();
   await expect(rows(page)).toHaveCount(fixture("normal").hops.length);
   await goBack(page);
   await paste(page, sample("linux-traceroute-n.txt"));
   await expect(rows(page)).toHaveCount(11);
-  await page.locator('[data-direction="there"]').click();
-  await expect(page.locator("#routeBack")).toBeHidden();
+  await showRoute(page, "there");
+  await expect(page.locator("#routeBack")).toBeVisible();
   await expect(rows(page)).toHaveCount(fixture("normal").hops.length);
 });
 
@@ -366,7 +381,7 @@ test("the comparison is on the page: the networks of one direction only are mark
   await expect(page.locator(".route-compare-only")).toHaveCount(2);
   await expect(page.locator(".route-compare-lists li")).toHaveCount(6);
   // The way from the server shows it too
-  await page.locator('[data-direction="there"]').click();
+  await showRoute(page, "there");
   await expect(page.locator("#routeCompare")).toBeVisible();
 });
 
@@ -391,30 +406,40 @@ test("the chart and the map draw the way back, with 'server' where the visitor w
   await expect(page.locator('#routeChart li[data-key="you"]')).toContainText("server");
   await page.locator('[data-view="map"]').click();
   await expect(page.locator("#routeMapHost svg")).toBeVisible();
-  await page.locator('[data-direction="there"]').click();
+  await showRoute(page, "there");
   await page.locator('[data-view="chart"]').click();
   await expect(page.locator('#routeChart li[data-key="you"]')).toContainText("you");
   await expect(page.locator('#routeChart li[data-key="you"]')).not.toContainText("server");
 });
 
-test("while a route is traced the direction cannot be changed, and it can after", async ({ page }) => {
+test("while a route is traced the route shown cannot be changed, and it can after", async ({ page }) => {
   let release;
+  let calls = 0;
   const wait = new Promise(resolve => {
     release = resolve;
   });
   await openRoute(page, {
     post: async route => {
-      await wait;
+      // The first trace answers at once (so that there are two routes to choose between), the second waits
+      if (++calls > 1) await wait;
       await route.fulfill({ json: fixture("normal") });
     }
   });
   await expect(page.locator("#routeStart")).toBeEnabled();
   await page.locator("#routeStart").click();
-  await expect(page.locator('[data-direction="back"]')).toBeDisabled();
-  await expect(page.locator('[data-direction="there"]')).toBeDisabled();
+  await expect(rows(page)).toHaveCount(fixture("normal").hops.length);
+  await goBack(page);
+  await paste(page, sample("linux-traceroute-n.txt"));
+  await expect(rows(page)).toHaveCount(11);
+  await expect(page.locator("#routeShown")).toBeVisible();
+  await expect(page.locator("#routeStart")).toBeEnabled();
+  await page.locator("#routeStart").click();
+  await expect(page.locator('[data-shown="back"]')).toBeDisabled();
+  await expect(page.locator('[data-shown="there"]')).toBeDisabled();
   release();
   await expect(rows(page)).toHaveCount(fixture("normal").hops.length);
-  await expect(page.locator('[data-direction="back"]')).toBeEnabled();
+  await expect(page.locator('[data-shown="back"]')).toBeEnabled();
+  await expect(page.locator('[data-shown="there"]')).toHaveAttribute("aria-pressed", "true");
 });
 
 test("the strip of a saved route is not over the way back", async ({ page }) => {
@@ -451,7 +476,7 @@ test("the strip of a saved route is not over the way back", async ({ page }) => 
   await paste(page, sample("linux-traceroute-n.txt"));
   await expect(rows(page)).toHaveCount(11);
   await expect(page.locator("#routeShowing")).toBeHidden();
-  await page.locator('[data-direction="there"]').click();
+  await showRoute(page, "there");
   await expect(page.locator("#routeShowing")).toBeVisible();
 });
 
@@ -571,8 +596,10 @@ test("a country that is in doubt shows its question mark on the way back too", a
   await expect(rows(page).nth(8).locator(".route-country")).not.toContainText("?");
 });
 
-test("each press of a direction does its work once, however many times the route was drawn", async ({ page }) => {
+test("choosing the route shown writes nothing, however many times the routes were drawn", async ({ page }) => {
   await openRoute(page);
+  await page.locator("#routeStart").click();
+  await expect(rows(page)).toHaveCount(fixture("normal").hops.length);
   await goBack(page);
   await paste(page, sample("linux-traceroute-names.txt"));
   await expect(rows(page).nth(9)).toContainText("Net 80");
@@ -582,13 +609,13 @@ test("each press of a direction does its work once, however many times the route
     window.__sets = 0;
     const original = Storage.prototype.setItem;
     Storage.prototype.setItem = function (key, value) {
-      if (key === "librespeed-better-route-direction") window.__sets++;
+      window.__sets++;
       return original.call(this, key, value);
     };
   });
-  await page.locator('[data-direction="there"]').click();
-  await expect(page.locator("#routeBack")).toBeHidden();
-  expect(await page.evaluate(() => window.__sets)).toBe(1);
+  await showRoute(page, "there");
+  await expect(rows(page)).toHaveCount(fixture("normal").hops.length);
+  expect(await page.evaluate(() => window.__sets)).toBe(0);
 });
 
 test("the line of status is there on the way back too: a chart that cannot be loaded is told", async ({ page }) => {
@@ -600,7 +627,8 @@ test("the line of status is there on the way back too: a chart that cannot be lo
   await page.locator('[data-view="chart"]').click();
   await expect(page.locator("#routeStatus")).toBeVisible();
   await expect(page.locator("#routeStatus")).toContainText("chart could not be loaded");
-  await expect(page.locator("#routeStart")).toBeHidden();
+  // Start is there on the way back too: the route from the server can be traced at any time
+  await expect(page.locator("#routeStart")).toBeVisible();
 });
 
 // The way back in the history
@@ -652,18 +680,18 @@ test("the way back is saved only when the button is pressed, and only after its 
 
 test("a saved way back is shown again as the way back, with its strip, and cannot be saved twice", async ({ page }) => {
   await openRoute(page);
+  await page.locator("#routeStart").click();
+  await expect(rows(page)).toHaveCount(fixture("normal").hops.length);
   await goBack(page);
   await paste(page, sample("linux-traceroute-names.txt"));
   await expect(rows(page).nth(9)).toContainText("Net 80");
   await expect(page.locator("#routeBackSave")).toBeEnabled();
   await page.locator("#routeBackSave").click();
-  await page.locator('[data-direction="there"]').click();
-  await expect(page.locator("#routeBack")).toBeHidden();
-  await expect(rows(page)).toHaveCount(0);
-  // Reopening it, from the way from the server, goes to the way back
+  await showRoute(page, "there");
+  await expect(rows(page)).toHaveCount(fixture("normal").hops.length);
+  // Reopening it, from the way from the server, goes to the way back, and the panel is left as it is
   await page.locator("#historyList .history-panel").first().locator(".history-action-btn").click();
-  await expect(page.locator("#routeBack")).toBeVisible();
-  await expect(page.locator('[data-direction="back"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator('[data-shown="back"]')).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#routeTable caption")).toHaveText("Hops from you to this server");
   await expect(rows(page)).toHaveCount(10);
   await expect(rows(page).nth(9)).toContainText("Net 80");

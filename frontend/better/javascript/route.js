@@ -30,8 +30,7 @@
   var showingBox = document.getElementById("routeShowing");
   var showingText = document.getElementById("routeShowingText");
   var showLatest = document.getElementById("routeShowLatest");
-  var directionBox = document.getElementById("routeDirection");
-  var backPanel = document.getElementById("routeBack");
+  var shownBox = document.getElementById("routeShown");
   var actionBox = document.querySelector(".route-action");
   var compareBox = document.getElementById("routeCompare");
   var compareText = document.getElementById("routeCompareText");
@@ -109,10 +108,17 @@
 
   // The route that is drawn. The two directions each keep theirs while the other is shown: "there" is the one the server traced, "back" the
   // one the visitor traced and pasted
-  var lastData = null;
-  var direction = "there";
+  // Which of the two routes the results show: "there" (server → you) or "back" (you → server). Each route is kept in its own variable.
+  var shown = "there";
   var thereData = null;
   var backData = null;
+  // The panel at the side (route-side.js), where the way back is brought in
+  var side = null;
+
+  // The route that the results show
+  function shownData() {
+    return shown === "back" ? backData : thereData;
+  }
   var backPanelApi = null;
   // The way back that is shown: the time of the saved one that was reopened (null: the one pasted), whether the networks have arrived (the
   // button that saves it waits for them), and whether it is already in the history
@@ -144,7 +150,6 @@
 
   function drawStatus() {
     status.textContent = "";
-    actionBox.hidden = direction === "back" && !lastStatus;
     if (!lastStatus) return;
     if (lastStatus.key === "route.running") {
       // The counter is in a span that screen readers skip: they hear the start and the end, not each second
@@ -305,12 +310,12 @@
 
   // The strip over a saved route that is shown: its date, and the way back to the route just traced
   function drawShowing() {
-    var at = direction === "back" ? backShownT : shownT;
+    var at = shown === "back" ? backShownT : shownT;
     showingBox.hidden = at === null;
     if (at === null) return;
     showingText.textContent = t("route.history.showing", { date: window.LibreSpeedHistory.formatDateTime(at) });
     // The way back has no "route just traced" to go back to: the one that was pasted is in the box
-    showLatest.hidden = direction === "back" || !liveData;
+    showLatest.hidden = shown === "back" || !liveData;
   }
 
   function toolName(tool) {
@@ -414,11 +419,11 @@
 
   // The route of each direction, whichever of them is on the screen
   function thereOf() {
-    return direction === "there" ? lastData : thereData;
+    return thereData;
   }
 
   function backOf() {
-    return direction === "back" ? lastData : backData;
+    return backData;
   }
 
   // The networks of the two directions side by side. Shown with the route of the way back (and when the way from the server is there too,
@@ -427,7 +432,7 @@
     var there = thereOf();
     var back = backOf();
     compareLists.textContent = "";
-    if (!back || !lastData) {
+    if (!back || !shownData()) {
       compareBox.hidden = true;
       return;
     }
@@ -547,12 +552,12 @@
   }
 
   function showChart() {
-    if (!lastData) return;
+    if (!shownData()) return;
     if (!chartReady()) setStatus("route.chart.loading");
     chartFiles.load().then(
       function () {
         if (lastStatus && lastStatus.key === "route.chart.loading") setStatus(null);
-        if (current === "chart" && lastData) renderChart();
+        if (current === "chart" && shownData()) renderChart();
       },
       function () {
         setStatus("route.chart.error");
@@ -562,8 +567,8 @@
   }
 
   function describeHop(index) {
-    var hop = lastData.hops[index];
-    var time = view.chartData(lastData).y[index];
+    var hop = shownData().hops[index];
+    var time = view.chartData(shownData()).y[index];
     var text =
       t("route.chart.hop", { hop: hop.ttl }) + " · " + (time === null ? t("route.no-reply") : time.toFixed(1) + " ms");
     if (hop.ip) text += " · " + hop.ip;
@@ -573,7 +578,7 @@
   }
 
   function renderChart() {
-    var data = view.chartData(lastData);
+    var data = view.chartData(shownData());
     var summary = document.getElementById("routeChartSummary");
     if (data.first === null) {
       summary.textContent = "";
@@ -587,7 +592,7 @@
       });
       summary.hidden = false;
     }
-    var shown = {
+    var keyShown = {
       time: true,
       internal: data.internal.some(function (value, i) {
         return value && data.y[i] !== null;
@@ -601,10 +606,10 @@
       you: data.target !== null
     };
     Array.prototype.forEach.call(chartBox.querySelectorAll("li[data-key]"), function (item) {
-      item.hidden = !shown[item.dataset.key];
+      item.hidden = !keyShown[item.dataset.key];
     });
     chartBox.querySelector('li[data-key="you"] span:last-child').textContent = t(
-      lastData.direction === "client_to_server" ? "route.server" : "route.you"
+      shownData().direction === "client_to_server" ? "route.server" : "route.you"
     );
     window.LibreSpeedRouteChart.render(document.getElementById("routeChartHost"), data, {
       xLabel: t("route.chart.x"),
@@ -615,12 +620,12 @@
   }
 
   function showMap() {
-    if (!lastData) return;
+    if (!shownData()) return;
     if (!mapFiles.ready()) setStatus("route.map.loading");
     mapFiles.load().then(
       function () {
         if (lastStatus && lastStatus.key === "route.map.loading") setStatus(null);
-        if (current === "map" && lastData) renderMap();
+        if (current === "map" && shownData()) renderMap();
       },
       function () {
         setStatus("route.map.error");
@@ -631,7 +636,7 @@
 
   // The route of the other direction, when there is one: the one that the person does not have on the screen
   function otherData() {
-    return direction === "there" ? backOf() : thereOf();
+    return shown === "there" ? backOf() : thereOf();
   }
 
   // The button and the legend of the two directions on the map: the button when there is another direction to show, the legend when it
@@ -643,8 +648,8 @@
     legendList.textContent = "";
     if (!drawn) return;
     [
-      { other: false, key: direction === "there" ? "route.direction.there" : "route.direction.back" },
-      { other: true, key: direction === "there" ? "route.direction.back" : "route.direction.there" }
+      { other: false, key: shown === "there" ? "route.direction.there" : "route.direction.back" },
+      { other: true, key: shown === "there" ? "route.direction.back" : "route.direction.there" }
     ].forEach(function (way) {
       var item = document.createElement("li");
       var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -665,7 +670,7 @@
   }
 
   function renderMap() {
-    var md = view.mapData(lastData, window.LibreSpeedRouteCrossings);
+    var md = view.mapData(shownData(), window.LibreSpeedRouteCrossings);
     var second = otherData();
     var other = second ? view.mapData(second, window.LibreSpeedRouteCrossings) : null;
     if (other && !other.countries.length) other = null;
@@ -696,7 +701,7 @@
   function release(seconds) {
     window.clearInterval(tick);
     running = false;
-    lockDirection(false);
+    markShown();
     button.removeAttribute("aria-busy");
     if (!seconds) {
       busy = false;
@@ -803,24 +808,29 @@
     if (data === null) return;
     // A route goes to the direction it has: the way back to "You → server", the other one to "Server → you"
     var way = data.direction === "client_to_server" ? "back" : "there";
-    if (direction !== way) setDirection(way, way === "there" || capsState === "on");
+    shown = way;
+    markShown();
     if (way === "back") {
       // What is on its way for a text that was pasted must not come over the route that is shown now
       if (backPanelApi) backPanelApi.forget();
-      backData = lastData = data;
+      backData = data;
       backShownT = entry.t;
       backReady = true;
       backSaved = true;
       drawSave();
     } else if (liveData && entry.t === liveT) {
       shownT = null;
-      lastData = liveData;
+      thereData = liveData;
     } else {
       shownT = entry.t;
-      lastData = data;
+      thereData = data;
     }
     if (mapFiles.ready()) window.LibreSpeedRouteMap.resetView();
-    draw(lastData);
+    draw(shownData());
+    // The command of the panel follows the family of the route that is shown; a sheet that covers the results is closed
+    markShown();
+    if (way === "there" && backPanelApi) backPanelApi.refresh();
+    if (side) side.closeIfNarrow();
     if (capsState === "off" && way === "there") setStatus("route.unavailable");
     resultsBox.scrollIntoView({ block: "start" });
     var target = showingBox.hidden ? document.getElementById("routeSummaryTitle") : showingBox;
@@ -830,61 +840,38 @@
 
   showLatest.addEventListener("click", function () {
     if (!liveData || running) return;
-    if (direction !== "there") setDirection("there", true);
+    shown = "there";
+    markShown();
     shownT = null;
-    lastData = liveData;
+    thereData = liveData;
     if (mapFiles.ready()) window.LibreSpeedRouteMap.resetView();
-    draw(lastData);
+    draw(shownData());
+    if (backPanelApi) backPanelApi.refresh();
     resultsBox.scrollIntoView({ block: "start" });
   });
 
-  function savedDirection() {
-    try {
-      return window.localStorage.getItem(DIRECTION_KEY) === "back" ? "back" : "there";
-    } catch (error) {
-      return "there";
-    }
-  }
-
-  // While a route is traced the other direction cannot be chosen: the answer would come to a page that is showing something else
-  function lockDirection(locked) {
-    Array.prototype.forEach.call(directionBox.querySelectorAll("[data-direction]"), function (item) {
-      item.disabled = locked;
+  // The small selector over the results ("Server → you" / "You → server"): there only when there are two routes to choose from, and it
+  // cannot be used while a route is traced (the answer would come to a page that is showing something else)
+  function markShown() {
+    shownBox.hidden = !(thereData && backData);
+    Array.prototype.forEach.call(shownBox.querySelectorAll("[data-shown]"), function (item) {
+      item.setAttribute("aria-pressed", String(item.dataset.shown === shown));
+      item.disabled = running;
     });
   }
 
-  function markDirection() {
-    Array.prototype.forEach.call(directionBox.querySelectorAll("[data-direction]"), function (item) {
-      item.setAttribute("aria-pressed", String(item.dataset.direction === direction));
-    });
-    backPanel.hidden = direction !== "back";
-    // Only the button goes: the line of status (a chart or a map that is loading, an error) is for both directions
-    button.hidden = direction === "back";
-    actionBox.hidden = direction === "back" && !lastStatus;
-    if (direction === "back" && backPanelApi) backPanelApi.refresh();
-  }
-
-  // "Server → you" or "You → server": each keeps the route it has, and nothing is traced or sent by the change
-  function setDirection(next, save) {
+  // Which of the two routes the results show: each keeps the route it has, and nothing is traced or sent by the change
+  function setShown(next) {
     if ((next !== "there" && next !== "back") || running) return;
-    if (save) {
-      try {
-        window.localStorage.setItem(DIRECTION_KEY, next);
-      } catch (error) {
-        // The choice is only kept for the next visit
-      }
-    }
-    if (next === direction) {
-      markDirection();
+    if (next === shown) {
+      markShown();
       return;
     }
-    if (direction === "there") thereData = lastData;
-    direction = next;
-    markDirection();
-    lastData = next === "back" ? backData : thereData;
+    shown = next;
+    markShown();
     if (mapFiles.ready()) window.LibreSpeedRouteMap.resetView();
-    if (lastData) {
-      draw(lastData);
+    if (shownData()) {
+      draw(shownData());
     } else {
       clear();
       setStatus(next === "there" && capsState === "off" ? "route.unavailable" : null);
@@ -914,6 +901,9 @@
     drawSave();
   }
 
+  // The way back from the panel (a paste, the extension) or its networks arriving later. A new one is shown at once; one that arrives while
+  // the route from the server is traced is only kept (drawing it would wipe the status of the trace); the networks that arrive late never
+  // take the person back to the way back after they chose the other route
   function showBack(data, first) {
     backData = data;
     if (first) {
@@ -923,16 +913,24 @@
       backSaved = false;
     }
     drawSave();
-    if (direction !== "back") {
-      // The networks of the way back arrive when the person may be looking at the way from the server: the map and the comparison
-      // show them as soon as they are there
-      if (lastData && current === "map" && mapFiles.ready()) renderMap();
-      drawCompare();
+    markShown();
+    if (running) return;
+    if (first) {
+      shown = "back";
+      markShown();
+      if (mapFiles.ready()) window.LibreSpeedRouteMap.resetView();
+      draw(data);
+      if (side) side.closeIfNarrow();
       return;
     }
-    lastData = data;
-    if (first && mapFiles.ready()) window.LibreSpeedRouteMap.resetView();
-    draw(data);
+    if (shown === "back") {
+      draw(data);
+      return;
+    }
+    // The networks of the way back arrive when the person is looking at the way from the server: the map and the comparison show them
+    // as soon as they are there
+    if (shownData() && current === "map" && mapFiles.ready()) renderMap();
+    drawCompare();
   }
 
   function clearBack() {
@@ -941,14 +939,23 @@
     backReady = false;
     backSaved = false;
     drawSave();
-    if (direction !== "back") {
-      if (lastData && current === "map" && mapFiles.ready()) renderMap();
+    if (shown !== "back") {
+      markShown();
+      if (shownData() && current === "map" && mapFiles.ready()) renderMap();
       drawCompare();
       return;
     }
-    lastData = null;
-    clear();
-    setStatus(null);
+    // The way back that was shown is gone: the other route takes the screen, if there is one
+    shown = "there";
+    markShown();
+    if (running) return;
+    if (mapFiles.ready()) window.LibreSpeedRouteMap.resetView();
+    if (shownData()) {
+      draw(shownData());
+    } else {
+      clear();
+      setStatus(null);
+    }
   }
 
   function jumpText(jump) {
@@ -1210,10 +1217,12 @@
   }
 
   function start() {
-    if (busy || direction !== "there") return;
+    if (busy) return;
     busy = true;
     running = true;
-    lockDirection(true);
+    // The trace is of the way from the server: what the results show is that
+    shown = "there";
+    markShown();
     button.disabled = true;
     button.setAttribute("aria-busy", "true");
     button.textContent = t("route.tracing");
@@ -1249,8 +1258,9 @@
       .then(function (result) {
         window.clearInterval(tick);
         if (result.response.status === 200 && result.body) {
-          liveData = lastData = result.body;
+          liveData = thereData = result.body;
           shownT = null;
+          if (backPanelApi) backPanelApi.refresh();
           // A new route starts with its own frame: the zoom of the last one is not kept
           if (mapFiles.ready()) window.LibreSpeedRouteMap.resetView();
           draw(result.body);
@@ -1274,22 +1284,38 @@
     button.disabled = true;
     clear();
     try {
+      // The old choice of the direction is not kept any more
+      window.localStorage.removeItem(DIRECTION_KEY);
+    } catch (error) {
+      // Nothing to remove
+    }
+    try {
+      side = window.LibreSpeedRouteSide.create({
+        panel: document.getElementById("routeSide"),
+        toggle: document.getElementById("routeSideToggle"),
+        close: document.getElementById("routeSideClose"),
+        heading: document.getElementById("routeBackTitle"),
+        // The command depends on the family of the route that is on the screen
+        onOpen: function () {
+          if (backPanelApi) backPanelApi.refresh();
+        }
+      });
+    } catch (error) {
+      // Without the panel the page still traces the way from the server
+    }
+    try {
       backPanelApi = window.LibreSpeedRouteBack.create({
         t: t,
         host: window.location.hostname,
         endpoint: ENRICH_ENDPOINT,
         family: function () {
-          var there = direction === "there" ? lastData : thereData;
+          var there = thereData;
           return there && (there.family === 4 || there.family === 6) ? there.family : null;
         },
         onRoute: showBack,
-        // The route handed over by the browser extension is taken only when the route is on and nothing is being traced; the person is
-        // taken to the way back, where it is shown
+        // The route handed over by the browser extension is taken when the route is on (while the other is traced it is only kept)
         enabled: function () {
-          return capsState === "on" && !running;
-        },
-        onExtension: function () {
-          if (direction !== "back") setDirection("back", false);
+          return capsState === "on";
         },
         onSettled: function () {
           backReady = true;
@@ -1316,8 +1342,10 @@
         if (backPanelApi && caps && caps.enabled === true) backPanelApi.setCli(caps.cli_url);
         if (caps && caps.enabled === true) {
           button.disabled = false;
-          directionBox.hidden = false;
-          if (savedDirection() === "back") setDirection("back", false);
+          if (side) {
+            side.setAvailable(true);
+            side.restore();
+          }
         } else {
           setStatus("route.unavailable");
         }
@@ -1329,9 +1357,9 @@
   }
 
   button.addEventListener("click", start);
-  Array.prototype.forEach.call(directionBox.querySelectorAll("[data-direction]"), function (item) {
+  Array.prototype.forEach.call(shownBox.querySelectorAll("[data-shown]"), function (item) {
     item.addEventListener("click", function () {
-      setDirection(item.dataset.direction, true);
+      setShown(item.dataset.shown);
     });
   });
   Array.prototype.forEach.call(viewsBox.querySelectorAll("[data-view]"), function (item) {
@@ -1342,7 +1370,7 @@
   // The chart is painted on a canvas, so it reads the colors and the sizes again when they change
   ["themechange", "accessibilitychange", "fontchange"].forEach(function (name) {
     window.addEventListener(name, function () {
-      if (lastData && current === "chart" && chartReady()) renderChart();
+      if (shownData() && current === "chart" && chartReady()) renderChart();
     });
   });
   window.addEventListener("i18nchange", function () {
@@ -1351,7 +1379,7 @@
     drawStatus();
     if (backPanelApi) backPanelApi.refresh();
     drawSave();
-    if (lastData) draw(lastData);
+    if (shownData()) draw(shownData());
   });
   saveButton.addEventListener("click", saveBack);
   bothButton.addEventListener("click", function () {
@@ -1361,7 +1389,7 @@
     } catch (error) {
       // The choice only lasts until the page is closed
     }
-    if (lastData && current === "map" && mapFiles.ready()) renderMap();
+    if (shownData() && current === "map" && mapFiles.ready()) renderMap();
     else bothButton.setAttribute("aria-pressed", String(mapBoth));
   });
   Promise.resolve(window.LibreSpeedI18n && window.LibreSpeedI18n.ready).then(init);
