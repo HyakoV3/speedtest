@@ -875,7 +875,8 @@ p.route-hint code {
   margin: 0.4em 0;
 }
 
-.route-back-notes .route-error {
+.route-back-notes .route-error,
+.route-back-trace .route-error {
   font-weight: 600;
   color: var(--text);
 }
@@ -951,4 +952,45 @@ p.route-hint code {
 .route-back-trace .route-hint {
   flex-basis: 100%;
   margin: 0;
+}
+
+/* An error of the button that traces the way back, as a red box at the top of the screen, in the middle: the same words as the line under the button, which is
+   what a screen reader reads (the box is only for the eyes). It goes by itself, or with a click. Red with white letters in both themes. */
+.route-toast {
+  position: fixed;
+  top: calc(1rem + env(safe-area-inset-top, 0px));
+  right: 1rem;
+  left: 1rem;
+  z-index: 500;
+  box-sizing: border-box;
+  max-width: 32rem;
+  padding: 0.8em 1.1em;
+  margin: 0 auto;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #fff;
+  text-align: center;
+  cursor: pointer;
+  background: #b3261e;
+  border: 2px solid #fff;
+  border-radius: 0.6em;
+  box-shadow: 0 0.4em 1.4em rgb(0 0 0 / 45%);
+  animation: route-toast-in 0.2s ease-out;
+}
+
+.route-toast[hidden] {
+  display: none;
+}
+
+@keyframes route-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.6em);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-toast {
+    animation: none;
+  }
 }

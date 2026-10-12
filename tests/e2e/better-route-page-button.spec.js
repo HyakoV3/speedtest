@@ -79,6 +79,7 @@ const nth = async (page, n) => {
 const state = (id, name, code) => Object.assign({ type: "state", id, state: name }, code ? { code } : {});
 const button = page => page.locator("#routeBackTraceButton");
 const notes = page => page.locator("#routeBackNotes");
+const traceNote = page => page.locator("#routeBackTraceNote");
 
 test("P1 without the extension the button is off and says what to do; the page asked once whether it is there", async ({
   page
@@ -108,7 +109,8 @@ test("P2 the extension is here: the button is on, a click asks for a trace in th
   // While it traces: the button is off, Cancel is there, and it is said
   await expect(button(page)).toBeDisabled();
   await expect(page.locator("#routeBackTraceCancel")).toBeVisible();
-  await expect(notes(page)).toContainText("Tracing the route from your computer");
+  await expect(traceNote(page)).toBeVisible();
+  await expect(traceNote(page)).toContainText("Tracing the route from your computer");
   await say(page, state(request.id, "tracing"));
   await say(page, { lsr1: LSR1 });
   await say(page, state(request.id, "done"));
@@ -128,6 +130,18 @@ test("P3 a site that is allowed while the page is open: the extension says ready
   await say(page, state("", "ready"));
   await expect(button(page)).toBeEnabled();
   await expect(page.locator("#routeBackTraceHint")).toBeHidden();
+});
+
+test("P3b the person turns the site off while the page is open: the button goes off and says what to do", async ({
+  page
+}) => {
+  await openRoute(page);
+  await expect(button(page)).toBeEnabled();
+  await say(page, state("", "off"));
+  await expect(button(page)).toBeDisabled();
+  await expect(page.locator("#routeBackTraceHint")).toBeVisible();
+  await say(page, state("", "ready"));
+  await expect(button(page)).toBeEnabled();
 });
 
 test("P4 every code of the protocol has its text, in the four languages, and an unknown one is a failure", async ({
@@ -151,14 +165,19 @@ test("P4 every code of the protocol has its text, in the four languages, and an 
     await button(page).click();
     const id = (await nth(page, ++n)).id;
     await say(page, state(id, "error", code));
-    await expect(notes(page)).toHaveText(english[`route.back.trace-error.${code}`]);
-    await expect(notes(page).locator("p")).toHaveClass("route-error");
+    await expect(traceNote(page)).toBeVisible();
+    await expect(traceNote(page)).toHaveText(english[`route.back.trace-error.${code}`]);
+    // And the same words in the red box at the top, in the middle, for the eyes only
+    await expect(page.locator("#routeToast")).toBeVisible();
+    await expect(page.locator("#routeToast")).toHaveText(english[`route.back.trace-error.${code}`]);
+    await expect(page.locator("#routeToast")).toHaveAttribute("aria-hidden", "true");
+    await expect(traceNote(page)).toHaveClass(/route-error/);
     await expect(button(page)).toBeEnabled();
   }
   await button(page).click();
   const id = (await nth(page, ++n)).id;
   await say(page, state(id, "error", "something-else"));
-  await expect(notes(page)).toHaveText(english["route.back.trace-error.failed"]);
+  await expect(traceNote(page)).toHaveText(english["route.back.trace-error.failed"]);
 });
 
 test("P5 only the answers about the trace that this page asked for are read, and only of exactly the shape of the protocol", async ({
@@ -198,7 +217,7 @@ test("P5 only the answers about the trace that this page asked for are read, and
   await page.waitForTimeout(300);
   await expect(button(page)).toBeDisabled();
   await expect(page.locator("#routeBackTraceCancel")).toBeVisible();
-  await expect(notes(page)).toContainText("Tracing the route");
+  await expect(traceNote(page)).toContainText("Tracing the route");
   // The real one ends it
   await say(page, state(id, "error", "busy"));
   await expect(button(page)).toBeEnabled();
@@ -213,10 +232,10 @@ test("P6 Cancel tells the extension, ends the wait, and a late answer is ignored
   expect((await asked(page))[1]).toEqual({ source: "librespeed-route-page", v: 1, type: "cancel", id });
   await expect(button(page)).toBeEnabled();
   await expect(page.locator("#routeBackTraceCancel")).toBeHidden();
-  await expect(notes(page).locator("p")).toHaveCount(0);
+  await expect(traceNote(page)).toBeHidden();
   await say(page, state(id, "error", "busy"));
   await page.waitForTimeout(200);
-  await expect(notes(page).locator("p")).toHaveCount(0);
+  await expect(traceNote(page)).toBeHidden();
 });
 
 test("P7 an extension that never answers: after 150 seconds the page cancels and says so", async ({ page }) => {
@@ -228,7 +247,7 @@ test("P7 an extension that never answers: after 150 seconds the page cancels and
   await expect(button(page)).toBeDisabled();
   await page.clock.fastForward(2000);
   await expect(button(page)).toBeEnabled();
-  await expect(notes(page)).toContainText("The extension did not answer in time.");
+  await expect(traceNote(page)).toContainText("The extension did not answer in time.");
   const log = await asked(page);
   expect(log[log.length - 1]).toEqual({ source: "librespeed-route-page", v: 1, type: "cancel", id });
 });
@@ -243,4 +262,40 @@ test("P8 a trace is asked for once at a time, and not when the button is off", a
   await button(page).click({ force: true });
   await page.waitForTimeout(300);
   expect(await asked(page)).toHaveLength(1);
+});
+
+test("P9 the red box goes by itself, with a click, and when a new trace starts; the tracing line is not one", async ({
+  page
+}) => {
+  await page.clock.install();
+  await openRoute(page);
+  await button(page).click();
+  const first = (await nth(page, 1)).id;
+  await expect(page.locator("#routeToast")).toHaveCount(0);
+  await say(page, state(first, "error", "busy"));
+  await expect(page.locator("#routeToast")).toBeVisible();
+  // At the top of the screen, in the middle (and not over the panel of the corner)
+  const box = await page.locator("#routeToast").boundingBox();
+  const view = page.viewportSize();
+  expect(box.y).toBeLessThan(40);
+  expect(Math.abs(box.x + box.width / 2 - view.width / 2)).toBeLessThan(2);
+  await page.clock.fastForward(8000);
+  await expect(page.locator("#routeToast")).toBeVisible();
+  await page.clock.fastForward(2000);
+  await expect(page.locator("#routeToast")).toBeHidden();
+  // A click takes it away
+  await button(page).click();
+  const second = (await nth(page, 2)).id;
+  await say(page, state(second, "error", "failed"));
+  await expect(page.locator("#routeToast")).toBeVisible();
+  await page.locator("#routeToast").click();
+  await expect(page.locator("#routeToast")).toBeHidden();
+  // A new trace takes it away, and "tracing" is not an error
+  await button(page).click();
+  const third = (await nth(page, 3)).id;
+  await say(page, state(third, "error", "silent"));
+  await expect(page.locator("#routeToast")).toBeVisible();
+  await button(page).click();
+  await expect(page.locator("#routeToast")).toBeHidden();
+  await expect(traceNote(page)).toContainText("Tracing the route");
 });

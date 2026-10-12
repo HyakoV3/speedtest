@@ -205,6 +205,7 @@ var LibreSpeedRouteBack = (function () {
     var traceButton = byId("routeBackTraceButton");
     var traceCancel = byId("routeBackTraceCancel");
     var traceHint = byId("routeBackTraceHint");
+    var traceNote = byId("routeBackTraceNote");
     var seen = detect(
       navigator.userAgent,
       (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform
@@ -525,6 +526,43 @@ var LibreSpeedRouteBack = (function () {
       traceHint.hidden = extensionHere;
     }
 
+    // An error is also shown as a red box at the top of the screen, where it is seen at once; it is for the eyes only (the line next to the
+    // button is what a screen reader reads), it goes by itself after a few seconds, and a click takes it away
+    var TOAST_MS = 9000;
+    var toast = null;
+    var toastTimer = null;
+
+    function hideToast() {
+      window.clearTimeout(toastTimer);
+      toastTimer = null;
+      if (toast) toast.hidden = true;
+    }
+
+    function showToast(key) {
+      if (!toast) {
+        toast = document.createElement("div");
+        toast.id = "routeToast";
+        toast.className = "route-toast";
+        toast.setAttribute("aria-hidden", "true");
+        toast.hidden = true;
+        toast.addEventListener("click", hideToast);
+        document.body.appendChild(toast);
+      }
+      toast.textContent = t(key);
+      toast.hidden = false;
+      window.clearTimeout(toastTimer);
+      toastTimer = window.setTimeout(hideToast, TOAST_MS);
+    }
+
+    // What the trace is doing, or why it stopped, next to the button (the notes of the card are far below it)
+    function sayTrace(key, error) {
+      hideToast();
+      if (key && error) showToast(key);
+      traceNote.textContent = key ? t(key) : "";
+      traceNote.className = "route-hint" + (error ? " route-error" : "");
+      traceNote.hidden = !key;
+    }
+
     function endTrace() {
       traceId = null;
       window.clearTimeout(traceTimer);
@@ -537,14 +575,15 @@ var LibreSpeedRouteBack = (function () {
       if (typeof options.enabled === "function" && !options.enabled()) return;
       traceId = newId();
       drawTrace();
-      setNotes([{ key: "route.back.trace-tracing" }]);
+      setNotes([]);
+      sayTrace("route.back.trace-tracing");
       toExtension("trace", traceId);
       var mine = traceId;
       traceTimer = window.setTimeout(function () {
         if (traceId !== mine) return;
         toExtension("cancel", mine);
         endTrace();
-        setNotes([{ key: "route.back.trace-error.timeout", error: true }]);
+        sayTrace("route.back.trace-error.timeout", true);
       }, TRACE_WAIT_MS);
     });
 
@@ -553,7 +592,7 @@ var LibreSpeedRouteBack = (function () {
       var mine = traceId;
       endTrace();
       toExtension("cancel", mine);
-      setNotes([]);
+      sayTrace(null);
     });
 
     window.addEventListener("message", function (event) {
@@ -564,8 +603,10 @@ var LibreSpeedRouteBack = (function () {
       if (data.source !== "librespeed-route-extension" || data.v !== 1 || data.type !== "state") return;
       if (keys !== STATE_KEYS && keys !== "code," + STATE_KEYS) return;
       if (typeof data.id !== "string" || typeof data.state !== "string") return;
-      if (data.state === "ready") {
-        extensionHere = true;
+      if (data.state === "ready" || data.state === "off") {
+        // "off": the person turned this site off in the extension while the page was open
+        extensionHere = data.state === "ready";
+        if (!extensionHere) sayTrace(null);
         drawTrace();
         return;
       }
@@ -573,10 +614,11 @@ var LibreSpeedRouteBack = (function () {
       if (traceId === null || data.id !== traceId) return;
       if (data.state === "done") {
         endTrace();
+        sayTrace(null);
       } else if (data.state === "error") {
         var code = STATE_CODES.indexOf(data.code) >= 0 ? data.code : "failed";
         endTrace();
-        setNotes([{ key: "route.back.trace-error." + code, error: true }]);
+        sayTrace("route.back.trace-error." + code, true);
       }
     });
     // Is the extension here? Only a page that the person allowed there answers
