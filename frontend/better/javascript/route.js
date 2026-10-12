@@ -1304,6 +1304,8 @@
       })
       .then(function (caps) {
         capsState = caps && caps.enabled === true ? "on" : "off";
+        // The server may offer librespeed-route (an address; the panel checks it again and shows nothing for anything else)
+        if (backPanelApi && caps && caps.enabled === true) backPanelApi.setCli(caps.cli_url);
         if (caps && caps.enabled === true) {
           button.disabled = false;
           directionBox.hidden = false;

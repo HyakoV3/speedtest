@@ -616,6 +616,23 @@ function routeTargetCountry($data)
  *
  * @return string
  */
+/**
+ * The address that the page may offer to download librespeed-route from, or null: only https, a host and a path made of letters, digits and
+ * . _ ~ : / % + - (no user name, no query, no fragment, no quote), up to 200 characters. Anything else is not offered.
+ *
+ * @param mixed $url
+ *
+ * @return string|null
+ */
+function routeCliUrl($url)
+{
+    if (!is_string($url) || strlen($url) > 200 || 1 !== preg_match('#^https://[A-Za-z0-9.-]+(:[0-9]{1,5})?(/[A-Za-z0-9._~:/%+-]*)?$#D', $url)) {
+        return null;
+    }
+
+    return $url;
+}
+
 function routeStateDir()
 {
     $dir = sys_get_temp_dir().'/librespeed-route';

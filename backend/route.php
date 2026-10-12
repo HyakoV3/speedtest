@@ -46,7 +46,7 @@ if (PHP_VERSION_ID < 80200 || !function_exists('proc_open') || !is_executable(RO
 
 $method = isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : '';
 if ('GET' === $method && isset($_GET['caps'])) {
-    routeAnswer(200, ['v' => 1, 'enabled' => true, 'ipv6' => true === $route_ipv6, 'window_s' => ROUTE_WINDOW]);
+    routeAnswer(200, ['v' => 1, 'enabled' => true, 'ipv6' => true === $route_ipv6, 'window_s' => ROUTE_WINDOW, 'cli_url' => routeCliUrl($route_cli_url)]);
 }
 if ('POST' !== $method) {
     header('Allow: GET, POST');

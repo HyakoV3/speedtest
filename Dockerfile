@@ -54,6 +54,7 @@ ENV USE_NEW_DESIGN=false
 ENV ENABLE_ROUTE=false
 ENV ROUTE_TRUSTED_PROXIES=""
 ENV ROUTE_IPV6=false
+ENV ROUTE_CLI_URL="https://github.com/HyakoV3/librespeed-route/releases"
 
 # https://httpd.apache.org/docs/2.4/stopping.html#gracefulstop
 STOPSIGNAL SIGWINCH
