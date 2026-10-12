@@ -175,6 +175,7 @@
   "route.back.cli-run": "Kör det och tryck sedan på Klistra in och visa.",
   "route.back.extension-hint": "Med webbläsartillägget: klicka på dess ikon på den här sidan och på Spåra; vägen kommer hit av sig själv.",
   "route.back.from-extension": "Vägen togs emot från webbläsartillägget.",
+  "route.side.toggle": "Testa vägen tillbaka",
   "route.back.trace": "Spåra vägen tillbaka",
   "route.back.trace-cancel": "Avbryt",
   "route.back.trace-setup": "Den här knappen fungerar med webbläsartillägget när du har tillåtit den här webbplatsen: klicka på tilläggets ikon på den här sidan och på ”Tillåt den här webbplatsen”.",

@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { test, expect } = require("@playwright/test");
+const { openBackPanel, showRoute } = require("./helpers/route-side");
 
 const staticRepositoryUrl = "http://127.0.0.1:18184";
 
@@ -37,9 +38,7 @@ async function openRoute(page) {
   await page.goto(`${staticRepositoryUrl}/route-better.html`);
   await page.waitForFunction(() => !!window.LibreSpeedI18n);
   await page.evaluate(() => window.LibreSpeedI18n.ready);
-  await expect(page.locator("#routeDirection")).toBeVisible();
-  await page.locator('[data-direction="back"]').click();
-  await expect(page.locator("#routeBack")).toBeVisible();
+  await openBackPanel(page);
   return seen;
 }
 const rows = page => page.locator("#routeTable tbody tr");

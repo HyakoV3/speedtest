@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { test, expect } = require("@playwright/test");
+const { openBackPanel, showRoute } = require("./helpers/route-side");
 
 const staticRepositoryUrl = "http://127.0.0.1:18184";
 
@@ -75,10 +76,9 @@ const trace = async page => {
   await page.locator("#routeStart").click();
   await expect(page.locator("#routeMapHost svg")).toBeVisible();
 };
-const direction = (page, way) => page.locator(`[data-direction="${way}"]`).click();
+const direction = (page, way) => showRoute(page, way);
 const paste = async page => {
-  await direction(page, "back");
-  await expect(page.locator("#routeBack")).toBeVisible();
+  await openBackPanel(page);
   await page.locator("#routeBackText").fill(sample("windows-ptbr-tracert.txt"));
   await page.locator("#routeBackShow").click();
 };
@@ -130,9 +130,8 @@ test("U2 the button turns the other direction off and on, and the choice is kept
   await page.reload();
   await page.waitForFunction(() => !!window.LibreSpeedI18n);
   await expect(bothButton(page)).toHaveAttribute("aria-pressed", "false");
-  // The page opens on the direction it was left on
-  await expect(page.locator("#routeDirection")).toBeVisible();
-  await direction(page, "there");
+  // The panel of the way back is as it was left, and no route is there yet
+  await expect(page.locator("#routeSideToggle")).toBeVisible();
   await trace(page);
   await paste(page);
   await expect(page.locator("#routeMapBoth")).toBeVisible();
@@ -155,8 +154,8 @@ test("U3 the button is not in the table or the chart, and goes away with the way
   await expect(page.locator("#routeMapBoth")).toBeVisible();
   await direction(page, "back");
   await page.locator("#routeBackClear").click();
-  await expect(page.locator("#routeMapBoth")).toBeHidden();
-  await direction(page, "there");
+  // The way back is gone, and the screen goes back to the way from the server, with nothing to pair it with
+  await expect(page.locator("#routeShown")).toBeHidden();
   await expect(page.locator("#routeMapBoth")).toBeHidden();
   expect((await info(page)).other).toBeUndefined();
 });
@@ -217,7 +216,7 @@ test("U6 a saved way back that is reopened is drawn with the way from the server
   await expect(page.locator("#routeMapBoth")).toBeHidden();
   await expect(page.locator("#historyList .history-panel").first()).toBeVisible();
   await page.locator("#historyList .history-panel").first().locator(".history-action-btn").click();
-  await expect(page.locator('[data-direction="back"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator('[data-shown="back"]')).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#routeMapBoth")).toBeVisible();
   await expect.poll(async () => (await info(page)).other !== undefined).toBe(true);
   expect(await legend(page)).toEqual(["You → server", "Server → you"]);

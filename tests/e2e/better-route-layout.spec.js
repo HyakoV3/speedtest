@@ -124,7 +124,7 @@ test("what a route tells stays out of the page even when the style sheet of the 
 }) => {
   // The old style sheet had rules with a display and no rule for the hidden attribute: they showed before the route
   const css = fs.readFileSync(path.join(root, "frontend", "better", "styling", "route.css"), "utf8");
-  const old = css.replace(/#routeArea \[hidden\] \{[^}]*\}/, "");
+  const old = css.replace(/#routeArea \[hidden\],\n#routeSide \[hidden\] \{[^}]*\}/, "");
   expect(old.length).toBeLessThan(css.length);
   await page.route("**/styling/route.css*", handler => handler.fulfill({ body: old, contentType: "text/css" }));
   await openRoute(page);
