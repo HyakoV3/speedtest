@@ -202,6 +202,9 @@ var LibreSpeedRouteBack = (function () {
     var copyButton = byId("routeBackCopy");
     var systems = byId("routeBackSystems");
     var showButton = byId("routeBackShow");
+    var traceButton = byId("routeBackTraceButton");
+    var traceCancel = byId("routeBackTraceCancel");
+    var traceHint = byId("routeBackTraceHint");
     var seen = detect(
       navigator.userAgent,
       (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform
@@ -476,6 +479,110 @@ var LibreSpeedRouteBack = (function () {
       textarea.value = data.lsr1;
       show(true);
     });
+    // The button of this page, with the browser extension (docs/protocol.md of librespeed-route). The extension is only in a page of a site that
+    // the person allowed; it says "ready" when it is here (to a hello, and by itself when it is allowed while the page is open). A trace is
+    // asked for in the click itself (the browser wants the click of the person), and what comes back is read only if it is of this window and
+    // origin, with exactly the keys of the protocol, and about the trace that this page asked for.
+    var STATE_KEYS = "id,source,state,type,v";
+    var STATE_CODES = [
+      "not-allowed",
+      "no-gesture",
+      "busy",
+      "no-host",
+      "update",
+      "refused",
+      "no-tool",
+      "failed",
+      "silent",
+      "interrupted",
+      "too-long",
+      "moved"
+    ];
+    var TRACE_WAIT_MS = 150000;
+    var extensionHere = false;
+    var traceId = null;
+    var traceTimer = null;
+
+    function newId() {
+      var bytes = new Uint8Array(9);
+      if (window.crypto && window.crypto.getRandomValues) window.crypto.getRandomValues(bytes);
+      else for (var i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+      return Array.prototype.map
+        .call(bytes, function (b) {
+          return ("0" + b.toString(16)).slice(-2);
+        })
+        .join("");
+    }
+
+    function toExtension(type, id) {
+      window.postMessage({ source: "librespeed-route-page", v: 1, type: type, id: id }, window.location.origin);
+    }
+
+    function drawTrace() {
+      var busy = traceId !== null;
+      traceButton.disabled = !extensionHere || busy;
+      traceCancel.hidden = !busy;
+      traceHint.hidden = extensionHere;
+    }
+
+    function endTrace() {
+      traceId = null;
+      window.clearTimeout(traceTimer);
+      traceTimer = null;
+      drawTrace();
+    }
+
+    traceButton.addEventListener("click", function () {
+      if (traceId !== null || !extensionHere) return;
+      if (typeof options.enabled === "function" && !options.enabled()) return;
+      traceId = newId();
+      drawTrace();
+      setNotes([{ key: "route.back.trace-tracing" }]);
+      toExtension("trace", traceId);
+      var mine = traceId;
+      traceTimer = window.setTimeout(function () {
+        if (traceId !== mine) return;
+        toExtension("cancel", mine);
+        endTrace();
+        setNotes([{ key: "route.back.trace-error.timeout", error: true }]);
+      }, TRACE_WAIT_MS);
+    });
+
+    traceCancel.addEventListener("click", function () {
+      if (traceId === null) return;
+      var mine = traceId;
+      endTrace();
+      toExtension("cancel", mine);
+      setNotes([]);
+    });
+
+    window.addEventListener("message", function (event) {
+      if (event.source !== window || event.origin !== window.location.origin) return;
+      var data = event.data;
+      if (!data || typeof data !== "object") return;
+      var keys = Object.keys(data).sort().join(",");
+      if (data.source !== "librespeed-route-extension" || data.v !== 1 || data.type !== "state") return;
+      if (keys !== STATE_KEYS && keys !== "code," + STATE_KEYS) return;
+      if (typeof data.id !== "string" || typeof data.state !== "string") return;
+      if (data.state === "ready") {
+        extensionHere = true;
+        drawTrace();
+        return;
+      }
+      // The other states are about the trace that this page asked for, and no other
+      if (traceId === null || data.id !== traceId) return;
+      if (data.state === "done") {
+        endTrace();
+      } else if (data.state === "error") {
+        var code = STATE_CODES.indexOf(data.code) >= 0 ? data.code : "failed";
+        endTrace();
+        setNotes([{ key: "route.back.trace-error." + code, error: true }]);
+      }
+    });
+    // Is the extension here? Only a page that the person allowed there answers
+    toExtension("hello", newId());
+    drawTrace();
+
     byId("routeBackClear").addEventListener("click", clear);
     drawCommand();
 

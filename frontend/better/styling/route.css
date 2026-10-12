@@ -938,3 +938,17 @@ p.route-hint code {
   border-color: var(--border);
   opacity: 0.8;
 }
+
+/* The button that starts the trace with the browser extension, and what it is waiting for */
+.route-back-trace {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8em;
+  align-items: center;
+  margin: 0.6em 0;
+}
+
+.route-back-trace .route-hint {
+  flex-basis: 100%;
+  margin: 0;
+}
