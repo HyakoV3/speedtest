@@ -75,6 +75,9 @@
           </button>
           <button type="button" data-tool="cli" aria-pressed="false">librespeed-route</button>
         </div>
+        <p id="routeBackExtension" class="route-hint" data-i18n="route.back.extension-hint">
+          With the browser extension: click its icon on this page and press Trace; the route comes here by itself.
+        </p>
         <p id="routeBackCli" class="route-hint" hidden>
           <span data-i18n="route.back.cli-about">
             A small program that runs the tracert/traceroute of your own system and writes the result for this page,
@@ -148,9 +151,10 @@
           You can also drop a .txt file with the output on the box.
         </p>
         <p class="route-hint" data-i18n="route.back.privacy">
-          When you press Show my route or Paste and show, only the public addresses of the routers (never your internal
-          network) are sent to this server, to look up their network and country. They are not saved; only a keyed hash
-          of your own address is kept, for up to an hour, to limit how often this can be asked.
+          When you press Show my route or Paste and show, or when your browser extension hands over a route, only the
+          public addresses of the routers (never your internal network) are sent to this server, to look up their
+          network and country. They are not saved; only a keyed hash of your own address is kept, for up to an hour, to
+          limit how often this can be asked.
         </p>
         <div id="routeBackNotes" class="route-back-notes" role="status" aria-live="polite"></div>
         <div class="route-paste-actions">

@@ -1283,6 +1283,14 @@
           return there && (there.family === 4 || there.family === 6) ? there.family : null;
         },
         onRoute: showBack,
+        // The route handed over by the browser extension is taken only when the route is on and nothing is being traced; the person is
+        // taken to the way back, where it is shown
+        enabled: function () {
+          return capsState === "on" && !running;
+        },
+        onExtension: function () {
+          if (direction !== "back") setDirection("back", false);
+        },
         onSettled: function () {
           backReady = true;
           drawSave();
