@@ -24,6 +24,8 @@ var LibreSpeedRouteBack = (function () {
   // The longest text that the box and the parser take (route-parse.js, MAX_TEXT), and the biggest file that can hold it
   var TOOL_KEY = "librespeed-better-route-back-tool";
   var MAX_TEXT = 32768;
+  // The longest line of LSR1 (route-parse.js, MAX_LSR1)
+  var MAX_LSR1 = 1900;
   var MAX_FILE_BYTES = 131072;
   var TIMEOUT_MS = 10000;
   var AS = /^AS\d{1,10}$/;
@@ -338,7 +340,8 @@ var LibreSpeedRouteBack = (function () {
         });
     }
 
-    function show() {
+    // fromExtension: the route was handed over by the browser extension (the person pressed its button on this page): it is said so
+    function show(fromExtension) {
       var parsed = window.LibreSpeedRouteParse.parse(textarea.value);
       if (parsed.error) {
         // A text that is not a route says so and leaves the route that is on the screen as it is
@@ -348,13 +351,14 @@ var LibreSpeedRouteBack = (function () {
       }
       if (current && current.text === textarea.value) {
         // The same text again: what is known of it is shown, and nothing is asked
+        if (fromExtension === true) setNotes([{ key: "route.back.from-extension" }]);
         options.onRoute(current.merged || current.data, false);
         return;
       }
       ticket++;
       var data = build(parsed);
       current = { text: textarea.value, data: data, merged: null, settled: false };
-      var list = [];
+      var list = fromExtension === true ? [{ key: "route.back.from-extension" }] : [];
       var host = String(options.host || "")
         .replace(/^\[|\]$/g, "")
         .toLowerCase();
@@ -453,7 +457,25 @@ var LibreSpeedRouteBack = (function () {
       });
     });
     copyButton.addEventListener("click", copy);
-    showButton.addEventListener("click", show);
+    showButton.addEventListener("click", function () {
+      show(false);
+    });
+
+    // The route that the browser extension hands over (docs/protocol.md of librespeed-route): a message of this window to itself, of
+    // this origin, of exactly this shape. A script of another site, a frame, a message with more in it or a line that is too long is
+    // ignored. It is read as a pasted text is (and the networks are asked for as for a pasted text), and it is never saved to the
+    // history by itself.
+    window.addEventListener("message", function (event) {
+      if (event.source !== window || event.origin !== window.location.origin) return;
+      var data = event.data;
+      if (!data || typeof data !== "object" || Object.keys(data).sort().join(",") !== "lsr1,source,v") return;
+      if (data.source !== "librespeed-route-extension" || data.v !== 1) return;
+      if (typeof data.lsr1 !== "string" || data.lsr1.length > MAX_LSR1) return;
+      if (typeof options.enabled === "function" && !options.enabled()) return;
+      if (typeof options.onExtension === "function") options.onExtension();
+      textarea.value = data.lsr1;
+      show(true);
+    });
     byId("routeBackClear").addEventListener("click", clear);
     drawCommand();
 
