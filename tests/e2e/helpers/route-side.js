@@ -12,9 +12,16 @@ async function openBackPanel(page) {
 
 // The small selector over the results, when there are two routes to choose from
 async function showRoute(page, way) {
-  const button = page.locator(`[data-shown="${way}"]`);
+  const button = page.locator(`[data-shown="${way}"]:visible`).first();
   await expect(button).toBeVisible();
   await button.click();
 }
 
-module.exports = { openBackPanel, showRoute };
+// The way chosen in the card of the way back: "extension" or "command"
+async function chooseMethod(page, way) {
+  await openBackPanel(page);
+  await page.locator(`#routeBackMethod [data-method="${way}"]`).click();
+  await expect(page.locator(`#routeBackMethod [data-method="${way}"]`)).toHaveAttribute("aria-pressed", "true");
+}
+
+module.exports = { openBackPanel, showRoute, chooseMethod };

@@ -551,14 +551,14 @@ html.high-contrast .route-map-dot-other {
   fill: var(--primary);
 }
 
-.route-map-both {
+.route-both {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4em 1em;
   align-items: center;
 }
 
-.route-map-both button {
+.route-both-button {
   min-height: 2.5rem;
   padding: 0.2em 0.8em;
   font: inherit;
@@ -569,33 +569,53 @@ html.high-contrast .route-map-dot-other {
   border-radius: var(--radius-button);
 }
 
-.route-map-both button[aria-pressed="true"] {
+.route-both-button[aria-pressed="true"] {
   background: var(--primary-subtle);
   border-color: var(--primary);
 }
 
-.route-map-both button:focus-visible {
+.route-both-button:focus-visible,
+.route-both-way:focus-visible {
   outline: 0.1875rem solid var(--text);
   outline-offset: 0.125rem;
 }
 
-.route-map-legend {
+/* The two directions: they say which line is which, and the one that is not on the screen is chosen by pressing it */
+.route-both-ways {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.3em 1em;
+  gap: 0.3em 0.6em;
   padding: 0;
   margin: 0;
   font-size: 0.85em;
   list-style: none;
 }
 
-.route-map-legend li {
+.route-both-way {
   display: flex;
   gap: 0.4em;
   align-items: center;
+  min-height: 2.5rem;
+  padding: 0.2em 0.7em;
+  font: inherit;
+  color: var(--text);
+  cursor: pointer;
+  background: none;
+  border: 0.0625rem solid transparent;
+  border-radius: var(--radius-button);
 }
 
-.route-map-legend svg {
+.route-both-way[aria-pressed="true"] {
+  font-weight: 600;
+  border-color: var(--border);
+}
+
+.route-both-way:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+.route-both-way svg {
   flex: none;
   width: 1.8em;
   height: 0.7em;
@@ -838,7 +858,7 @@ p.route-hint code {
   box-sizing: border-box;
   display: block;
   width: 100%;
-  min-height: 9rem;
+  min-height: 7rem;
   padding: 0.6em 0.7em;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.8em;
@@ -947,12 +967,14 @@ p.route-hint code {
   flex-wrap: wrap;
   gap: 0.8em;
   align-items: center;
+  justify-content: center;
   margin: 0.6em 0;
 }
 
 .route-back-trace .route-hint {
   flex-basis: 100%;
   margin: 0;
+  text-align: center;
 }
 
 /* An error of the button that traces the way back, as a red box at the top of the screen, in the middle: the same words as the line under the button, which is
@@ -1000,12 +1022,12 @@ p.route-hint code {
    Under the red box of the errors (500) and the panel of the themes (1000) and the privacy dialog, over everything else of the page. */
 .route-side {
   position: fixed;
-  top: 4.5rem;
+  top: 4rem;
   right: 1rem;
-  bottom: 4.5rem;
+  bottom: 4rem;
   z-index: 400;
   box-sizing: border-box;
-  width: min(24rem, calc(100vw - 2rem));
+  width: min(23rem, calc(100vw - 2rem));
   padding: 0.4rem;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -1034,7 +1056,7 @@ p.route-hint code {
   padding: 0;
   margin: 0 0 0 0.5em;
   font: inherit;
-  font-size: 1.3em;
+  font-size: 0.95em;
   line-height: 1;
   color: var(--text);
   cursor: pointer;
@@ -1100,4 +1122,347 @@ body.route-side-on {
   .route-toast {
     display: none;
   }
+}
+
+/* The card of the way back, in the panel: the title and what it is for, the way chosen, then what that way needs, the box for the result, one
+   main action, the secondary ones, and how the data is handled. One accent colour for the action; the rest is quiet. */
+.route-back h2 {
+  padding-right: 2.8em;
+  margin: 0 0 0.3em;
+  font-size: 1.15em;
+}
+
+.route-back .route-back-lead {
+  margin: 0 0 0.4em;
+  color: var(--muted);
+}
+
+.route-back .route-label {
+  display: block;
+  margin: 1.1em 0 0.4em;
+  font-size: 0.8em;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
+/* Segmented choices: the whole width, the words on one line */
+.route-segments {
+  display: flex;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.route-segments button {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0.3em 0.5em;
+  font-size: 0.9em;
+  white-space: nowrap;
+}
+
+.route-back .route-views.route-segments {
+  margin: 0.4em 0;
+}
+
+.route-button-block {
+  display: block;
+  width: 100%;
+  margin: 0;
+}
+
+/* The main action stays at the bottom of the panel while the rest scrolls: it is never under the fold or under the button on the edge */
+.route-back-action {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  padding: 0.7em 0 0.3em;
+  margin-top: 0.4em;
+  background: var(--surface);
+}
+
+.route-button-primary {
+  color: var(--on-primary);
+  background: var(--primary);
+}
+
+.route-button-primary:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+/* A text that is an action but not the main one: a link that is a button */
+.route-link {
+  padding: 0.2em 0;
+  font: inherit;
+  font-size: 0.85em;
+  color: var(--primary);
+  text-decoration: underline;
+  cursor: pointer;
+  background: none;
+  border: 0;
+}
+
+.route-link:focus-visible {
+  outline: 0.1875rem solid var(--text);
+  outline-offset: 0.1em;
+}
+
+.route-back-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2em 1.2em;
+  margin: 0.4em 0 0;
+}
+
+.route-back-secondary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6em;
+  justify-content: center;
+}
+
+.route-back-secondary > :not([hidden]) {
+  margin-top: 0.7em;
+}
+
+.route-back .route-privacy-summary {
+  margin: 0.9em 0 0.3em;
+  text-align: center;
+}
+
+.route-disclosure {
+  font-size: 0.9em;
+}
+
+.route-disclosure summary {
+  padding: 0.3em 0;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.route-disclosure summary:focus-visible {
+  outline: 0.1875rem solid var(--text);
+  outline-offset: 0.1em;
+}
+
+/* The card is a tool, not a page: smaller letters for everything that is not the title, and tighter spaces, so that it fits without a scroll bar on
+   an ordinary screen (it still scrolls inside itself on a short one, with the main action kept at its bottom). */
+.route-side .route-back {
+  padding: 0.5em 0.9em;
+  font-size: 0.95rem;
+}
+
+.route-side .route-back p {
+  margin: 0.4em 0;
+  font-size: 0.92em;
+}
+
+.route-side .route-back h2 {
+  font-size: 1.15em;
+}
+
+.route-side .route-back .route-back-lead {
+  margin: 0 0 0.2em;
+}
+
+.route-side .route-back .route-label {
+  margin: 0.6em 0 0.25em;
+  font-size: 0.85em;
+}
+
+.route-side .route-back .route-views button {
+  padding: 0.2em 0.5em;
+  font-size: 0.95em;
+}
+
+/* On a phone the choices keep the height of a finger */
+@media (min-width: 37.5em) {
+  .route-side .route-back .route-views button {
+    min-height: 1.75rem;
+  }
+}
+
+.route-side .route-back .route-views.route-segments {
+  margin: 0.3em 0;
+}
+
+.route-side .route-back code {
+  padding: 0.35em 0.55em;
+  font-size: 0.95em;
+}
+
+.route-side .route-back .route-command {
+  margin: 0.4em 0;
+}
+
+.route-side .route-back .route-paste {
+  min-height: 4rem;
+  font-size: 0.95em;
+}
+
+.route-side .route-back .route-link {
+  font-size: 0.95em;
+}
+
+.route-side .route-back .route-button-block {
+  height: 2.2rem;
+  font-size: 1em;
+  line-height: 1;
+}
+
+.route-side .route-back .route-back-action {
+  padding: 0.5em 0 0.2em;
+}
+
+.route-side .route-back .route-privacy-summary {
+  margin: 0.5em 0 0.1em;
+}
+
+.route-side .route-back .route-disclosure {
+  font-size: 1em;
+}
+
+.route-side .route-back .route-disclosure summary {
+  padding: 0.15em 0;
+}
+
+.route-side .route-back .history-action {
+  font-size: 0.95em;
+}
+
+/* With both directions on, the networks of each one are under the name of its direction */
+.route-groups-way {
+  margin: 0.6em 0 0.2em;
+  font-weight: 600;
+}
+
+/* The end of the route and the MTU are toasts; their paragraphs stay for a screen reader, with nothing of their own to show (the ids above would
+   otherwise keep their line and their spaces) */
+#routeEnd.route-visually-hidden,
+#routeMtu.route-visually-hidden {
+  padding: 0;
+  margin: -1px;
+  border: 0;
+}
+
+/* A switch for what is on or off (the way of the clipboard): the native checkbox, with role="switch", on top of a track and a handle that follow
+   its state. It is the toggle of PrimeVue 4 (a track of 2.5 by 1.5, a round handle of 1 that goes to the other end), so the keyboard (Space), the
+   label and the screen reader are the ones of a checkbox, and nothing here needs a script. */
+.route-back-clip {
+  display: flex;
+  gap: 0.6em;
+  align-items: center;
+  margin: 0.5em 0;
+  cursor: pointer;
+}
+
+.route-switch {
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: 2.5em;
+  height: 1.5em;
+}
+
+.route-switch input {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.route-switch-track {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--muted) 45%, var(--surface));
+  border: 0.0625rem solid transparent;
+  border-radius: 1.875em;
+  transition: background-color 0.2s;
+}
+
+.route-switch-handle {
+  position: absolute;
+  top: 50%;
+  left: 0.25em;
+  width: 1em;
+  height: 1em;
+  margin-top: -0.5em;
+  background: var(--on-primary, #fff);
+  border-radius: 50%;
+  box-shadow: 0 0.0625em 0.1875em rgb(0 0 0 / 30%);
+  transition: left 0.2s;
+}
+
+.route-switch:hover input:not(:checked) + .route-switch-track {
+  background: color-mix(in srgb, var(--muted) 60%, var(--surface));
+}
+
+.route-switch input:checked + .route-switch-track {
+  background: var(--primary);
+}
+
+.route-switch input:checked + .route-switch-track .route-switch-handle {
+  left: calc(100% - 1.25em);
+}
+
+.route-switch input:focus-visible + .route-switch-track {
+  outline: 0.1875rem solid var(--text);
+  outline-offset: 0.125rem;
+}
+
+.route-back-clip-text {
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-switch-track,
+  .route-switch-handle {
+    transition: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .route-switch-track {
+    background: Canvas;
+    border-color: ButtonText;
+  }
+
+  .route-switch input:checked + .route-switch-track {
+    background: Highlight;
+  }
+
+  .route-switch-handle {
+    background: ButtonText;
+    forced-color-adjust: none;
+  }
+}
+
+/* What is needed before the button of the extension works: two short steps, there only while the extension has not answered */
+.route-setup {
+  order: -1;
+  flex-basis: 100%;
+  text-align: left;
+}
+
+.route-setup .route-label {
+  margin: 0.2em 0 0.3em;
+}
+
+.route-steps {
+  padding-left: 1.3em;
+  margin: 0;
+}
+
+.route-steps li {
+  margin: 0.3em 0;
+}
+
+.route-steps a {
+  display: block;
+  color: var(--primary);
 }

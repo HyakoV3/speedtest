@@ -22,7 +22,9 @@ var LibreSpeedRouteBack = (function () {
 
   var HOST = /^[A-Za-z0-9._:-]{1,253}$/;
   // The longest text that the box and the parser take (route-parse.js, MAX_TEXT), and the biggest file that can hold it
+  // The choice of the tool (the system command or librespeed-route) is gone from the card: the old key is taken away once
   var TOOL_KEY = "librespeed-better-route-back-tool";
+  var METHOD_KEY = "librespeed-better-route-back-method";
   var MAX_TEXT = 32768;
   // The longest line of LSR1 (route-parse.js, MAX_LSR1)
   var MAX_LSR1 = 1900;
@@ -41,16 +43,12 @@ var LibreSpeedRouteBack = (function () {
     return typeof value === "string" && value.length <= 200 && CLI_URL.test(value) ? value : null;
   }
 
-  // The command to run, with clip true: with its output sent to the clipboard (the terminal shows nothing until it ends). With tool "cli":
-  // librespeed-route, which writes one line for the page to its output and its table to the error output, so it is always piped
-  function commands(system, host, family, clip, tool) {
+  // The command to run, with clip true: with its output sent to the clipboard (the terminal shows nothing until it ends)
+  function commands(system, host, family, clip) {
     if (typeof host !== "string") return null;
     var name = host.replace(/^\[|\]$/g, "");
     if (!HOST.test(name) || name.charAt(0) === "-") return null;
     var flag = family === 4 ? " -4" : family === 6 ? " -6" : "";
-    if (tool === "cli") {
-      return CLIPBOARD[system] ? { main: "librespeed-route" + flag + " " + name + CLIPBOARD[system], alt: null } : null;
-    }
     var tail = clip === true && CLIPBOARD[system] ? CLIPBOARD[system] : "";
     if (system === "windows") return { main: "tracert -d -h 30 -w 1000" + flag + " " + name + tail, alt: null };
     if (system === "macos") {
@@ -188,20 +186,26 @@ var LibreSpeedRouteBack = (function () {
     var clipHint = byId("routeBackClipHint");
     var clipLinux = byId("routeBackClipLinux");
     var pasteClipButton = byId("routeBackPasteClip");
-    var toolBox = byId("routeBackTool");
     var clipLabel = byId("routeBackClipLabel");
-    var cliBox = byId("routeBackCli");
+    // Where to get the program and the extension, when the server offers an address for it: a link in the steps of the extension
     var cliLink = byId("routeBackCliLink");
-    var cliRun = byId("routeBackCliRun");
-    // "system": the tracert/traceroute of the system; "cli": librespeed-route (only when the server offers it)
-    var tool = "system";
-    var cliAddress = null;
+    try {
+      window.localStorage.removeItem(TOOL_KEY);
+    } catch (error) {
+      // Nothing to remove
+    }
     var noCommandBox = byId("routeBackNoCommand");
     var altCommand = byId("routeBackAltCommand");
     var mobileBox = byId("routeBackMobile");
     var copyButton = byId("routeBackCopy");
     var systems = byId("routeBackSystems");
     var showButton = byId("routeBackShow");
+    var methodBox = byId("routeBackMethod");
+    var extensionArea = byId("routeBackExtensionArea");
+    var commandArea = byId("routeBackCommandArea");
+    var uploadButton = byId("routeBackUpload");
+    var fileInput = byId("routeBackFile");
+    var clearButton = byId("routeBackClear");
     var traceButton = byId("routeBackTraceButton");
     var traceCancel = byId("routeBackTraceCancel");
     var traceHint = byId("routeBackTraceHint");
@@ -230,18 +234,48 @@ var LibreSpeedRouteBack = (function () {
       drawNotes();
     }
 
-    function drawCommand() {
-      var found = commands(system, options.host, options.family(), clipBox.checked, tool);
-      commandBox.textContent = found ? found.main : "";
-      var cli = tool === "cli";
-      cliBox.hidden = !cli;
-      cliRun.hidden = !cli;
-      clipLabel.hidden = cli;
-      toolBox.hidden = cliAddress === null;
-      Array.prototype.forEach.call(toolBox.querySelectorAll("[data-tool]"), function (button) {
-        button.setAttribute("aria-pressed", String(button.dataset.tool === tool));
+    // "extension": the browser extension traces and hands the route over; "command": the person runs the command and pastes what it prints.
+    // The first visit starts on the command (most people have no extension); the extension saying it is here moves it to the extension, unless
+    // the person has already chosen
+    var method = "command";
+    var methodChosen = false;
+    try {
+      var savedMethod = window.localStorage.getItem(METHOD_KEY);
+      if (savedMethod === "extension" || savedMethod === "command") {
+        method = savedMethod;
+        methodChosen = true;
+      }
+    } catch (error) {
+      // Only the default
+    }
+
+    function drawMethod() {
+      Array.prototype.forEach.call(methodBox.querySelectorAll("[data-method]"), function (button) {
+        button.setAttribute("aria-pressed", String(button.dataset.method === method));
       });
-      clipHint.hidden = cli || !(found && clipBox.checked);
+      extensionArea.hidden = method !== "extension";
+      commandArea.hidden = method !== "command";
+    }
+
+    // Clear is there only when there is something to clear: text in the box, or a route that was brought
+    function drawActions() {
+      clearButton.hidden = !(textarea.value !== "" || (typeof options.hasRoute === "function" && options.hasRoute()));
+    }
+
+    // While the networks of the text that is shown are being looked up the button says so and is off: the same text pressed again would ask
+    // nothing new. Another text can be shown at once.
+    function drawShow() {
+      var waiting = !!current && !current.settled && current.text === textarea.value;
+      showButton.disabled = waiting;
+      if (waiting) showButton.setAttribute("aria-busy", "true");
+      else showButton.removeAttribute("aria-busy");
+      showButton.textContent = t(waiting ? "route.back.show-busy" : "route.back.show");
+    }
+
+    function drawCommand() {
+      var found = commands(system, options.host, options.family(), clipBox.checked);
+      commandBox.textContent = found ? found.main : "";
+      clipHint.hidden = !(found && clipBox.checked);
       clipLinux.hidden = system !== "linux";
       copyButton.disabled = !found;
       noCommandBox.hidden = !!found;
@@ -251,10 +285,13 @@ var LibreSpeedRouteBack = (function () {
         button.setAttribute("aria-pressed", String(button.dataset.system === system));
       });
       mobileBox.hidden = !seen.mobile;
+      drawMethod();
+      drawActions();
+      drawShow();
     }
 
     function copy() {
-      var found = commands(system, options.host, options.family(), clipBox.checked, tool);
+      var found = commands(system, options.host, options.family(), clipBox.checked);
       if (!found) return;
       var done = function () {
         copyButton.textContent = t("route.back.copied");
@@ -284,6 +321,7 @@ var LibreSpeedRouteBack = (function () {
     function settle(mine) {
       if (mine !== ticket || !current) return;
       current.settled = true;
+      drawShow();
       if (options.onSettled) options.onSettled();
     }
 
@@ -362,6 +400,8 @@ var LibreSpeedRouteBack = (function () {
       ticket++;
       var data = build(parsed);
       current = { text: textarea.value, data: data, merged: null, settled: false };
+      drawShow();
+      drawActions();
       var list = fromExtension === true ? [{ key: "route.back.from-extension" }] : [];
       var host = String(options.host || "")
         .replace(/^\[|\]$/g, "")
@@ -385,7 +425,9 @@ var LibreSpeedRouteBack = (function () {
       current = null;
       textarea.value = "";
       setNotes([]);
+      drawShow();
       options.onClear();
+      drawActions();
     }
 
     // The output of the command, taken from the clipboard and shown: one press, which is the one that says "show"
@@ -423,6 +465,8 @@ var LibreSpeedRouteBack = (function () {
           }
           setNotes([]);
           textarea.value = text;
+          drawActions();
+          drawShow();
           showButton.focus();
         },
         function () {
@@ -441,18 +485,32 @@ var LibreSpeedRouteBack = (function () {
       takeFile(files[0]);
     });
     clipBox.addEventListener("change", drawCommand);
-    Array.prototype.forEach.call(toolBox.querySelectorAll("[data-tool]"), function (button) {
+    pasteClipButton.addEventListener("click", pasteFromClipboard);
+    Array.prototype.forEach.call(methodBox.querySelectorAll("[data-method]"), function (button) {
       button.addEventListener("click", function () {
-        tool = button.dataset.tool === "cli" && cliAddress !== null ? "cli" : "system";
+        method = button.dataset.method === "extension" ? "extension" : "command";
+        methodChosen = true;
         try {
-          window.localStorage.setItem(TOOL_KEY, tool);
+          window.localStorage.setItem(METHOD_KEY, method);
         } catch (error) {
           // The choice only lasts until the page is closed
         }
-        drawCommand();
+        drawMethod();
       });
     });
-    pasteClipButton.addEventListener("click", pasteFromClipboard);
+    // The file can be chosen as well as dropped on the box; what is in it is read as a dropped one is
+    uploadButton.addEventListener("click", function () {
+      fileInput.click();
+    });
+    fileInput.addEventListener("change", function () {
+      var file = fileInput.files && fileInput.files[0];
+      fileInput.value = "";
+      if (file) takeFile(file);
+    });
+    textarea.addEventListener("input", function () {
+      drawActions();
+      drawShow();
+    });
 
     Array.prototype.forEach.call(systems.querySelectorAll("[data-system]"), function (button) {
       button.addEventListener("click", function () {
@@ -607,6 +665,11 @@ var LibreSpeedRouteBack = (function () {
         // "off": the person turned this site off in the extension while the page was open
         extensionHere = data.state === "ready";
         if (!extensionHere) sayTrace(null);
+        // The extension is here and the person has not chosen: it is the easier way
+        if (extensionHere && !methodChosen && method !== "extension") {
+          method = "extension";
+          drawMethod();
+        }
         drawTrace();
         return;
       }
@@ -629,22 +692,11 @@ var LibreSpeedRouteBack = (function () {
     drawCommand();
 
     return {
-      // The address that the server offers to get librespeed-route from (null or anything that is not a plain https address: not offered)
+      // The address that the server offers to get the program and the extension from (null or anything that is not a plain https address: no link)
       setCli: function (value) {
-        cliAddress = cliUrl(value);
-        if (cliAddress === null) {
-          tool = "system";
-        } else {
-          cliLink.href = cliAddress;
-          var saved = null;
-          try {
-            saved = window.localStorage.getItem(TOOL_KEY);
-          } catch (error) {
-            saved = null;
-          }
-          tool = saved === "cli" ? "cli" : "system";
-        }
-        drawCommand();
+        var address = cliUrl(value);
+        cliLink.hidden = address === null;
+        if (address !== null) cliLink.href = address;
       },
       // Another route took the screen (a saved one was shown): what is on its way for the pasted one is no longer wanted
       forget: function () {

@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { test, expect } = require("@playwright/test");
-const { openBackPanel, showRoute } = require("./helpers/route-side");
+const { openBackPanel, showRoute, chooseMethod } = require("./helpers/route-side");
 
 const staticRepositoryUrl = "http://127.0.0.1:18184";
 
@@ -142,16 +142,22 @@ test("M5 the hint and the note are in the four languages, and the privacy text n
 }) => {
   await openRoute(page);
   const texts = {
-    en: ["With the browser extension", "Route received from the browser extension.", "your browser extension"],
-    pt: ["Com a extensão do navegador", "Rota recebida da extensão do navegador.", "extensão do seu navegador"],
-    es: ["Con la extensión del navegador", "Ruta recibida de la extensión del navegador.", "extensión de tu navegador"],
-    sv: ["Med webbläsartillägget", "Vägen togs emot från webbläsartillägget.", "webbläsartillägg"]
+    en: ["To trace from here you need:", "Route received from the browser extension.", "your browser extension"],
+    pt: ["Para traçar daqui você precisa:", "Rota recebida da extensão do navegador.", "extensão do seu navegador"],
+    es: [
+      "Para trazar desde aquí necesitas:",
+      "Ruta recibida de la extensión del navegador.",
+      "extensión de tu navegador"
+    ],
+    sv: ["För att spåra härifrån behöver du:", "Vägen togs emot från webbläsartillägget.", "webbläsartillägg"]
   };
-  await openBackPanel(page);
+  await chooseMethod(page, "extension");
   for (const [language, [hint, note, privacy]] of Object.entries(texts)) {
     await page.evaluate(code => window.LibreSpeedI18n.set(code, false), language);
-    await expect(page.locator("#routeBackExtension")).toContainText(hint);
-    expect(await page.locator('#routeBack [data-i18n="route.back.privacy"]').innerText(), language).toContain(privacy);
+    await expect(page.locator("#routeBackTraceHint")).toContainText(hint);
+    expect(await page.locator('#routeBack [data-i18n="route.back.privacy"]').textContent(), language).toContain(
+      privacy
+    );
     await hand(page, message(LSR1 + ""));
     await expect(page.locator("#routeBackNotes")).toContainText(note);
     await page.locator("#routeBackClear").click();
@@ -161,9 +167,9 @@ test("M5 the hint and the note are in the four languages, and the privacy text n
 test("M6 at 360 px the hint fits, in Swedish", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 740 });
   await openRoute(page);
-  await openBackPanel(page);
+  await chooseMethod(page, "extension");
   await page.evaluate(() => window.LibreSpeedI18n.set("sv", false));
-  await expect(page.locator("#routeBackExtension")).toBeVisible();
+  await expect(page.locator("#routeBackTraceHint")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(
     true
   );

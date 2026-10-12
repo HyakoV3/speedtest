@@ -172,7 +172,7 @@ test("K5 a file that is not text, is empty or is too big is refused and the box 
   await expect(notes(page)).toContainText("could not be read as text");
   await expect(page.locator("#routeBackText")).toHaveValue("what the person had written");
   // A file of 40 KB is under the limit of bytes and over the limit of characters of the box and the parser (32768): refused too, so that
-  // "Show my route" is not left with a text that it can only call too long
+  // "Show route" is not left with a text that it can only call too long
   await page.locator("#routeBackText").fill("what the person had written");
   await drop(page, Buffer.from(`${TRACERT}${"x".repeat(40000)}`, "utf8"), "forty.txt");
   await expect(notes(page)).toContainText("could not be read as text");
@@ -204,17 +204,17 @@ test("K5 a file that is not text, is empty or is too big is refused and the box 
 test("K6 the new texts are in the four languages, and the privacy text names the two buttons", async ({ page }) => {
   await openRoute(page);
   const texts = {
-    en: ["Paste and show", "Show my route", "Send the result to the clipboard"],
-    pt: ["Colar e mostrar", "Mostrar minha rota", "Mandar o resultado para a área de transferência"],
-    es: ["Pegar y mostrar", "Mostrar mi ruta", "Enviar el resultado al portapapeles"],
-    sv: ["Klistra in och visa", "Visa min väg", "Skicka resultatet till urklipp"]
+    en: ["Paste from clipboard and show", "Show route", "Send the result to the clipboard"],
+    pt: ["Colar da área de transferência e mostrar", "Mostrar rota", "Mandar o resultado para a área de transferência"],
+    es: ["Pegar del portapapeles y mostrar", "Mostrar ruta", "Enviar el resultado al portapapeles"],
+    sv: ["Klistra in från urklipp och visa", "Visa vägen", "Skicka resultatet till urklipp"]
   };
   for (const [language, [paste, show, clipLabel]] of Object.entries(texts)) {
     await page.evaluate(code => window.LibreSpeedI18n.set(code, false), language);
     await expect(page.locator("#routeBackPasteClip")).toHaveText(paste);
     await expect(page.locator("#routeBackShow")).toHaveText(show);
-    await expect(page.locator(".route-back-clip span")).toHaveText(clipLabel);
-    const privacy = await page.locator('#routeBack [data-i18n="route.back.privacy"]').innerText();
+    await expect(page.locator(".route-back-clip-text")).toHaveText(clipLabel);
+    const privacy = await page.locator('#routeBack [data-i18n="route.back.privacy"]').textContent();
     expect(privacy, language).toContain(paste);
     expect(privacy, language).toContain(show);
   }
