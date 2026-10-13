@@ -20,6 +20,15 @@ linux-*, REAL: run on Linux (Ubuntu), here. The hostname of mtr was changed to "
   macos-traceroute-real-ci.txt   REAL macOS: traceroute -n -m 30 -w 1 8.8.8.8 on a GitHub Actions runner (the header goes to stderr, so it is not
                                  here), with the routers of a hop in lines of their own, one probe lost in the middle of a hop, internal
                                  and CGNAT addresses, and a silent first hop
+  macos-real-v4.txt              REAL macOS 26.6.2: traceroute -n -m 30 -w 1 8.8.8.8 from a home connection (Brazil), with the header (it goes to
+                                 stderr, kept here by 2>&1): private hops, three routers in one hop, two silent hops, a probe lost in the middle of
+                                 a hop, and 20 silent hops at the end (the parser cuts them)
+  macos-real-names.txt           REAL macOS: traceroute -m 12 8.8.8.8, with names: "name (address)", the other routers of a hop in lines of their
+                                 own that start with a name (not an address), and a "*" on one of those lines
+  macos-real-silent.txt          REAL macOS: traceroute -n -m 30 -w 1 192.0.2.1: two internal hops and then 28 hops with no answer
+  macos-real-v6.txt              REAL macOS: traceroute6 -n -m 12 2001:4860:4860::8888 over IPv6 (header with "from <address>", three routers in
+                                 one hop, a silent hop). The prefix and the interface id of the first two hops were changed
+  (macOS `traceroute -6` does not exist: it prints the usage of traceroute. IPv6 is `traceroute6`.)
   windows-en-real-allsilent-ci.txt  REAL Windows in English: tracert -d -h 30 -w 1000 8.8.8.8 on a runner, through a pipe (CRLF): every hop is
                                  "Request timed out." (the network drops the packets), so the page says it does not look like a route
   linux-traceroute-v6-real.txt   traceroute -n -m 30 -w 1 -6 2001:4860:4860::8888 run on the server of a hosting provider, over IPv6
