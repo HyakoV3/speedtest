@@ -183,8 +183,6 @@ var LibreSpeedRouteBack = (function () {
     var commandBox = byId("routeBackCommand");
     var altBox = byId("routeBackAlt");
     var clipBox = byId("routeBackClip");
-    var clipHint = byId("routeBackClipHint");
-    var clipLinux = byId("routeBackClipLinux");
     var clipLabel = byId("routeBackClipLabel");
     // Where to get the program and the extension, when the server offers an address for it: a link in the steps of the extension
     var cliLink = byId("routeBackCliLink");
@@ -277,8 +275,6 @@ var LibreSpeedRouteBack = (function () {
     function drawCommand() {
       var found = commands(system, options.host, options.family(), clipBox.checked);
       commandBox.textContent = found ? found.main : "";
-      clipHint.hidden = !(found && clipBox.checked);
-      clipLinux.hidden = system !== "linux";
       copyButton.disabled = !found;
       noCommandBox.hidden = !!found;
       altBox.hidden = !(found && found.alt);
@@ -609,7 +605,18 @@ var LibreSpeedRouteBack = (function () {
     });
     window.addEventListener("iconschange", drawDropIcons);
     drawDropIcons();
-    clipBox.addEventListener("change", drawCommand);
+    // What to do after turning the clipboard on is a toast, once, when it is turned on (and, on Linux, which tool puts it there): the command
+    // shows nothing until it ends, and then the output is pasted on the card
+    function tellClipboard() {
+      if (!window.LibreSpeedToast || !clipBox.checked || !commands(system, options.host, options.family(), true))
+        return;
+      window.LibreSpeedToast.show(t("route.back.clip-hint"));
+      if (system === "linux") window.LibreSpeedToast.show(t("route.back.clip-linux"));
+    }
+    clipBox.addEventListener("change", function () {
+      drawCommand();
+      tellClipboard();
+    });
     Array.prototype.forEach.call(methodBox.querySelectorAll("[data-method]"), function (button) {
       button.addEventListener("click", function () {
         method = button.dataset.method === "extension" ? "extension" : "command";
@@ -640,8 +647,19 @@ var LibreSpeedRouteBack = (function () {
 
     Array.prototype.forEach.call(systems.querySelectorAll("[data-system]"), function (button) {
       button.addEventListener("click", function () {
+        var before = system;
         system = button.dataset.system;
         drawCommand();
+        // Already on, and the system is now Linux: the note about the tool that it uses
+        if (
+          clipBox.checked &&
+          system === "linux" &&
+          before !== "linux" &&
+          window.LibreSpeedToast &&
+          commands(system, options.host, options.family(), true)
+        ) {
+          window.LibreSpeedToast.show(t("route.back.clip-linux"));
+        }
       });
     });
     copyButton.addEventListener("click", copy);

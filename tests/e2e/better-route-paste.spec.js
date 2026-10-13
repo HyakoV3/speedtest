@@ -54,14 +54,17 @@ test("K1 the command can send its output to the clipboard: the pipe of each syst
   await openRoute(page);
   const clip = page.locator("#routeBackClip");
   await expect(clip).not.toBeChecked();
-  await expect(page.locator("#routeBackClipHint")).toBeHidden();
+  // Nothing is said while it is off, and what is said when it is turned on is a toast, not a paragraph of the card
+  await expect(page.locator(".toast")).toHaveCount(0);
+  await expect(page.locator("#routeBackClipHint")).toHaveCount(0);
   const plain = { windows: /^tracert -d -h 30 -w 1000 [^|]+$/, macos: /^traceroute -n -m 30 -w 1 [^|]+$/ };
   await system(page, "windows");
   await expect(command(page)).toHaveText(plain.windows);
   await clip.check();
   await expect(command(page)).toHaveText(/^tracert -d -h 30 -w 1000 \S+ \| clip$/);
-  await expect(page.locator("#routeBackClipHint")).toBeVisible();
-  await expect(page.locator("#routeBackClipLinux")).toBeHidden();
+  await expect(page.locator(".toast", { hasText: "The terminal shows nothing until the command ends" })).toHaveCount(1);
+  await expect(page.locator(".toast", { hasText: "Then paste it here (Ctrl+V) and press Show route." })).toHaveCount(1);
+  await expect(page.locator(".toast", { hasText: "xclip" })).toHaveCount(0);
   // The copy button copies what is shown
   await page.locator("#routeBackCopy").click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(/\| clip$/);
@@ -70,11 +73,16 @@ test("K1 the command can send its output to the clipboard: the pipe of each syst
   await system(page, "linux");
   await expect(command(page)).toHaveText(/^traceroute -n -m 30 -w 1 \S+ \| xclip -selection clipboard$/);
   await expect(page.locator("#routeBackAltCommand")).toHaveText(/^tracepath -n \S+ \| xclip -selection clipboard$/);
-  await expect(page.locator("#routeBackClipLinux")).toBeVisible();
+  // On Linux, which tool puts it in the clipboard
+  await expect(page.locator(".toast", { hasText: "xclip" })).toHaveCount(1);
   // Off again: the plain command
   await clip.uncheck();
   await expect(command(page)).toHaveText(/^traceroute -n -m 30 -w 1 \S+$/);
-  await expect(page.locator("#routeBackClipHint")).toBeHidden();
+  const told = await page.locator(".toast").count();
+  await clip.check();
+  await clip.uncheck();
+  // Turning it off says nothing; turning it on says it again (the two toasts of Linux)
+  await expect.poll(() => page.locator(".toast").count()).toBeGreaterThanOrEqual(Math.min(3, told));
   await system(page, "macos");
   await expect(command(page)).toHaveText(plain.macos);
   // Without a command (a name that a command cannot take) there is no hint of the pipe
@@ -436,4 +444,29 @@ test("K10 the clip in the corner of the box opens the choice of a file, with the
   expect(drawings.size).toBe(sets.length);
   // Choosing a file shows and sends nothing
   expect(seen.enrich).toHaveLength(0);
+});
+
+test("K1b turning the clipboard on says what to do in a toast, and on Linux which tool puts it there; turning it off says nothing", async ({
+  page
+}) => {
+  await openRoute(page);
+  const clip = page.locator("#routeBackClip");
+  await system(page, "linux");
+  await clip.check();
+  await expect(page.locator(".toast", { hasText: "The terminal shows nothing until the command ends" })).toHaveCount(1);
+  await expect(page.locator(".toast", { hasText: "xclip" })).toHaveCount(1);
+  while ((await page.locator(".toast").count()) > 0) {
+    await page.evaluate(
+      () => document.querySelector(".toast button") && document.querySelector(".toast button").click()
+    );
+    await page.waitForTimeout(350);
+  }
+  await clip.uncheck();
+  await page.waitForTimeout(500);
+  await expect(page.locator(".toast")).toHaveCount(0);
+  // On a system where it is not Linux, no note about xclip
+  await system(page, "windows");
+  await clip.check();
+  await expect(page.locator(".toast", { hasText: "The terminal shows nothing" })).toHaveCount(1);
+  await expect(page.locator(".toast", { hasText: "xclip" })).toHaveCount(0);
 });
