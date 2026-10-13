@@ -82,45 +82,99 @@ test("K1 the command can send its output to the clipboard: the pipe of each syst
   expect(result).toBeNull();
 });
 
-test("K2 'Paste and show' reads the clipboard and shows the route: one press, one request for the public addresses", async ({
-  page,
-  context
+// What a Ctrl+V does: a paste event on an element, with the clipboard that the test gives it
+const pasteOn = (page, selector, { text = null, file = null } = {}) =>
+  page.evaluate(
+    ([target, content, attached]) => {
+      const data = new DataTransfer();
+      if (content !== null) data.setData("text/plain", content);
+      if (attached) data.items.add(new File([new Uint8Array(attached.bytes)], attached.name, { type: attached.type }));
+      const element = target === "body" ? document.body : document.querySelector(target);
+      const event = new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true });
+      element.dispatchEvent(event);
+      return event.defaultPrevented;
+    },
+    [selector, text, file ? { ...file, bytes: Array.from(file.bytes) } : null]
+  );
+
+test("K2 pasting on the card (Ctrl+V, the focus anywhere) puts the output in the box, and shows and sends nothing until the button is pressed", async ({
+  page
 }) => {
-  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   const seen = await openRoute(page);
-  await page.evaluate(text => navigator.clipboard.writeText(text), TRACERT);
-  await page.locator("#routeBackPasteClip").click();
-  await expect(rows(page)).toHaveCount(13);
+  // The focus is on a button of the card, not in the box
+  await page.locator("#routeBackSystems [data-system='linux']").focus();
+  expect(await pasteOn(page, "body", { text: TRACERT })).toBe(true);
   await expect(page.locator("#routeBackText")).toHaveValue(BOXED);
+  await expect(page.locator("#routeBackShow")).toBeFocused();
+  await page.waitForTimeout(300);
+  await expect(rows(page)).toHaveCount(0);
+  expect(seen.enrich).toHaveLength(0);
+  await page.locator("#routeBackShow").click();
+  await expect(rows(page)).toHaveCount(13);
   expect(seen.enrich).toHaveLength(1);
   expect(seen.enrich[0].hops.map(h => h.ip)).toEqual(["72.14.208.80", "142.251.69.137", "192.178.240.77", "8.8.8.8"]);
+  // A second paste takes the place of the first
+  await pasteOn(page, "body", { text: "traceroute to 1.1.1.1 (1.1.1.1)\n 1  1.1.1.1  1 ms" });
+  await expect(page.locator("#routeBackText")).toHaveValue(/^traceroute to 1\.1\.1\.1/);
 });
 
-test("K3 when the browser does not give the clipboard, or it has no text, nothing is shown or sent", async ({
-  page,
-  context
+test("K3 the paste is left alone where it is not for the card: in the box itself, in another field, with the card closed, or with nothing to paste", async ({
+  page
 }) => {
   const seen = await openRoute(page);
-  // No permission: the browser refuses
-  await page.locator("#routeBackPasteClip").click();
-  await expect(notes(page)).toContainText("did not let this page read the clipboard");
-  await expect(page.locator("#routeBackText")).toHaveValue("");
-  // Empty clipboard
-  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-  await page.evaluate(() => navigator.clipboard.writeText("   "));
-  await page.locator("#routeBackPasteClip").click();
-  await expect(notes(page)).toContainText("Paste the output of the command first.");
-  // Text that is not a route
-  await page.evaluate(() => navigator.clipboard.writeText("hello, this is not a route"));
-  await page.locator("#routeBackPasteClip").click();
-  await expect(notes(page)).toContainText("does not look like the output");
-  // A browser with no readText at all
+  // In the box: the browser puts it (the event is not taken)
+  expect(await pasteOn(page, "#routeBackText", { text: "typed here" })).toBe(false);
+  // In another field of the page
   await page.evaluate(() => {
-    Object.defineProperty(navigator.clipboard, "readText", { value: undefined, configurable: true });
+    const field = document.createElement("input");
+    field.id = "elsewhere";
+    document.body.appendChild(field);
   });
-  await page.locator("#routeBackPasteClip").click();
-  await expect(notes(page)).toContainText("did not let this page read the clipboard");
-  await expect(rows(page)).toHaveCount(0);
+  expect(await pasteOn(page, "#elsewhere", { text: "for the other field" })).toBe(false);
+  await expect(page.locator("#routeBackText")).toHaveValue("");
+  // Nothing to paste, or only blanks
+  expect(await pasteOn(page, "body", {})).toBe(false);
+  expect(await pasteOn(page, "body", { text: "   \n  " })).toBe(true);
+  await expect(page.locator("#routeBackText")).toHaveValue("");
+  // With the card closed the page is not touched
+  await page.locator("#routeSideClose").click();
+  await expect(page.locator("#routeSide")).toBeHidden();
+  expect(await pasteOn(page, "body", { text: TRACERT })).toBe(false);
+  await page.locator("#routeSideToggle").click();
+  await expect(page.locator("#routeBackText")).toHaveValue("");
+  // A text over the limit of the box is told, and not put in
+  await pasteOn(page, "body", { text: "x".repeat(40000) });
+  await expect(notes(page)).toContainText("too long");
+  await expect(page.locator("#routeBackText")).toHaveValue("");
+  expect(seen.enrich).toHaveLength(0);
+});
+
+test("K3b a file pasted on the card is read as a dropped one, and an image or another thing that is not text is refused", async ({
+  page
+}) => {
+  const seen = await openRoute(page);
+  expect(
+    await pasteOn(page, "body", {
+      file: { name: "route.txt", type: "text/plain", bytes: Buffer.from(TRACERT, "utf8") }
+    })
+  ).toBe(true);
+  await expect(page.locator("#routeBackText")).toHaveValue(BOXED);
+  await expect(page.locator("#routeBackFileCard")).toBeVisible();
+  // A picture: the clipboard of a screenshot
+  await page.locator("#routeBackClear").click();
+  expect(
+    await pasteOn(page, "body", {
+      file: { name: "image.png", type: "image/png", bytes: Buffer.from([0x89, 0x50, 0x4e, 0x47]) }
+    })
+  ).toBe(true);
+  await expect(notes(page)).toContainText("This is not text");
+  await expect(page.locator("#routeBackText")).toHaveValue("");
+  await expect(page.locator("#routeBackFileCard")).toBeHidden();
+  // Even when the focus is in the box, a file is not put in it as text
+  await pasteOn(page, "#routeBackText", {
+    file: { name: "doc.pdf", type: "application/pdf", bytes: Buffer.from([0x25, 0x50, 0x44, 0x46]) }
+  });
+  await expect(notes(page)).toContainText("This is not text");
   expect(seen.enrich).toHaveLength(0);
 });
 
@@ -164,7 +218,7 @@ test("K5 a file that is not text, is empty or is too big is refused and the box 
   await openRoute(page);
   await page.locator("#routeBackText").fill("what the person had written");
   await drop(page, Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 0, 0, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]), "picture.png");
-  await expect(notes(page)).toContainText("could not be read as text");
+  await expect(notes(page)).toContainText("This is not text");
   await expect(page.locator("#routeBackText")).toHaveValue("what the person had written");
   await drop(page, Buffer.alloc(0), "empty.txt");
   await expect(notes(page)).toContainText("could not be read as text");
@@ -201,22 +255,50 @@ test("K5 a file that is not text, is empty or is too big is refused and the box 
   expect(handled).toBe(false);
 });
 
-test("K6 the new texts are in the four languages, and the privacy text names the two buttons", async ({ page }) => {
+test("K6 the texts of the box are in the four languages, and the privacy text names the one button", async ({
+  page
+}) => {
   await openRoute(page);
   const texts = {
-    en: ["Paste from clipboard and show", "Show route", "Send the result to the clipboard"],
-    pt: ["Colar da área de transferência e mostrar", "Mostrar rota", "Mandar o resultado para a área de transferência"],
-    es: ["Pegar del portapapeles y mostrar", "Mostrar ruta", "Enviar el resultado al portapapeles"],
-    sv: ["Klistra in från urklipp och visa", "Visa vägen", "Skicka resultatet till urklipp"]
+    en: [
+      "Paste the output here (Ctrl+V) or drop a .txt file",
+      "Choose a .txt file",
+      "Show route",
+      "Send the result to the clipboard"
+    ],
+    pt: [
+      "Cole a saída aqui (Ctrl+V) ou solte um arquivo .txt",
+      "Escolher um arquivo .txt",
+      "Mostrar rota",
+      "Mandar o resultado para a área de transferência"
+    ],
+    es: [
+      "Pega aquí la salida (Ctrl+V) o suelta un archivo .txt",
+      "Elegir un archivo .txt",
+      "Mostrar ruta",
+      "Enviar el resultado al portapapeles"
+    ],
+    sv: [
+      "Klistra in utskriften här (Ctrl+V) eller släpp en .txt-fil",
+      "Välj en .txt-fil",
+      "Visa vägen",
+      "Skicka resultatet till urklipp"
+    ]
   };
-  for (const [language, [paste, show, clipLabel]] of Object.entries(texts)) {
+  for (const [language, [placeholder, upload, show, clipLabel]] of Object.entries(texts)) {
     await page.evaluate(code => window.LibreSpeedI18n.set(code, false), language);
-    await expect(page.locator("#routeBackPasteClip")).toHaveText(paste);
+    await expect(page.locator("#routeBackText")).toHaveAttribute("placeholder", placeholder);
+    await expect(page.locator("#routeBackUpload")).toHaveAttribute("aria-label", upload);
+    await expect(page.locator("#routeBackUpload")).toHaveAttribute("title", upload);
     await expect(page.locator("#routeBackShow")).toHaveText(show);
     await expect(page.locator(".route-back-clip-text")).toHaveText(clipLabel);
     const privacy = await page.locator('#routeBack [data-i18n="route.back.privacy"]').textContent();
-    expect(privacy, language).toContain(paste);
     expect(privacy, language).toContain(show);
+    // The button that read the clipboard is gone, and so are its words
+    await expect(page.locator("#routeBackPasteClip")).toHaveCount(0);
+    expect(await page.locator("#routeSide").innerText(), language).not.toMatch(
+      /clipboard and show|portapapeles y mostrar|transferência e mostrar|urklipp och visa/i
+    );
   }
 });
 
@@ -228,9 +310,130 @@ test("K7 at 360 px the new controls fit, in Swedish", async ({ page }) => {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(
     true
   );
-  for (const id of ["routeBackPasteClip", "routeBackShow", "routeBackClip"]) {
+  for (const id of ["routeBackUpload", "routeBackShow", "routeBackClip"]) {
     const box = await page.locator(`#${id}`).boundingBox();
     expect(box.x, id).toBeGreaterThanOrEqual(0);
     expect(box.x + box.width, id).toBeLessThanOrEqual(360);
   }
+});
+
+const dragOn = (page, type, { files = false, text = null, target = "#routeBackDrop" } = {}) =>
+  page.evaluate(
+    ([kind, withFile, content, selector]) => {
+      const data = new DataTransfer();
+      if (withFile) data.items.add(new File(["x"], "a.txt", { type: "text/plain" }));
+      if (content !== null) data.setData("text/plain", content);
+      const event = new DragEvent(kind, { dataTransfer: data, bubbles: true, cancelable: true });
+      document.querySelector(selector).dispatchEvent(event);
+      return event.defaultPrevented;
+    },
+    [type, files, text, target]
+  );
+
+test("K8 the box takes the colour of the action while something is dragged over it, and a text dropped on the field goes into the box", async ({
+  page
+}) => {
+  await openRoute(page);
+  const field = page.locator("#routeBackDrop");
+  await expect(field).not.toHaveClass(/dragging/);
+  expect(await dragOn(page, "dragenter", { files: true })).toBe(true);
+  await expect(field).toHaveClass(/dragging/);
+  const colours = await field.evaluate(el => ({
+    border: getComputedStyle(el).borderTopColor,
+    style: getComputedStyle(el).borderTopStyle
+  }));
+  expect(colours.style).toBe("solid");
+  await dragOn(page, "dragleave", { files: true });
+  await expect(field).not.toHaveClass(/dragging/);
+  // Something that carries nothing that the box can take is not welcomed (no mark)
+  await page.evaluate(() => {
+    const event = new DragEvent("dragenter", { dataTransfer: new DataTransfer(), bubbles: true, cancelable: true });
+    document.getElementById("routeBackDrop").dispatchEvent(event);
+  });
+  await expect(field).not.toHaveClass(/dragging/);
+  // A text dropped on the field (not on the box itself) goes into the box
+  await dragOn(page, "dragenter", { text: "hello" });
+  expect(await dragOn(page, "drop", { text: TRACERT })).toBe(true);
+  await expect(field).not.toHaveClass(/dragging/);
+  await expect(page.locator("#routeBackText")).toHaveValue(BOXED);
+});
+
+test("K9 the file that the text came from is a card with its name, its kind and its size, and it goes with the text", async ({
+  page
+}) => {
+  await openRoute(page);
+  const card = page.locator("#routeBackFileCard");
+  await expect(card).toBeHidden();
+  await drop(page, Buffer.from(TRACERT, "utf8"), "my route.txt");
+  await expect(card).toBeVisible();
+  await expect(page.locator("#routeBackFileName")).toHaveText("my route.txt");
+  await expect(page.locator("#routeBackFileMeta")).toHaveText(/^TXT · \d+(\.\d)? (B|KB)$/);
+  await expect(card.locator("svg")).toHaveCount(2);
+  // Editing the text: it is no longer the text of the file
+  await page.locator("#routeBackText").press("End");
+  await page.locator("#routeBackText").pressSequentially(" ");
+  await expect(card).toBeHidden();
+  // The cross takes the file out: the box is empty again and the person is where to paste
+  await drop(page, Buffer.from(TRACERT, "utf8"), "again.txt");
+  await expect(card).toBeVisible();
+  await page.locator("#routeBackFileRemove").click();
+  await expect(card).toBeHidden();
+  await expect(page.locator("#routeBackText")).toHaveValue("");
+  await expect(page.locator("#routeBackText")).toBeFocused();
+  await expect(page.locator("#routeBackFileRemove")).toHaveAttribute("aria-label", "Remove the file");
+  // Clear takes it too
+  await drop(page, Buffer.from(TRACERT, "utf8"), "third.txt");
+  await expect(card).toBeVisible();
+  await page.locator("#routeBackClear").click();
+  await expect(card).toBeHidden();
+  // A name that is long stays in one line, with the cross in sight
+  await drop(page, Buffer.from(TRACERT, "utf8"), `${"long-name-".repeat(12)}.txt`);
+  const fit = await page.evaluate(() => {
+    const cardBox = document.getElementById("routeBackFileCard").getBoundingClientRect();
+    const cross = document.getElementById("routeBackFileRemove").getBoundingClientRect();
+    return cross.right <= cardBox.right + 1 && cross.left >= cardBox.left;
+  });
+  expect(fit).toBe(true);
+});
+
+test("K10 the clip in the corner of the box opens the choice of a file, with the keyboard too, in the icon set chosen", async ({
+  page
+}) => {
+  const seen = await openRoute(page);
+  const button = page.locator("#routeBackUpload");
+  await expect(button.locator("svg")).toHaveCount(1);
+  const box = await page.evaluate(() => {
+    const field = document.getElementById("routeBackDrop").getBoundingClientRect();
+    const clip = document.getElementById("routeBackUpload").getBoundingClientRect();
+    return {
+      inside: clip.left >= field.left && clip.right <= field.right && clip.bottom <= field.bottom + 1,
+      right: clip.left > field.left + field.width / 2
+    };
+  });
+  expect(box.inside && box.right).toBe(true);
+  // With the mouse, and with Enter and with Space
+  for (const how of ["click", "Enter", "Space"]) {
+    const chooser = page.waitForEvent("filechooser");
+    if (how === "click") await button.click();
+    else {
+      await button.focus();
+      await page.keyboard.press(how);
+    }
+    const file = await chooser;
+    expect(file.isMultiple()).toBe(false);
+    await file.setFiles({ name: `${how}.txt`, mimeType: "text/plain", buffer: Buffer.from(TRACERT) });
+    await expect(page.locator("#routeBackFileName")).toHaveText(`${how}.txt`);
+    await page.locator("#routeBackFileRemove").click();
+  }
+  // Every set of icons has the clip and the cross
+  const sets = await page.evaluate(() => window.LibreSpeedIcons.sets().map(set => set.id));
+  const drawings = new Set();
+  for (const id of sets) {
+    await page.evaluate(value => window.LibreSpeedIcons.set(value, false), id);
+    await expect(button.locator("svg")).toHaveCount(1);
+    drawings.add(await button.locator("svg").innerHTML());
+  }
+  expect(drawings.size).toBe(sets.length);
+  // Choosing a file shows and sends nothing
+  expect(seen.enrich).toHaveLength(0);
 });

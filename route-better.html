@@ -465,25 +465,42 @@
           </p>
         </div>
         <label for="routeBackText" class="route-label" data-i18n="route.back.paste-label">Traceroute output</label>
-        <textarea
-          id="routeBackText"
-          class="route-paste"
-          rows="4"
-          maxlength="32768"
-          spellcheck="false"
-          autocomplete="off"
-          autocapitalize="off"
-          placeholder="Paste command output here…"
-          data-i18n-attr="placeholder:route.back.paste-placeholder"
-        ></textarea>
-        <div class="route-back-sources">
-          <button type="button" id="routeBackUpload" class="route-link" data-i18n="route.back.upload">
-            Upload a .txt file instead
-          </button>
-          <button type="button" id="routeBackPasteClip" class="route-link" data-i18n="route.back.paste-clip">
-            Paste from clipboard and show
-          </button>
+        <div id="routeBackDrop" class="route-drop">
+          <textarea
+            id="routeBackText"
+            class="route-paste"
+            rows="4"
+            maxlength="32768"
+            spellcheck="false"
+            autocomplete="off"
+            autocapitalize="off"
+            placeholder="Paste the output here (Ctrl+V) or drop a .txt file"
+            data-i18n-attr="placeholder:route.back.paste-placeholder"
+          ></textarea>
+          <button
+            type="button"
+            id="routeBackUpload"
+            class="route-drop-button"
+            aria-label="Choose a .txt file"
+            title="Choose a .txt file"
+            data-i18n-attr="aria-label:route.back.upload,title:route.back.upload"
+          ></button>
           <input type="file" id="routeBackFile" accept=".txt,text/plain" hidden tabindex="-1" />
+        </div>
+        <div id="routeBackFileCard" class="route-file" hidden>
+          <span id="routeBackFileIcon" class="route-file-icon" aria-hidden="true"></span>
+          <span class="route-file-body">
+            <span id="routeBackFileName" class="route-file-name"></span>
+            <span id="routeBackFileMeta" class="route-file-meta"></span>
+          </span>
+          <button
+            type="button"
+            id="routeBackFileRemove"
+            class="route-file-remove"
+            aria-label="Remove the file"
+            title="Remove the file"
+            data-i18n-attr="aria-label:route.back.file-remove,title:route.back.file-remove"
+          ></button>
         </div>
         <div id="routeBackNotes" class="route-back-notes" role="status" aria-live="polite"></div>
         <div class="route-back-action">

@@ -70,7 +70,7 @@ test("C1 the card has one main action, and no two buttons for the same thing", a
   await expect(page.locator("#routeSideToggle")).toHaveText("Trace the route back");
   // The text field has its label and its placeholder, and the choices are named
   await expect(page.locator('label[for="routeBackText"]')).toHaveText("Traceroute output");
-  await expect(text(page)).toHaveAttribute("placeholder", "Paste command output here…");
+  await expect(text(page)).toHaveAttribute("placeholder", "Paste the output here (Ctrl+V) or drop a .txt file");
   expect(
     await page
       .locator("#routeBackMethod")
@@ -301,7 +301,8 @@ test("C10 the new texts are in the four languages, and the card says them", asyn
     "route.back.paste-label",
     "route.back.paste-placeholder",
     "route.back.upload",
-    "route.back.paste-clip",
+    "route.back.file-remove",
+    "route.back.file-type",
     "route.back.show",
     "route.back.show-busy",
     "route.back.privacy-summary",
@@ -321,7 +322,7 @@ test("C10 the new texts are in the four languages, and the card says them", asyn
     await expect(page.locator("#routeBackMethodLabel")).toHaveText(texts["route.back.method"]);
     await expect(page.locator("#routeBackSystemLabel")).toHaveText(texts["route.back.system-label"]);
     await expect(text(page)).toHaveAttribute("placeholder", texts["route.back.paste-placeholder"]);
-    await expect(page.locator("#routeBackUpload")).toHaveText(texts["route.back.upload"]);
+    await expect(page.locator("#routeBackUpload")).toHaveAttribute("aria-label", texts["route.back.upload"]);
     await expect(show(page)).toHaveText(texts["route.back.show"]);
     await expect(page.locator(".route-disclosure summary")).toHaveText(texts["route.back.privacy-title"]);
     await expect(page.locator("#routeSide")).not.toContainText("route.back.");

@@ -185,7 +185,6 @@ var LibreSpeedRouteBack = (function () {
     var clipBox = byId("routeBackClip");
     var clipHint = byId("routeBackClipHint");
     var clipLinux = byId("routeBackClipLinux");
-    var pasteClipButton = byId("routeBackPasteClip");
     var clipLabel = byId("routeBackClipLabel");
     // Where to get the program and the extension, when the server offers an address for it: a link in the steps of the extension
     var cliLink = byId("routeBackCliLink");
@@ -203,6 +202,9 @@ var LibreSpeedRouteBack = (function () {
     var methodBox = byId("routeBackMethod");
     var extensionArea = byId("routeBackExtensionArea");
     var commandArea = byId("routeBackCommandArea");
+    var drop = byId("routeBackDrop");
+    var fileCard = byId("routeBackFileCard");
+    var fileRemove = byId("routeBackFileRemove");
     var uploadButton = byId("routeBackUpload");
     var fileInput = byId("routeBackFile");
     var clearButton = byId("routeBackClear");
@@ -440,35 +442,83 @@ var LibreSpeedRouteBack = (function () {
       ticket++;
       current = null;
       textarea.value = "";
+      drawFileCard(null);
       setNotes([]);
       drawShow();
       options.onClear();
       drawActions();
     }
 
-    // The output of the command, taken from the clipboard and shown: one press, which is the one that says "show"
-    function pasteFromClipboard() {
-      var denied = function () {
-        setNotes([{ key: "route.back.clip-denied", error: true }]);
-      };
-      if (!navigator.clipboard || typeof navigator.clipboard.readText !== "function") {
-        denied();
-        return;
-      }
-      navigator.clipboard.readText().then(function (text) {
-        if (typeof text !== "string" || !text.trim()) {
-          setNotes([{ key: "route.back.error.empty", error: true }]);
-          return;
-        }
-        textarea.value = text;
-        show();
-      }, denied);
+    // The output comes into the box in four ways: typed or pasted in it, pasted anywhere on the card (Ctrl+V), dropped on it as text or as a .txt
+    // file, or chosen with the clip. In none of them is anything shown or sent: it is in the box, to be shown with the button (what is sent is
+    // still what the person presses).
+    var loadedText = null;
+
+    function extensionOf(name) {
+      var parts = String(name).split(".");
+      return parts.length > 1 ? parts.pop().slice(0, 8).toUpperCase() : "";
     }
 
-    // A file dropped on the box: put in the box, to be shown with the button (what is sent is still what the person presses)
+    function sizeOf(bytes) {
+      if (bytes < 1024) return bytes + " B";
+      return (bytes / 1024).toFixed(bytes < 10240 ? 1 : 0) + " KB";
+    }
+
+    // The file that the text came from, as a card with its name, its kind and its size, while the box has that text as it came
+    function drawFileCard(file) {
+      if (!file) {
+        fileCard.hidden = true;
+        loadedText = null;
+        return;
+      }
+      byId("routeBackFileName").textContent = file.name;
+      byId("routeBackFileName").title = file.name;
+      byId("routeBackFileMeta").textContent = [extensionOf(file.name), sizeOf(file.size)].filter(Boolean).join(" · ");
+      fileCard.hidden = false;
+    }
+
+    // The icons of the box (the clip, and the ones of the card of the file), in the set of icons that the visitor chose
+    function drawDropIcons() {
+      var icons = window.LibreSpeedIcons;
+      var clip = icons && icons.html("attach", "1.2em");
+      var cross = icons && icons.html("close", "1.1em");
+      if (clip) uploadButton.innerHTML = clip;
+      else uploadButton.textContent = uploadButton.getAttribute("aria-label") || "";
+      byId("routeBackFileIcon").innerHTML = (icons && icons.html("attach", "1.2em")) || "";
+      if (cross) fileRemove.innerHTML = cross;
+      else fileRemove.textContent = "\u00d7";
+    }
+
+    // Text that arrives on the card (pasted outside the box, or dropped): it goes into the box, in place of what was there
+    function putText(text) {
+      if (typeof text !== "string" || !text.trim()) return false;
+      if (text.length > MAX_TEXT) {
+        setNotes([{ key: "route.back.error.too-long", error: true }]);
+        return false;
+      }
+      setNotes([]);
+      textarea.value = text;
+      drawFileCard(null);
+      drawActions();
+      drawShow();
+      showButton.focus();
+      return true;
+    }
+
+    // Something that is not text (an image, a PDF) is told so; a text file is read and put in the box
+    function isTextFile(file) {
+      if (file.type && file.type.indexOf("text/") === 0) return true;
+      if (file.type && file.type !== "application/octet-stream") return /\.(txt|log|out|text)$/i.test(file.name);
+      return !/\.(png|jpe?g|gif|webp|bmp|svg|pdf|zip|gz|docx?|xlsx?)$/i.test(file.name);
+    }
+
     function takeFile(file) {
+      if (!file || !isTextFile(file)) {
+        setNotes([{ key: "route.back.file-type", error: true }]);
+        return;
+      }
       // 32768 characters (the limit of the box and of the parser) are at most 131072 bytes, at 4 bytes a character
-      if (!file || file.size > MAX_FILE_BYTES || typeof file.arrayBuffer !== "function") {
+      if (file.size > MAX_FILE_BYTES || typeof file.arrayBuffer !== "function") {
         setNotes([{ key: "route.back.file-bad", error: true }]);
         return;
       }
@@ -481,6 +531,8 @@ var LibreSpeedRouteBack = (function () {
           }
           setNotes([]);
           textarea.value = text;
+          loadedText = text;
+          drawFileCard(file);
           drawActions();
           drawShow();
           showButton.focus();
@@ -491,17 +543,73 @@ var LibreSpeedRouteBack = (function () {
       );
     }
 
-    textarea.addEventListener("dragover", function (event) {
+    // Dropping on the box: it takes the colour of the action while something is over it
+    function carries(event) {
+      var types = (event.dataTransfer && event.dataTransfer.types) || [];
+      return (
+        Array.prototype.indexOf.call(types, "Files") >= 0 || Array.prototype.indexOf.call(types, "text/plain") >= 0
+      );
+    }
+    drop.addEventListener("dragenter", function (event) {
+      if (!carries(event)) return;
       event.preventDefault();
+      drop.classList.add("dragging");
     });
-    textarea.addEventListener("drop", function (event) {
-      var files = event.dataTransfer && event.dataTransfer.files;
-      if (!files || !files.length) return;
+    drop.addEventListener("dragover", function (event) {
+      if (!carries(event)) return;
       event.preventDefault();
-      takeFile(files[0]);
+      drop.classList.add("dragging");
     });
+    drop.addEventListener("dragleave", function (event) {
+      if (!drop.contains(event.relatedTarget)) drop.classList.remove("dragging");
+    });
+    drop.addEventListener("drop", function (event) {
+      drop.classList.remove("dragging");
+      var transfer = event.dataTransfer;
+      if (!transfer) return;
+      if (transfer.files && transfer.files.length) {
+        event.preventDefault();
+        takeFile(transfer.files[0]);
+        return;
+      }
+      // Text dropped on the box itself goes where it is dropped; on the rest of the field it goes into the box
+      if (event.target === textarea) return;
+      var text = transfer.getData("text/plain");
+      if (text) {
+        event.preventDefault();
+        putText(text);
+      }
+    });
+    // Ctrl+V on the card, with the focus anywhere (the box itself keeps its own paste): a file is read, a text goes into the box. The listener is
+    // on the window and does nothing while the card is not on the screen, or when the paste is for another field of the page.
+    window.addEventListener("paste", function (event) {
+      if (byId("routeBack").getClientRects().length === 0) return;
+      var data = event.clipboardData;
+      if (!data) return;
+      if (data.files && data.files.length) {
+        event.preventDefault();
+        takeFile(data.files[0]);
+        return;
+      }
+      // The box itself, and any other field, keep their own paste
+      var target = event.target;
+      if (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
+      var text = data.getData("text/plain");
+      if (!text) return;
+      event.preventDefault();
+      putText(text);
+    });
+    fileRemove.addEventListener("click", function () {
+      textarea.value = "";
+      drawFileCard(null);
+      setNotes([]);
+      drawActions();
+      drawShow();
+      textarea.focus();
+    });
+    window.addEventListener("iconschange", drawDropIcons);
+    drawDropIcons();
     clipBox.addEventListener("change", drawCommand);
-    pasteClipButton.addEventListener("click", pasteFromClipboard);
     Array.prototype.forEach.call(methodBox.querySelectorAll("[data-method]"), function (button) {
       button.addEventListener("click", function () {
         method = button.dataset.method === "extension" ? "extension" : "command";
@@ -524,6 +632,8 @@ var LibreSpeedRouteBack = (function () {
       if (file) takeFile(file);
     });
     textarea.addEventListener("input", function () {
+      // Edited, the box is no longer the text of the file: the card goes
+      if (loadedText !== null && textarea.value !== loadedText) drawFileCard(null);
       drawActions();
       drawShow();
     });

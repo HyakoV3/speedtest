@@ -28,7 +28,8 @@ const ICONS = [
   "image",
   "download",
   "route",
-  "copy"
+  "copy",
+  "attach"
 ];
 
 // The sets, in the order the theme panel lists them. names: our name -> the name of the icon in that set. prefix is the
@@ -43,7 +44,8 @@ const SETS = [
       moon: "dark-mode",
       "chevron-down": "expand-more",
       play: "play-arrow",
-      copy: "content-copy"
+      copy: "content-copy",
+      attach: "attach-file"
     }
   },
   {
@@ -53,11 +55,15 @@ const SETS = [
       moon: "weather-night",
       share: "share-variant",
       route: "routes",
-      copy: "content-copy"
+      copy: "content-copy",
+      attach: "paperclip"
     }
   },
-  { id: "tabler", names: { pause: "player-pause", play: "player-play", close: "x", image: "photo" } },
-  { id: "lucide", names: { share: "share-2", close: "x" } },
+  {
+    id: "tabler",
+    names: { pause: "player-pause", play: "player-play", close: "x", image: "photo", attach: "paperclip" }
+  },
+  { id: "lucide", names: { share: "share-2", close: "x", attach: "paperclip" } },
   {
     id: "ph",
     // The weights of the set that has them: the light and the bold drawing of every icon, by the end of its name
@@ -74,7 +80,8 @@ const SETS = [
       check: "check",
       close: "x",
       route: "path",
-      copy: "copy"
+      copy: "copy",
+      attach: "paperclip"
     }
   }
 ];

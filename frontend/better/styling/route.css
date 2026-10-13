@@ -1554,3 +1554,152 @@ body.route-side-on {
     border: 0.0625rem solid ButtonText;
   }
 }
+
+/* The box for the output of the command is also the place where things are dropped and pasted (the field of the other projects: a dashed box
+   that takes the colour of the action while something is over it, with the clip in its corner, and a card with the name of the file that the
+   text came from). The text stays a text box: it is seen, edited and sent from it. */
+.route-drop {
+  position: relative;
+  background: var(--surface-muted);
+  border: 0.0625rem dashed var(--border);
+  border-radius: calc(var(--radius-card) / 2);
+  transition:
+    border-color 0.15s,
+    background-color 0.15s;
+}
+
+.route-drop:hover {
+  border-color: var(--muted);
+}
+
+.route-drop:focus-within {
+  border-style: solid;
+  border-color: var(--primary);
+}
+
+.route-drop.dragging {
+  background: var(--primary-subtle);
+  border-style: solid;
+  border-color: var(--primary);
+}
+
+.route-drop .route-paste {
+  background: transparent;
+  border: 0;
+  border-radius: inherit;
+  /* the room that the clip takes in the corner */
+  padding-right: 3em;
+  padding-bottom: 2.4em;
+  resize: vertical;
+}
+
+.route-drop .route-paste:focus {
+  outline: none;
+}
+
+.route-drop-button {
+  position: absolute;
+  right: 0.3em;
+  bottom: 0.3em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  padding: 0;
+  font: inherit;
+  color: var(--primary);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-button);
+}
+
+.route-drop-button:hover {
+  background: var(--primary-subtle);
+}
+
+.route-drop-button:focus-visible,
+.route-file-remove:focus-visible {
+  outline: 0.1875rem solid var(--text);
+  outline-offset: 0.0625rem;
+}
+
+.route-drop-button svg,
+.route-file-remove svg,
+.route-file-icon svg {
+  display: block;
+}
+
+.route-file {
+  display: flex;
+  gap: 0.6em;
+  align-items: center;
+  padding: 0.4em 0.5em 0.4em 0.7em;
+  margin: 0.5em 0 0;
+  background: var(--surface-muted);
+  border: 0.0625rem solid var(--border);
+  border-radius: calc(var(--radius-card) / 2);
+}
+
+.route-file-icon {
+  flex: none;
+  color: var(--muted);
+}
+
+.route-file-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.route-file-name {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.route-file-meta {
+  font-size: 0.85em;
+  color: var(--muted);
+}
+
+.route-file-remove {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  font: inherit;
+  color: var(--muted);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-button);
+}
+
+.route-file-remove:hover {
+  color: var(--text);
+  background: var(--primary-subtle);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-drop {
+    transition: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .route-drop,
+  .route-file {
+    border-color: ButtonText;
+  }
+
+  .route-drop.dragging {
+    border-color: Highlight;
+  }
+}
