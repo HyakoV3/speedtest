@@ -485,7 +485,7 @@ test("W7 every corridor of the table, both ways: a crossing at its least rise, n
     });
     return out;
   });
-  expect(result.length).toBe(36);
+  expect(result.length).toBe(44);
   result.forEach(item => {
     expect(item.over, item.pair).toHaveLength(1);
     expect(item.over[0].start, item.pair).toBe(item.start);
