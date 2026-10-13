@@ -30,14 +30,25 @@
   var showingBox = document.getElementById("routeShowing");
   var showingText = document.getElementById("routeShowingText");
   var showLatest = document.getElementById("routeShowLatest");
-  var shownBox = document.getElementById("routeShown");
   var actionBox = document.querySelector(".route-action");
   var compareBox = document.getElementById("routeCompare");
   var compareText = document.getElementById("routeCompareText");
   var compareLists = document.getElementById("routeCompareLists");
   var bothBox = document.getElementById("routeMapBoth");
-  var bothButton = document.getElementById("routeMapBothButton");
-  var legendList = document.getElementById("routeMapLegend");
+  // The chin under each of the three views (the table, the chart and the map): the button for the two directions and the two directions
+  // themselves, which are also how one of them is chosen. Only there when there are two routes.
+  var chins = ["routeTableBoth", "routeChartBoth", "routeMapBoth"].map(function (id, index) {
+    var box = document.getElementById(id);
+    return {
+      box: box,
+      button: box.querySelector(".route-both-button"),
+      list: box.querySelector(".route-both-ways"),
+      // The map and the chart draw a line for each direction, and the legend shows it; the table has none. Each draws its own lines, and so
+      // has its own samples (the chart: solid in the colour of the action, and dashed in the second one; the map has its own dashes)
+      lines: index > 0,
+      sample: index === 2 ? "route-map-leg" : "route-chart-leg"
+    };
+  });
 
   var VIEW_KEY = "librespeed-better-route-view";
   var DIRECTION_KEY = "librespeed-better-route-direction";
@@ -191,7 +202,10 @@
     });
     document.getElementById("routeMapHost").hidden = false;
     document.getElementById("routeMapNone").hidden = true;
-    bothBox.hidden = true;
+    chins.forEach(function (chin) {
+      chin.box.hidden = true;
+    });
+    dropOtherTable();
     var zoom = document.getElementById("routeMapZoom");
     zoom.hidden = false;
     Array.prototype.forEach.call(zoom.querySelectorAll("[data-zoom]"), function (button) {
@@ -288,24 +302,42 @@
     return row;
   }
 
-  function drawGroups(hops) {
-    var list = view.groups(hops);
-    if (!list.length) return;
+  // The networks on the way: of the route on the screen, and, with both directions on, of the other one too (each under its own direction)
+  function drawGroups(data) {
+    var second = mapBoth ? otherData() : null;
+    var routes = [data];
+    if (second && (second.hops || []).length) routes.push(second);
+    var both = routes.length > 1;
     var heading = cell("p", t("route.groups"), "route-groups-title");
-    var items = document.createElement("ol");
-    list.forEach(function (group) {
-      var name =
-        group.kind === "as"
-          ? group.asn + (group.name ? " " + group.name : "")
-          : group.kind === "internal"
-            ? t("route.internal")
-            : t("route.unknown-network");
-      var key = group.from === group.to ? "route.group-one" : "route.group";
-      items.appendChild(cell("li", t(key, { name: name, from: group.from, to: group.to })));
+    var added = false;
+    routes.forEach(function (route) {
+      var list = view.groups(route.hops || []);
+      if (!list.length) return;
+      if (!added) groupBox.appendChild(heading);
+      added = true;
+      if (both) {
+        groupBox.appendChild(
+          cell(
+            "p",
+            t(route.direction === "client_to_server" ? "route.direction.back" : "route.direction.there"),
+            "route-groups-way"
+          )
+        );
+      }
+      var items = document.createElement("ol");
+      list.forEach(function (group) {
+        var name =
+          group.kind === "as"
+            ? group.asn + (group.name ? " " + group.name : "")
+            : group.kind === "internal"
+              ? t("route.internal")
+              : t("route.unknown-network");
+        var key = group.from === group.to ? "route.group-one" : "route.group";
+        items.appendChild(cell("li", t(key, { name: name, from: group.from, to: group.to })));
+      });
+      groupBox.appendChild(items);
     });
-    groupBox.appendChild(heading);
-    groupBox.appendChild(items);
-    groupBox.hidden = false;
+    if (added) groupBox.hidden = false;
   }
 
   // The strip over a saved route that is shown: its date, and the way back to the route just traced
@@ -322,7 +354,52 @@
     return tool === "lsr1" ? "app" : String(tool || "");
   }
 
-  function draw(data) {
+  // The rows of the table of a route (the table is the one of the page or the second one, of the other direction)
+  function fillTable(element, data) {
+    var hops = data.hops || [];
+    var back = data.direction === "client_to_server";
+    var jump = view.biggestJump(hops);
+    var widest = hops.reduce(function (most, hop) {
+      return hop.rtt_min !== null && hop.rtt_min > most ? hop.rtt_min : most;
+    }, 1);
+    var body = element.querySelector("tbody");
+    body.textContent = "";
+    for (var i = 0; i < hops.length; i++) {
+      var end = i;
+      while (hops[i].scope === "none" && end + 1 < hops.length && hops[end + 1].scope === "none") end++;
+      if (end > i) {
+        body.appendChild(drawGap(hops[i], hops[end]));
+        i = end;
+      } else {
+        body.appendChild(drawRow(hops[i], widest, jump, back));
+      }
+    }
+  }
+
+  // With both directions on, the table of the other one comes under the first, with its own caption
+  function dropOtherTable() {
+    var old = document.getElementById("routeTableOther");
+    if (old) old.parentNode.removeChild(old);
+  }
+
+  function drawOtherTable() {
+    dropOtherTable();
+    var other = otherData();
+    if (!mapBoth || !other || !(other.hops || []).length || !shownData()) return;
+    var second = table.cloneNode(true);
+    second.id = "routeTableOther";
+    second.hidden = false;
+    second.querySelector("caption").removeAttribute("data-i18n");
+    second.querySelector("caption").textContent = t(
+      other.direction === "client_to_server" ? "route.back.caption" : "route.caption"
+    );
+    fillTable(second, other);
+    tableWrap.insertBefore(second, chins[0].box);
+  }
+
+  // announce: this is a route that was just brought to the screen (traced, pasted, handed over, opened), not a redraw of the one that is there: its
+  // end and its MTU are said in toasts, at the bottom left, once
+  function draw(data, announce) {
     clear();
     // The route the visitor traced goes from the visitor to the server: the end of it is the server, and the page did not measure it
     var back = data.direction === "client_to_server";
@@ -349,37 +426,32 @@
       );
     }
 
+    var told = [];
     if (back) {
-      // There is no MTU of the way back; the box says who measured the route
-      mtuBox.appendChild(cell("p", t("route.back.measured", { tool: toolName(data.tool) }), "route-mtu-text"));
+      // There is no MTU of the way back; the box says who measured the route (a toast too, and the words stay for a screen reader)
+      var measured = t("route.back.measured", { tool: toolName(data.tool) });
+      mtuBox.appendChild(cell("p", measured, "route-mtu-text"));
+      told.push(measured);
+      mtuBox.classList.add("route-visually-hidden");
     } else {
+      // The MTU is a toast: the box keeps the words for a screen reader and is not seen
       var mtu = view.mtuText(data.pmtu === undefined ? null : data.pmtu, data.pmtu_drops || []);
       mtuBox.appendChild(cell("p", t(mtu.key, mtu.params), "route-mtu-text"));
+      var mtuTold = t(mtu.key, mtu.params);
       if (data.pmtu !== null && data.pmtu !== undefined && data.pmtu < 1500) {
         mtuBox.appendChild(cell("p", t("route.mtu-hint"), "route-hint"));
+        mtuTold += ". " + t("route.mtu-hint");
       }
+      told.push(mtuTold);
+      mtuBox.classList.add("route-visually-hidden");
     }
     mtuBox.hidden = false;
 
-    drawGroups(hops);
+    drawGroups(data);
 
-    var jump = view.biggestJump(hops);
-
-    var widest = hops.reduce(function (most, hop) {
-      return hop.rtt_min !== null && hop.rtt_min > most ? hop.rtt_min : most;
-    }, 1);
-    var body = table.querySelector("tbody");
-    for (var i = 0; i < hops.length; i++) {
-      var end = i;
-      while (hops[i].scope === "none" && end + 1 < hops.length && hops[end + 1].scope === "none") end++;
-      if (end > i) {
-        body.appendChild(drawGap(hops[i], hops[end]));
-        i = end;
-      } else {
-        body.appendChild(drawRow(hops[i], widest, jump, back));
-      }
-    }
+    fillTable(table, data);
     table.hidden = false;
+    drawOtherTable();
 
     var text = back
       ? t(
@@ -400,8 +472,17 @@
     }
     endBox.textContent = text;
     endBox.hidden = false;
+    // How the route ended is a toast too; the paragraph is kept, out of sight, for a screen reader that reads the page
+    endBox.classList.add("route-visually-hidden");
+    told.unshift(text);
+    if (announce && window.LibreSpeedToast) {
+      told.forEach(function (message) {
+        window.LibreSpeedToast.show(message);
+      });
+    }
 
     viewsBox.hidden = false;
+    markShown();
     applyView();
     drawShowing();
     drawCompare();
@@ -493,7 +574,9 @@
 
   // Whether the map draws the other direction too (when there is one): on, until the person turns it off
   var mapBoth = savedBoth();
-  bothButton.setAttribute("aria-pressed", String(mapBoth));
+  chins.forEach(function (chin) {
+    chin.button.setAttribute("aria-pressed", String(mapBoth));
+  });
 
   function savedBoth() {
     try {
@@ -567,8 +650,18 @@
   }
 
   function describeHop(index) {
-    var hop = shownData().hops[index];
-    var time = view.chartData(shownData()).y[index];
+    return hopText(shownData(), index);
+  }
+
+  // The hop of the other direction, for the line under the chart that says what is pointed at
+  function describeOtherHop(index) {
+    var second = otherData();
+    return second && second.hops[index] ? hopText(second, index) : "";
+  }
+
+  function hopText(data, index) {
+    var hop = data.hops[index];
+    var time = view.chartData(data).y[index];
     var text =
       t("route.chart.hop", { hop: hop.ttl }) + " · " + (time === null ? t("route.no-reply") : time.toFixed(1) + " ms");
     if (hop.ip) text += " · " + hop.ip;
@@ -611,11 +704,15 @@
     chartBox.querySelector('li[data-key="you"] span:last-child').textContent = t(
       shownData().direction === "client_to_server" ? "route.server" : "route.you"
     );
+    // With both directions on, the other one is drawn under the first
+    var second = mapBoth ? otherData() : null;
     window.LibreSpeedRouteChart.render(document.getElementById("routeChartHost"), data, {
       xLabel: t("route.chart.x"),
       hint: t("route.chart.hint"),
       readout: document.getElementById("routeChartReadout"),
-      describe: describeHop
+      describe: describeHop,
+      other: second && (second.hops || []).length ? view.chartData(second) : null,
+      describeOther: describeOtherHop
     });
   }
 
@@ -639,33 +736,49 @@
     return shown === "there" ? backOf() : thereOf();
   }
 
-  // The button and the legend of the two directions on the map: the button when there is another direction to show, the legend when it
-  // is drawn. The label of the first direction is next to the line of the numbers, the one of the other next to the line under it
-  function drawBoth(has, drawn) {
-    bothBox.hidden = !has;
-    bothButton.setAttribute("aria-pressed", String(mapBoth));
-    legendList.hidden = !drawn;
-    legendList.textContent = "";
-    if (!drawn) return;
+  // The chin of a view: the button for the two directions and the two directions themselves, the one on the screen first. They are how one of
+  // them is chosen (the one that is not on the screen takes its place), and, where lines are drawn, the legend of the lines: the first has
+  // the line of the numbers, the other the line under it, and the sample is there only while both are drawn.
+  function drawWays(chin, has, drawn) {
+    chin.box.hidden = !has;
+    chin.button.setAttribute("aria-pressed", String(mapBoth));
+    chin.list.hidden = !has;
+    chin.list.textContent = "";
+    if (!has) return;
+    var other = shown === "there" ? "back" : "there";
     [
-      { other: false, key: shown === "there" ? "route.direction.there" : "route.direction.back" },
-      { other: true, key: shown === "there" ? "route.direction.back" : "route.direction.there" }
+      { id: shown, other: false },
+      { id: other, other: true }
     ].forEach(function (way) {
       var item = document.createElement("li");
-      var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-      svg.setAttribute("viewBox", "0 0 28 10");
-      svg.setAttribute("aria-hidden", "true");
-      svg.setAttribute("focusable", "false");
-      var line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-      line.setAttribute("x1", "1");
-      line.setAttribute("x2", "27");
-      line.setAttribute("y1", "5");
-      line.setAttribute("y2", "5");
-      line.setAttribute("class", "route-map-leg" + (way.other ? " route-map-leg-other" : ""));
-      svg.appendChild(line);
-      item.appendChild(svg);
-      item.appendChild(document.createTextNode(t(way.key)));
-      legendList.appendChild(item);
+      var choice = document.createElement("button");
+      choice.type = "button";
+      choice.className = "route-both-way";
+      choice.dataset.shown = way.id;
+      choice.setAttribute("aria-pressed", String(way.id === shown));
+      choice.disabled = running;
+      if (drawn && chin.lines) {
+        var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("viewBox", "0 0 28 10");
+        svg.setAttribute("aria-hidden", "true");
+        svg.setAttribute("focusable", "false");
+        var line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        line.setAttribute("x1", "1");
+        line.setAttribute("x2", "27");
+        line.setAttribute("y1", "5");
+        line.setAttribute("y2", "5");
+        line.setAttribute("class", chin.sample + (way.other ? " " + chin.sample + "-other" : ""));
+        svg.appendChild(line);
+        choice.appendChild(svg);
+      }
+      choice.appendChild(
+        document.createTextNode(t(way.id === "there" ? "route.direction.there" : "route.direction.back"))
+      );
+      choice.addEventListener("click", function () {
+        setShown(way.id);
+      });
+      item.appendChild(choice);
+      chin.list.appendChild(item);
     });
   }
 
@@ -685,11 +798,13 @@
     none.hidden = !empty;
     if (empty) {
       map.destroy();
-      bothBox.hidden = true;
+      // Nothing to draw for this direction, but the other one can still be chosen from the chin
+      drawWays(chins[2], second !== null, false);
       return;
     }
     var drawn = mapBoth ? other : null;
-    drawBoth(other !== null, drawn !== null);
+    // The chin is there with two routes, even if the other one has no country to draw (the directions are chosen from it)
+    drawWays(chins[2], second !== null, drawn !== null);
     map.render(host, md, zoom, drawn || undefined);
   }
 
@@ -826,7 +941,7 @@
       thereData = data;
     }
     if (mapFiles.ready()) window.LibreSpeedRouteMap.resetView();
-    draw(shownData());
+    draw(shownData(), true);
     // The command of the panel follows the family of the route that is shown; a sheet that covers the results is closed
     markShown();
     if (way === "there" && backPanelApi) backPanelApi.refresh();
@@ -845,19 +960,18 @@
     shownT = null;
     thereData = liveData;
     if (mapFiles.ready()) window.LibreSpeedRouteMap.resetView();
-    draw(shownData());
+    draw(shownData(), true);
     if (backPanelApi) backPanelApi.refresh();
     resultsBox.scrollIntoView({ block: "start" });
   });
 
-  // The small selector over the results ("Server → you" / "You → server"): there only when there are two routes to choose from, and it
-  // cannot be used while a route is traced (the answer would come to a page that is showing something else)
+  // The chins of the table and of the chart (the one of the map is drawn with the map): there when there are two routes, and the directions in
+  // them cannot be used while a route is traced (the answer would come to a page that is showing something else)
   function markShown() {
-    shownBox.hidden = !(thereData && backData);
-    Array.prototype.forEach.call(shownBox.querySelectorAll("[data-shown]"), function (item) {
-      item.setAttribute("aria-pressed", String(item.dataset.shown === shown));
-      item.disabled = running;
-    });
+    var two = !!(thereData && backData);
+    drawWays(chins[0], two, false);
+    drawWays(chins[1], two, two && mapBoth);
+    if (!bothBox.hidden) drawWays(chins[2], two, two && mapBoth && !!otherData());
   }
 
   // Which of the two routes the results show: each keeps the route it has, and nothing is traced or sent by the change
@@ -884,6 +998,9 @@
     // aria-disabled, not disabled: the button is pressed with the keyboard, and a button that turns disabled takes the focus away from the
     // person (and the screen reader does not tell that it is saved)
     saveButton.setAttribute("aria-disabled", String(!routeHistory || !backData || !backReady || backSaved));
+    // Save to history is there only when there is a way back to save, and Clear only when there is something to clear
+    saveButton.hidden = !backData;
+    if (backPanelApi) backPanelApi.refresh();
   }
 
   // The way back goes to the history only when the person says so, with the networks it has by then
@@ -904,6 +1021,20 @@
   // The way back from the panel (a paste, the extension) or its networks arriving later. A new one is shown at once; one that arrives while
   // the route from the server is traced is only kept (drawing it would wipe the status of the trace); the networks that arrive late never
   // take the person back to the way back after they chose the other route
+  // What comes from the other direction in the three views (the networks on the way, the second table, the second line of the chart and of
+  // the map), made again: when the button for the two directions is pressed, when the networks of the other direction arrive, and when it is
+  // cleared. The route on the screen is not drawn again.
+  function redrawOther() {
+    if (!shownData()) return;
+    groupBox.textContent = "";
+    groupBox.hidden = true;
+    drawGroups(shownData());
+    drawOtherTable();
+    markShown();
+    if (current === "chart" && chartReady()) renderChart();
+    if (current === "map" && mapFiles.ready()) renderMap();
+  }
+
   function showBack(data, first) {
     backData = data;
     if (first) {
@@ -919,7 +1050,7 @@
       shown = "back";
       markShown();
       if (mapFiles.ready()) window.LibreSpeedRouteMap.resetView();
-      draw(data);
+      draw(data, true);
       if (side) side.closeIfNarrow();
       return;
     }
@@ -927,9 +1058,9 @@
       draw(data);
       return;
     }
-    // The networks of the way back arrive when the person is looking at the way from the server: the map and the comparison show them
-    // as soon as they are there
-    if (shownData() && current === "map" && mapFiles.ready()) renderMap();
+    // The networks of the way back arrive when the person is looking at the way from the server: everything that comes from the other
+    // direction (the table, the networks on the way, the lines of the chart and of the map) and the comparison show them as soon as they are there
+    redrawOther();
     drawCompare();
   }
 
@@ -940,8 +1071,8 @@
     backSaved = false;
     drawSave();
     if (shown !== "back") {
-      markShown();
-      if (shownData() && current === "map" && mapFiles.ready()) renderMap();
+      // The way back that is gone is not on the screen any more: not its table, not its networks, not its lines
+      redrawOther();
       drawCompare();
       return;
     }
@@ -1263,7 +1394,7 @@
           if (backPanelApi) backPanelApi.refresh();
           // A new route starts with its own frame: the zoom of the last one is not kept
           if (mapFiles.ready()) window.LibreSpeedRouteMap.resetView();
-          draw(result.body);
+          draw(result.body, true);
           liveT = record(result.body);
           release(0);
         } else {
@@ -1313,6 +1444,9 @@
           return there && (there.family === 4 || there.family === 6) ? there.family : null;
         },
         onRoute: showBack,
+        hasRoute: function () {
+          return !!backData;
+        },
         // The route handed over by the browser extension is taken when the route is on (while the other is traced it is only kept)
         enabled: function () {
           return capsState === "on";
@@ -1357,11 +1491,6 @@
   }
 
   button.addEventListener("click", start);
-  Array.prototype.forEach.call(shownBox.querySelectorAll("[data-shown]"), function (item) {
-    item.addEventListener("click", function () {
-      setShown(item.dataset.shown);
-    });
-  });
   Array.prototype.forEach.call(viewsBox.querySelectorAll("[data-view]"), function (item) {
     item.addEventListener("click", function () {
       setView(item.dataset.view, true);
@@ -1382,15 +1511,17 @@
     if (shownData()) draw(shownData());
   });
   saveButton.addEventListener("click", saveBack);
-  bothButton.addEventListener("click", function () {
-    mapBoth = !mapBoth;
-    try {
-      window.localStorage.setItem(BOTH_KEY, mapBoth ? "on" : "off");
-    } catch (error) {
-      // The choice only lasts until the page is closed
-    }
-    if (shownData() && current === "map" && mapFiles.ready()) renderMap();
-    else bothButton.setAttribute("aria-pressed", String(mapBoth));
+  // The button for the two directions is the same in the three chins: it is for the table, the chart and the map at once
+  chins.forEach(function (chin) {
+    chin.button.addEventListener("click", function () {
+      mapBoth = !mapBoth;
+      try {
+        window.localStorage.setItem(BOTH_KEY, mapBoth ? "on" : "off");
+      } catch (error) {
+        // The choice only lasts until the page is closed
+      }
+      redrawOther();
+    });
   });
   Promise.resolve(window.LibreSpeedI18n && window.LibreSpeedI18n.ready).then(init);
 })();

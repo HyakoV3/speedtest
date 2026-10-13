@@ -53,7 +53,7 @@ test("the first screen has the action, and the table, the chart and the map blan
   await expect(page.locator("#routeChartHost")).toBeVisible();
   await expect(page.locator("#routeChartHost canvas")).toHaveCount(0);
   expect((await page.locator("#routeChartHost").boundingBox()).height).toBeGreaterThan(200);
-  await expect(page.locator("#routeChart .route-chin")).toBeVisible();
+  await expect(page.locator("#routeChart .route-chart-key")).toBeVisible();
   await page.locator('#routeViews [data-view="map"]').click();
   await expect(page.locator("#routeMap")).toBeVisible();
   await expect(page.locator("#routeMapHost")).toBeVisible();
@@ -99,24 +99,35 @@ test("what to keep in mind is a toast after the route, once in each session, in 
   await expect(start(page)).toBeEnabled();
   await start(page).click();
   await expect(page.locator("#routeSummary")).toBeVisible();
-  // Two toasts: how to read the route, and where the history keeps the addresses
-  await expect(page.locator(".toast")).toHaveCount(2);
-  await expect(page.locator(".toast", { hasText: "Este é o caminho do servidor até você" })).toHaveCount(1);
-  await expect(page.locator(".toast", { hasText: "só neste navegador" })).toHaveCount(1);
+  // The toasts of a route: how to read it and where the history keeps the addresses (once in each session), and how it ended and its MTU (each
+  // time). Up to three are on the page at once, the others wait: each is closed to see the next
+  const collect = async () => {
+    const seen = [];
+    for (let i = 0; i < 8; i++) {
+      await page.waitForTimeout(250);
+      const texts = await page.locator(".toast").allTextContents();
+      if (!texts.length) break;
+      texts.forEach(text => seen.includes(text) || seen.push(text));
+      await page.locator(".toast button").first().click();
+    }
+    return seen.join(" | ");
+  };
+  const first = await collect();
+  expect(first).toContain("Este é o caminho do servidor até você");
+  expect(first).toContain("só neste navegador");
+  expect(first).toContain("MTU");
   // It stays long enough to be read
   const time = await page.evaluate(() => window.LibreSpeedToast.readTime(window.LibreSpeedI18n.t("route.notice", "")));
   expect(time).toBeGreaterThanOrEqual(10000);
 
-  // A second route in the same session does not repeat it
-  await page.locator(".toast button").first().click();
-  await expect(page.locator(".toast")).toHaveCount(1);
-  await page.locator(".toast button").first().click();
-  await expect(page.locator(".toast")).toHaveCount(0);
+  // A second route in the same session does not repeat the two that are said once, and says its own end and MTU
   await expect(start(page)).toBeEnabled();
   await start(page).click();
   await expect(start(page)).toBeEnabled();
-  await page.waitForTimeout(600);
-  await expect(page.locator(".toast")).toHaveCount(0);
+  const second = await collect();
+  expect(second).not.toContain("Este é o caminho do servidor até você");
+  expect(second).not.toContain("só neste navegador");
+  expect(second).toContain("MTU");
 });
 
 test("what a route tells stays out of the page even when the style sheet of the browser is an old one", async ({

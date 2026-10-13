@@ -9,8 +9,10 @@
  *
  * LibreSpeedRouteChart.render(host, data, options) draws the chart in host, in place of the one that was there:
  *   data    what LibreSpeedRouteView.chartData() gives
- *   options { xLabel, hint, readout, describe } the text of the axis, the text of the line under the chart when nothing is pointed at,
- *           the element of that line, and describe(index) -> the text of a hop
+ *   options { xLabel, hint, readout, describe, other, describeOther } the text of the axis, the text of the line under the chart when
+ *           nothing is pointed at, the element of that line, and describe(index) -> the text of a hop. other (what chartData() gives for
+ *           the route of the other direction) is drawn under the first one, as a dashed line with empty marks, and describeOther(index) says
+ *           its hop
  * LibreSpeedRouteChart.destroy() takes the chart away.
  * LibreSpeedRouteChart.info() is { builds, width, height, primary, xLabel, drops }: for the tests only.
  *
@@ -23,7 +25,7 @@ var LibreSpeedRouteChart = (function () {
   var host = null;
   var observer = null;
   var onResize = null;
-  var state = { builds: 0, width: 0, height: 0, primary: "", xLabel: "", drops: 0 };
+  var state = { builds: 0, width: 0, height: 0, primary: "", xLabel: "", drops: 0, other: false };
 
   function destroy() {
     if (observer) observer.disconnect();
@@ -132,6 +134,41 @@ var LibreSpeedRouteChart = (function () {
     }
 
     var lineColor = colors.css(primary, 1);
+    // The other direction, when it is drawn too: its line is dashed in the second colour, and the axes have room for the longer of the two
+    var other = options.other || null;
+    var secondary = colors.read("--secondary");
+    var count = other ? Math.max(data.x.length, other.x.length) : data.x.length;
+    var yMax = other ? Math.max(data.yMax, other.yMax) : data.yMax;
+    function pad(list) {
+      var copy = list.slice();
+      while (copy.length < count) copy.push(null);
+      return copy;
+    }
+    var xs = data.x;
+    if (other) {
+      xs = [];
+      for (var n = 1; n <= count; n++) xs.push(n);
+    }
+
+    function drawOther(u) {
+      if (!other) return;
+      var ctx = u.ctx;
+      ctx.save();
+      for (var i = 0; i < other.x.length; i++) {
+        if (other.y[i] === null) continue;
+        var x = u.valToPos(other.x[i], "x", true);
+        var y = u.valToPos(other.y[i], "y", true);
+        ctx.beginPath();
+        ctx.arc(x, y, 3.2 * px, 0, Math.PI * 2);
+        ctx.fillStyle = colors.css(surface, 1);
+        ctx.fill();
+        ctx.strokeStyle = colors.css(secondary, 1);
+        ctx.lineWidth = 1.5 * px;
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
     chart = new uPlot(
       {
         width: width,
@@ -140,8 +177,8 @@ var LibreSpeedRouteChart = (function () {
         padding: [12, 12, 0, 0],
         cursor: { drag: { x: false, y: false }, points: { show: false }, y: false },
         scales: {
-          x: { time: false, range: [0.5, data.x.length + 0.5] },
-          y: { range: [0, data.yMax] }
+          x: { time: false, range: [0.5, count + 0.5] },
+          y: { range: [0, yMax] }
         },
         axes: [
           {
@@ -169,21 +206,41 @@ var LibreSpeedRouteChart = (function () {
         series: [
           {},
           { stroke: lineColor, width: 2.5, spanGaps: false, points: { show: false }, paths: uPlot.paths.linear() }
-        ],
+        ].concat(
+          other
+            ? [
+                {
+                  stroke: colors.css(secondary, 1),
+                  width: 2,
+                  dash: [6, 4],
+                  spanGaps: false,
+                  points: { show: false },
+                  paths: uPlot.paths.linear()
+                }
+              ]
+            : []
+        ),
         hooks: {
           // Behind the line: the largest rise. On top of it: the marks of the hops and of the MTU
           drawAxes: [drawJump],
-          draw: [drawMarks],
+          draw: [drawOther, drawMarks],
           setCursor: [
             function (u) {
               var index = u.cursor.idx;
-              options.readout.textContent =
-                index === null || index === undefined ? options.hint : options.describe(index);
+              if (index === null || index === undefined) {
+                options.readout.textContent = options.hint;
+                return;
+              }
+              // Each direction says its hop, if it has one at that place
+              var parts = [];
+              if (index < data.x.length) parts.push(options.describe(index));
+              if (other && options.describeOther && index < other.x.length) parts.push(options.describeOther(index));
+              options.readout.textContent = parts.length ? parts.join("  |  ") : options.hint;
             }
           ]
         }
       },
-      [data.x, data.line],
+      other ? [xs, pad(data.line), pad(other.line)] : [xs, data.line],
       host
     );
     options.readout.textContent = options.hint;
@@ -207,7 +264,8 @@ var LibreSpeedRouteChart = (function () {
       height: height,
       primary: lineColor,
       xLabel: options.xLabel,
-      drops: data.drops.length
+      drops: data.drops.length,
+      other: !!other
     };
   }
 

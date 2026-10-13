@@ -113,7 +113,9 @@ test("U2 the button turns the other direction off and on, and the choice is kept
   const frame = (await info(page)).frame;
   await bothButton(page).click();
   await expect(bothButton(page)).toHaveAttribute("aria-pressed", "false");
-  await expect(page.locator("#routeMapLegend")).toBeHidden();
+  // The directions stay (they are how one is chosen), but there are no lines to name
+  await expect(page.locator("#routeMapLegend li")).toHaveCount(2);
+  await expect(page.locator("#routeMapLegend svg")).toHaveCount(0);
   expect((await info(page)).other).toBeUndefined();
   await expect(page.locator("#routeMapHost .route-map-leg-other")).toHaveCount(0);
   expect(await page.evaluate(key => window.localStorage.getItem(key), BOTH_KEY)).toBe("off");
@@ -136,7 +138,9 @@ test("U2 the button turns the other direction off and on, and the choice is kept
   await paste(page);
   await expect(page.locator("#routeMapBoth")).toBeVisible();
   await expect(bothButton(page)).toHaveAttribute("aria-pressed", "false");
-  await expect(page.locator("#routeMapLegend")).toBeHidden();
+  // The directions stay (they are how one is chosen), but there are no lines to name
+  await expect(page.locator("#routeMapLegend li")).toHaveCount(2);
+  await expect(page.locator("#routeMapLegend svg")).toHaveCount(0);
   expect((await info(page)).other).toBeUndefined();
 });
 
@@ -155,7 +159,7 @@ test("U3 the button is not in the table or the chart, and goes away with the way
   await direction(page, "back");
   await page.locator("#routeBackClear").click();
   // The way back is gone, and the screen goes back to the way from the server, with nothing to pair it with
-  await expect(page.locator("#routeShown")).toBeHidden();
+  await expect(page.locator("#routeTableBoth")).toBeHidden();
   await expect(page.locator("#routeMapBoth")).toBeHidden();
   expect((await info(page)).other).toBeUndefined();
 });
@@ -216,7 +220,7 @@ test("U6 a saved way back that is reopened is drawn with the way from the server
   await expect(page.locator("#routeMapBoth")).toBeHidden();
   await expect(page.locator("#historyList .history-panel").first()).toBeVisible();
   await page.locator("#historyList .history-panel").first().locator(".history-action-btn").click();
-  await expect(page.locator('[data-shown="back"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator('[data-shown="back"]:visible').first()).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#routeMapBoth")).toBeVisible();
   await expect.poll(async () => (await info(page)).other !== undefined).toBe(true);
   expect(await legend(page)).toEqual(["You → server", "Server → you"]);

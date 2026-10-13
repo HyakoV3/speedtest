@@ -66,7 +66,7 @@ test("the panel of the way back is only there when the server can trace routes, 
   await expect(other.locator("#routeSideToggle")).toBeVisible();
   // The panel is closed, and the selector of the two routes is not there while there is only one
   await expect(other.locator("#routeSide")).toBeHidden();
-  await expect(other.locator("#routeShown")).toBeHidden();
+  await expect(other.locator("#routeTableBoth")).toBeHidden();
   await expect(other.locator("#routeStart")).toBeVisible();
 });
 
@@ -167,12 +167,12 @@ test("each route keeps its own, the panel is remembered for the next visit, and 
   await goBack(page);
   // Opening the panel changes nothing on the screen: the route from the server is still there, and there is nothing to choose between yet
   await expect(rows(page)).toHaveCount(fixture("normal").hops.length);
-  await expect(page.locator("#routeShown")).toBeHidden();
+  await expect(page.locator("#routeTableBoth")).toBeHidden();
   // A route pasted in the panel is shown at once, and now there are two to choose from
   await paste(page, sample("linux-traceroute-n.txt"));
   await expect(rows(page)).toHaveCount(11);
-  await expect(page.locator("#routeShown")).toBeVisible();
-  await expect(page.locator('[data-shown="back"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#routeTableBoth")).toBeVisible();
+  await expect(page.locator('[data-shown="back"]:visible').first()).toHaveAttribute("aria-pressed", "true");
   expect(await page.evaluate(key => localStorage.getItem(key), SIDE)).toBe("open");
   expect(await page.evaluate(key => localStorage.getItem(key), KEY)).toBeNull();
   await showRoute(page, "there");
@@ -187,7 +187,7 @@ test("each route keeps its own, the panel is remembered for the next visit, and 
   await page.reload();
   await page.waitForFunction(() => !!window.LibreSpeedI18n);
   await expect(page.locator("#routeBack")).toBeVisible();
-  await expect(page.locator("#routeShown")).toBeHidden();
+  await expect(page.locator("#routeTableBoth")).toBeHidden();
 });
 
 test("the commands carry the host of the page and the IP version of the route from the server, and can be copied", async ({
@@ -207,7 +207,7 @@ test("the commands carry the host of the page and the IP version of the route fr
   await expect(page.locator("#routeBackCommand")).toHaveText("traceroute -n -m 30 -w 1 -6 127.0.0.1");
   await expect(page.locator("#routeBackAltCommand")).toHaveText("tracepath -n -6 127.0.0.1");
   await page.locator("#routeBackCopy").click();
-  await expect(page.locator("#routeBackCopy")).toHaveText("Copied");
+  await expect(page.locator("#routeBackCopy")).toHaveAttribute("aria-label", "Copied");
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("traceroute -n -m 30 -w 1 -6 127.0.0.1");
 });
 
@@ -291,7 +291,7 @@ test("the four languages: the way back is drawn again with their texts, and no k
   const texts = { pt: "Você → servidor", es: "Tú → servidor", sv: "Du → servern", en: "You → server" };
   for (const lang of ["pt", "es", "sv", "en"]) {
     await page.evaluate(code => window.LibreSpeedI18n.set(code, false), lang);
-    await expect(page.locator('[data-shown="back"]')).toHaveText(texts[lang]);
+    await expect(page.locator('[data-shown="back"]:visible').first()).toHaveText(texts[lang]);
     await expect(page.locator("#routeArea")).not.toContainText("route.back.");
     await expect(page.locator("#routeArea")).not.toContainText("route.compare.");
     await expect(page.locator("#routeArea")).not.toContainText("route.server");
@@ -431,15 +431,17 @@ test("while a route is traced the route shown cannot be changed, and it can afte
   await goBack(page);
   await paste(page, sample("linux-traceroute-n.txt"));
   await expect(rows(page)).toHaveCount(11);
-  await expect(page.locator("#routeShown")).toBeVisible();
+  await expect(page.locator("#routeTableBoth")).toBeVisible();
   await expect(page.locator("#routeStart")).toBeEnabled();
   await page.locator("#routeStart").click();
-  await expect(page.locator('[data-shown="back"]')).toBeDisabled();
-  await expect(page.locator('[data-shown="there"]')).toBeDisabled();
+  // The results are blank while the route is traced, and the directions are not offered
+  await expect(page.locator("#routeStatus")).toContainText("Tracing");
+  await expect(page.locator('[data-shown="back"]:visible')).toHaveCount(0);
+  await expect(page.locator('[data-shown="there"]:visible')).toHaveCount(0);
   release();
   await expect(rows(page)).toHaveCount(fixture("normal").hops.length);
-  await expect(page.locator('[data-shown="back"]')).toBeEnabled();
-  await expect(page.locator('[data-shown="there"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator('[data-shown="back"]:visible').first()).toBeEnabled();
+  await expect(page.locator('[data-shown="there"]:visible').first()).toHaveAttribute("aria-pressed", "true");
 });
 
 test("the strip of a saved route is not over the way back", async ({ page }) => {
@@ -691,7 +693,7 @@ test("a saved way back is shown again as the way back, with its strip, and canno
   await expect(rows(page)).toHaveCount(fixture("normal").hops.length);
   // Reopening it, from the way from the server, goes to the way back, and the panel is left as it is
   await page.locator("#historyList .history-panel").first().locator(".history-action-btn").click();
-  await expect(page.locator('[data-shown="back"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator('[data-shown="back"]:visible').first()).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#routeTable caption")).toHaveText("Hops from you to this server");
   await expect(rows(page)).toHaveCount(10);
   await expect(rows(page).nth(9)).toContainText("Net 80");

@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { test, expect } = require("@playwright/test");
-const { openBackPanel, showRoute } = require("./helpers/route-side");
+const { openBackPanel, showRoute, chooseMethod } = require("./helpers/route-side");
 
 const staticRepositoryUrl = "http://127.0.0.1:18184";
 
@@ -84,6 +84,7 @@ test("P1 without the extension the button is off and says what to do; the page a
   page
 }) => {
   await openRoute(page, { extension: false });
+  await chooseMethod(page, "extension");
   await expect(button(page)).toBeDisabled();
   await expect(page.locator("#routeBackTraceHint")).toBeVisible();
   await expect(page.locator("#routeBackTraceHint")).toContainText("Allow this site");
@@ -153,7 +154,7 @@ test("P4 every code of the protocol has its text, in the four languages, and an 
     );
     for (const code of [...CODES, "timeout"])
       expect(texts[`route.back.trace-error.${code}`], `${lang} ${code}`).toBeTruthy();
-    for (const key of ["trace", "trace-cancel", "trace-setup", "trace-tracing"])
+    for (const key of ["trace", "trace-cancel", "setup-title", "setup-install", "setup-allow", "trace-tracing"])
       expect(texts[`route.back.${key}`], `${lang} ${key}`).toBeTruthy();
   }
   const english = JSON.parse(
@@ -253,6 +254,7 @@ test("P7 an extension that never answers: after 150 seconds the page cancels and
 
 test("P8 a trace is asked for once at a time, and not when the button is off", async ({ page }) => {
   await openRoute(page, { extension: false });
+  await chooseMethod(page, "extension");
   await button(page).click({ force: true });
   await page.waitForTimeout(300);
   expect(await asked(page)).toEqual([]);

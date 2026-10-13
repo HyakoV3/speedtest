@@ -134,13 +134,13 @@ test("S4 a route pasted in the panel is shown at once, over the one from the ser
   await openRoute(page);
   await page.locator("#routeStart").click();
   await expect(rows(page)).toHaveCount(fixture("normal").hops.length);
-  await expect(page.locator("#routeShown")).toBeHidden();
+  await expect(page.locator("#routeTableBoth")).toBeHidden();
   await openBackPanel(page);
   await paste(page, sample("linux-traceroute-n.txt"));
   await expect(rows(page)).toHaveCount(11);
   await expect(page.locator("#routeTable caption")).toHaveText("Hops from you to this server");
-  await expect(page.locator("#routeShown")).toBeVisible();
-  await expect(page.locator('[data-shown="back"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#routeTableBoth")).toBeVisible();
+  await expect(page.locator('[data-shown="back"]:visible').first()).toHaveAttribute("aria-pressed", "true");
   await expect(panel(page)).toBeVisible();
 });
 
@@ -165,7 +165,7 @@ test("S5 the networks that arrive late never take the person back to the way bac
   answer();
   await expect(page.locator("#routeBackNotes")).not.toContainText("could not");
   await page.waitForTimeout(400);
-  await expect(page.locator('[data-shown="there"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator('[data-shown="there"]:visible').first()).toHaveAttribute("aria-pressed", "true");
   await expect(rows(page)).toHaveCount(fixture("normal").hops.length);
 });
 
@@ -193,8 +193,8 @@ test("S6 a route that arrives while the other is traced is kept, not drawn: the 
   release();
   await expect(rows(page)).toHaveCount(fixture("normal").hops.length);
   // After the trace both routes are there, the one from the server is on the screen, and the other is one press away
-  await expect(page.locator("#routeShown")).toBeVisible();
-  await expect(page.locator('[data-shown="there"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#routeTableBoth")).toBeVisible();
+  await expect(page.locator('[data-shown="there"]:visible').first()).toHaveAttribute("aria-pressed", "true");
   await showRoute(page, "back");
   await expect(rows(page)).toHaveCount(5);
   await expect(page.locator("#routeTable caption")).toHaveText("Hops from you to this server");
@@ -333,7 +333,7 @@ test("S13 clearing the way back that is on the screen brings the other route bac
   await expect(rows(page)).toHaveCount(11);
   await page.locator("#routeBackClear").click();
   await expect(rows(page)).toHaveCount(fixture("normal").hops.length);
-  await expect(page.locator("#routeShown")).toBeHidden();
+  await expect(page.locator("#routeTableBoth")).toBeHidden();
   await expect(page.locator("#routeTable caption")).toHaveText("Hops from this server to you");
 });
 
@@ -345,15 +345,15 @@ test("S14 the button has its text in the four languages, and the selector keeps 
   await paste(page, sample("linux-traceroute-n.txt"));
   await expect(rows(page)).toHaveCount(11);
   const texts = {
-    en: ["Test the way back", "You → server"],
-    pt: ["Testar a volta", "Você → servidor"],
-    es: ["Probar la vuelta", "Tú → servidor"],
-    sv: ["Testa vägen tillbaka", "Du → servern"]
+    en: ["Trace the route back", "You → server"],
+    pt: ["Traçar a rota de volta", "Você → servidor"],
+    es: ["Trazar la ruta de vuelta", "Tú → servidor"],
+    sv: ["Spåra vägen tillbaka", "Du → servern"]
   };
   for (const [lang, [button, selector]] of Object.entries(texts)) {
     await page.evaluate(code => window.LibreSpeedI18n.set(code, false), lang);
     await expect(toggle(page)).toHaveText(button);
-    await expect(page.locator('[data-shown="back"]')).toHaveText(selector);
+    await expect(page.locator('[data-shown="back"]:visible').first()).toHaveText(selector);
     await expect(page.locator("body")).not.toContainText("route.side.");
   }
   const parity = ["en", "pt", "es", "sv"].map(lang =>

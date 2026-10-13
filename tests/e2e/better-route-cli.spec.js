@@ -1,99 +1,84 @@
 const fs = require("fs");
 const path = require("path");
 const { test, expect } = require("@playwright/test");
-const { openBackPanel, showRoute } = require("./helpers/route-side");
+const { openBackPanel, chooseMethod } = require("./helpers/route-side");
 
 const staticRepositoryUrl = "http://127.0.0.1:18184";
 
 const fixture = name => JSON.parse(fs.readFileSync(path.join(__dirname, "fixtures", `route-${name}.json`), "utf8"));
+const locale = lang =>
+  JSON.parse(
+    fs.readFileSync(path.join(__dirname, "..", "..", "frontend", "better", "locales", `${lang}.json`), "utf8")
+  );
 const DOWNLOAD = "https://github.com/HyakoV3/librespeed-route/releases";
 const CAPS = { v: 1, enabled: true, ipv6: false, window_s: 60, cli_url: DOWNLOAD };
 const TOOL_KEY = "librespeed-better-route-back-tool";
 
-async function openRoute(page, caps = CAPS, { back = true, query = "" } = {}) {
+async function openRoute(page, caps = CAPS) {
   await page.route("**/backend/route.php*", route => {
     if (route.request().method() === "POST") return route.fulfill({ json: fixture("normal") });
     return route.fulfill({ json: caps });
   });
-  await page.goto(`${staticRepositoryUrl}/route-better.html${query}`);
+  await page.goto(`${staticRepositoryUrl}/route-better.html`);
   await page.waitForFunction(() => !!window.LibreSpeedI18n);
   await page.evaluate(() => window.LibreSpeedI18n.ready);
   await expect(page.locator("#routeSideToggle")).toBeVisible();
-  if (back) await openBackPanel(page);
 }
-const command = page => page.locator("#routeBackCommand");
-const tool = (page, name) => page.locator(`#routeBackTool [data-tool="${name}"]`);
-const system = (page, name) => page.locator(`#routeBackSystems [data-system="${name}"]`).click();
+const link = page => page.locator("#routeBackCliLink");
+const steps = page => page.locator("#routeBackTraceHint");
 
-test("L1 with an address from the server the choice of the tool is there, and starts at the command of the system", async ({
+test("L1 the card has no choice of tool: the way to run a command is the one of the system, whatever the server offers", async ({
   page
 }) => {
   await openRoute(page);
-  await expect(page.locator("#routeBackTool")).toBeVisible();
-  await expect(tool(page, "system")).toHaveAttribute("aria-pressed", "true");
-  await expect(tool(page, "cli")).toHaveAttribute("aria-pressed", "false");
-  await expect(tool(page, "cli")).toHaveText("librespeed-route");
-  await expect(page.locator("#routeBackCli")).toBeHidden();
-  await expect(page.locator("#routeBackClipLabel")).toBeVisible();
-  await system(page, "windows");
-  await expect(command(page)).toHaveText(/^tracert -d -h 30 -w 1000 \S+$/);
+  await openBackPanel(page);
+  await expect(page.locator("#routeBackTool")).toHaveCount(0);
+  await expect(page.locator("#routeBackCli")).toHaveCount(0);
+  await expect(page.locator("#routeBackCliRun")).toHaveCount(0);
+  await expect(page.locator("#routeBackCommand")).toHaveText(/^traceroute|^tracert/);
+  await expect(page.locator("#routeBackCommand")).not.toContainText("librespeed-route");
+  // The way of the old choice, kept by a visit before, is taken away
+  await page.evaluate(key => window.localStorage.setItem(key, "cli"), TOOL_KEY);
+  await page.reload();
+  await page.waitForFunction(() => !!window.LibreSpeedI18n);
+  await openBackPanel(page);
+  expect(await page.evaluate(key => window.localStorage.getItem(key), TOOL_KEY)).toBeNull();
+  await expect(page.locator("#routeBackCommand")).toHaveText(/^traceroute|^tracert/);
 });
 
-test("L2 librespeed-route: the command of each system, piped, with the family; the clipboard box and the alternative are not there", async ({
-  page,
-  context
+test("L2 the extension says what to install before its button: two steps, with the link from the server, and nothing else once it is here", async ({
+  page
 }) => {
-  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await openRoute(page);
-  await tool(page, "cli").click();
-  await expect(tool(page, "cli")).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("#routeBackCli")).toBeVisible();
-  await expect(page.locator("#routeBackCliRun")).toBeVisible();
-  await expect(page.locator("#routeBackClipLabel")).toBeHidden();
-  await expect(page.locator("#routeBackClipHint")).toBeHidden();
-  await expect(page.locator("#routeBackAlt")).toBeHidden();
-  await system(page, "windows");
-  await expect(command(page)).toHaveText(/^librespeed-route \S+ \| clip$/);
-  await system(page, "macos");
-  await expect(command(page)).toHaveText(/^librespeed-route \S+ \| pbcopy$/);
-  await system(page, "linux");
-  await expect(command(page)).toHaveText(/^librespeed-route \S+ \| xclip -selection clipboard$/);
-  // The Copy button copies what is shown
-  await page.locator("#routeBackCopy").click();
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(/^librespeed-route \S+ \| xclip/);
-  // The link to get it is the address of the server, in a new tab and with no referrer or opener
-  const link = page.locator("#routeBackCliLink");
-  await expect(link).toHaveAttribute("href", DOWNLOAD);
-  await expect(link).toHaveAttribute("target", "_blank");
-  await expect(link).toHaveAttribute("rel", /noopener/);
-  // Back to the command of the system
-  await tool(page, "system").click();
-  await expect(page.locator("#routeBackCli")).toBeHidden();
-  await expect(page.locator("#routeBackClipLabel")).toBeVisible();
-  await expect(command(page)).toHaveText(/^traceroute -n -m 30 -w 1 \S+$/);
+  await chooseMethod(page, "extension");
+  await expect(steps(page)).toBeVisible();
+  await expect(steps(page).locator(".route-label")).toHaveText("To trace from here you need:");
+  await expect(steps(page).locator("li")).toHaveCount(2);
+  await expect(steps(page).locator("li").nth(0)).toContainText(
+    "Install the librespeed-route program and its browser extension."
+  );
+  await expect(steps(page).locator("li").nth(1)).toContainText("Allow this site");
+  // The link is the one that the server gives, opened in another tab, with no way back to this page
+  await expect(link(page)).toBeVisible();
+  await expect(link(page)).toHaveText("Download for Windows, macOS and Linux");
+  await expect(link(page)).toHaveAttribute("href", DOWNLOAD);
+  await expect(link(page)).toHaveAttribute("target", "_blank");
+  await expect(link(page)).toHaveAttribute("rel", "noopener noreferrer");
+  await expect(page.locator("#routeBackTraceButton")).toBeDisabled();
+  // Once the extension answers there is only the button
+  await page.evaluate(() =>
+    window.postMessage(
+      { source: "librespeed-route-extension", v: 1, type: "state", id: "", state: "ready" },
+      window.location.origin
+    )
+  );
+  await expect(page.locator("#routeBackTraceButton")).toBeEnabled();
+  await expect(steps(page)).toBeHidden();
+  await expect(link(page)).toBeHidden();
+  await expect(page.locator("#routeBackExtensionArea p:visible, #routeBackExtensionArea li:visible")).toHaveCount(0);
 });
 
-test("L3 the family of the route from the server is an option of the command, before the host", async ({ page }) => {
-  await openRoute(page);
-  const results = await page.evaluate(() => ({
-    four: window.LibreSpeedRouteBack.commands("windows", "example.org", 4, false, "cli"),
-    six: window.LibreSpeedRouteBack.commands("macos", "example.org", 6, false, "cli"),
-    none: window.LibreSpeedRouteBack.commands("linux", "example.org", null, true, "cli"),
-    bad: window.LibreSpeedRouteBack.commands("linux", "a$b.example", 4, false, "cli"),
-    dash: window.LibreSpeedRouteBack.commands("linux", "-oProxy", 4, false, "cli"),
-    system: window.LibreSpeedRouteBack.commands("linux", "example.org", 4, false, "system"),
-    unknown: window.LibreSpeedRouteBack.commands("plan9", "example.org", 4, false, "cli")
-  }));
-  expect(results.four.main).toBe("librespeed-route -4 example.org | clip");
-  expect(results.six.main).toBe("librespeed-route -6 example.org | pbcopy");
-  expect(results.none.main).toBe("librespeed-route example.org | xclip -selection clipboard");
-  expect(results.bad).toBeNull();
-  expect(results.dash).toBeNull();
-  expect(results.system.main).toBe("traceroute -n -m 30 -w 1 -4 example.org");
-  expect(results.unknown).toBeNull();
-});
-
-test("L4 without an address from the server, or with one that is not a plain https address, nothing is offered", async ({
+test("L3 without an address from the server, or with one that is not a plain https address, there are the steps and no link", async ({
   page
 }) => {
   const bad = [
@@ -114,9 +99,9 @@ test("L4 without an address from the server, or with one that is not a plain htt
     const context = await page.context().browser().newContext();
     const other = await context.newPage();
     await openRoute(other, { ...CAPS, cli_url: value });
-    await expect(other.locator("#routeBackTool"), String(value)).toBeHidden();
-    await expect(other.locator("#routeBackCli"), String(value)).toBeHidden();
-    await expect(other.locator("#routeBackCommand")).toHaveText(/^traceroute|^tracert/);
+    await chooseMethod(other, "extension");
+    await expect(other.locator("#routeBackTraceHint li"), String(value)).toHaveCount(2);
+    await expect(other.locator("#routeBackCliLink"), String(value)).toBeHidden();
     await context.close();
   }
   // The page only checks the address: what it keeps is the one it was given, and a plain one is taken
@@ -129,64 +114,40 @@ test("L4 without an address from the server, or with one that is not a plain htt
   expect(kept).toEqual(["https://example.org", "https://example.org:8443/a/b-c_d.e~f%20g+h", null]);
 });
 
-test("L5 the choice is kept for the next visit, and a stale choice with no address from the server is not used", async ({
-  page
-}) => {
-  await openRoute(page);
-  await tool(page, "cli").click();
-  expect(await page.evaluate(key => window.localStorage.getItem(key), TOOL_KEY)).toBe("cli");
-  await page.reload();
-  await page.waitForFunction(() => !!window.LibreSpeedI18n);
-  await expect(page.locator("#routeBack")).toBeVisible();
-  await expect(tool(page, "cli")).toHaveAttribute("aria-pressed", "true");
-  await expect(command(page)).toHaveText(/^librespeed-route /);
-  // The server stops offering it (the administrator emptied the address): the choice saved is not used
-  await page.unroute("**/backend/route.php*");
-  await page.route("**/backend/route.php*", route => route.fulfill({ json: { ...CAPS, cli_url: null } }));
-  await page.reload();
-  await page.waitForFunction(() => !!window.LibreSpeedI18n);
-  await expect(page.locator("#routeBack")).toBeVisible();
-  await expect(page.locator("#routeBackTool")).toBeHidden();
-  await expect(command(page)).toHaveText(/^traceroute|^tracert/);
-});
-
-test("L6 the new texts are in the four languages", async ({ page }) => {
-  await openRoute(page);
-  await tool(page, "cli").click();
-  const texts = {
-    en: ["System command", "Download for Windows, macOS and Linux", "Run it, then press Paste and show."],
-    pt: ["Comando do sistema", "Baixar para Windows, macOS e Linux", "Rode-o e depois clique em Colar e mostrar."],
-    es: ["Comando del sistema", "Descargar para Windows, macOS y Linux", "Ejecútalo y luego pulsa Pegar y mostrar."],
-    sv: ["Systemkommando", "Ladda ner för Windows, macOS och Linux", "Kör det och tryck sedan på Klistra in och visa."]
-  };
-  for (const [language, [system, download, run]] of Object.entries(texts)) {
-    await page.evaluate(code => window.LibreSpeedI18n.set(code, false), language);
-    await expect(tool(page, "system")).toHaveText(system);
-    await expect(page.locator("#routeBackCliLink")).toHaveText(download);
-    await expect(page.locator("#routeBackCliRun")).toHaveText(run);
-    // The name of the program is not translated
-    await expect(tool(page, "cli")).toHaveText("librespeed-route");
-    await expect(page.locator("#routeBackTool")).toHaveAttribute("aria-label", /.+/);
-  }
-});
-
-test("L7 at 360 px the choice and the command fit, in Swedish", async ({ page }) => {
+test("L4 the steps are in the four languages, and at 360 px they fit", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 740 });
   await openRoute(page);
-  await page.evaluate(() => window.LibreSpeedI18n.set("sv", false));
-  await tool(page, "cli").click();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(
-    true
-  );
-  for (const selector of ['#routeBackTool [data-tool="system"]', '#routeBackTool [data-tool="cli"]']) {
-    const box = await page.locator(selector).boundingBox();
-    expect(box.x, selector).toBeGreaterThanOrEqual(0);
-    expect(box.x + box.width, selector).toBeLessThanOrEqual(360);
-    expect(box.height, selector).toBeGreaterThanOrEqual(36);
+  await chooseMethod(page, "extension");
+  for (const lang of ["en", "pt", "es", "sv"]) {
+    const texts = locale(lang);
+    for (const key of [
+      "route.back.setup-title",
+      "route.back.setup-install",
+      "route.back.setup-allow",
+      "route.back.cli-download"
+    ])
+      expect(texts[key], `${lang} ${key}`).toBeTruthy();
+    await page.evaluate(code => window.LibreSpeedI18n.set(code, false), lang);
+    await expect(steps(page).locator(".route-label")).toHaveText(texts["route.back.setup-title"]);
+    await expect(steps(page).locator("li").nth(0)).toContainText(texts["route.back.setup-install"]);
+    await expect(steps(page).locator("li").nth(1)).toContainText(texts["route.back.setup-allow"]);
+    await expect(link(page)).toHaveText(texts["route.back.cli-download"]);
+    await expect(page.locator("#routeSide")).not.toContainText("route.back.");
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth),
+      lang
+    ).toBe(true);
+    const box = await steps(page).boundingBox();
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(360);
   }
+  // The words that the extension itself has on its button are the ones that the step says
+  expect(locale("pt")["route.back.setup-allow"]).toContain("Permitir este site");
+  expect(locale("es")["route.back.setup-allow"]).toContain("Permitir este sitio");
+  expect(locale("sv")["route.back.setup-allow"]).toContain("Tillåt den här webbplatsen");
 });
 
-test("L8 the pasted line of librespeed-route is read by the page: the internal hops are told as internal, the others have their networks", async ({
+test("L5 the pasted line of librespeed-route is read by the page: the internal hops are told as internal, the others have their networks", async ({
   page
 }) => {
   await page.route("**/backend/route_enrich.php", route =>
@@ -206,7 +167,7 @@ test("L8 the pasted line of librespeed-route is read by the page: the internal h
     })
   );
   await openRoute(page);
-  await tool(page, "cli").click();
+  await openBackPanel(page);
   const line =
     "LSR1!n=0123456789abcdef!f=4!t=8.8.8.8!s=1790000000!a=0.1.0+traceroute!h=1,-p,1.85,3,3;2,-c,5.35,3,3;3,72.14.208.80,18.19,3,3;4,*,0,3,0;5,8.8.8.8,16.36,3,3";
   await page.locator("#routeBackText").fill(line);

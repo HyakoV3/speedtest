@@ -46,21 +46,6 @@
         <div id="routeStatus" role="status" aria-live="polite"></div>
       </div>
       <div id="routeResults" hidden>
-        <div
-          id="routeShown"
-          class="route-views route-direction"
-          role="group"
-          aria-label="Direction"
-          data-i18n-attr="aria-label:route.direction.label"
-          hidden
-        >
-          <button type="button" data-shown="there" aria-pressed="true" data-i18n="route.direction.there">
-            Server → you
-          </button>
-          <button type="button" data-shown="back" aria-pressed="false" data-i18n="route.direction.back">
-            You → server
-          </button>
-        </div>
         <p id="routeShowing" class="route-showing" tabindex="-1" hidden>
           <span id="routeShowingText"></span>
           <button type="button" id="routeShowLatest" class="history-action" data-i18n="route.history.latest" hidden>
@@ -143,6 +128,12 @@
               </thead>
               <tbody></tbody>
             </table>
+            <div id="routeTableBoth" class="route-both route-chin" hidden>
+              <button type="button" class="route-both-button" aria-pressed="true" data-i18n="route.map.both">
+                Show both directions
+              </button>
+              <ul class="route-both-ways"></ul>
+            </div>
           </div>
           <section id="routeChart" class="route-chart" aria-labelledby="routeChartTitle" hidden>
             <div class="route-figure">
@@ -177,6 +168,12 @@
                   <span data-i18n="route.you">you</span>
                 </li>
               </ul>
+              <div id="routeChartBoth" class="route-both route-chin" hidden>
+                <button type="button" class="route-both-button" aria-pressed="true" data-i18n="route.map.both">
+                  Show both directions
+                </button>
+                <ul class="route-both-ways"></ul>
+              </div>
             </div>
             <p id="routeChartReadout" class="route-chart-readout" aria-hidden="true"></p>
             <h3 id="routeChartTitle" data-i18n="route.chart.title">Time to each router, in ms</h3>
@@ -216,11 +213,17 @@
                 <button type="button" data-zoom="world" data-i18n="route.map.zoom-world">World</button>
                 <button type="button" data-zoom="fit" data-i18n="route.map.zoom-fit">Route</button>
               </div>
-              <div id="routeMapBoth" class="route-map-both route-chin" hidden>
-                <button type="button" id="routeMapBothButton" aria-pressed="true" data-i18n="route.map.both">
+              <div id="routeMapBoth" class="route-both route-chin" hidden>
+                <button
+                  type="button"
+                  id="routeMapBothButton"
+                  class="route-both-button"
+                  aria-pressed="true"
+                  data-i18n="route.map.both"
+                >
                   Show both directions
                 </button>
-                <ul id="routeMapLegend" class="route-map-legend" hidden></ul>
+                <ul id="routeMapLegend" class="route-both-ways" hidden></ul>
               </div>
             </div>
             <p id="routeMapNone" class="route-map-none" data-i18n="route.map.none" hidden>
@@ -336,155 +339,198 @@
         &times;
       </button>
       <section id="routeBack" class="route-back">
-        <h2 id="routeBackTitle" data-i18n="route.back.title">Your route to the server</h2>
-        <p data-i18n="route.back.intro">
-          A web page cannot trace this route, so run the command below on your computer and paste what it prints. The
-          text is read here, in your browser.
+        <h2 id="routeBackTitle" data-i18n="route.back.title">Trace the route back</h2>
+        <p class="route-back-lead" data-i18n="route.back.intro">
+          Help identify the connection path from this server to your device.
         </p>
+        <p id="routeBackMethodLabel" class="route-label" data-i18n="route.back.method">Choose your method</p>
         <div
-          id="routeBackTool"
-          class="route-views"
+          id="routeBackMethod"
+          class="route-views route-segments"
           role="group"
-          aria-label="Way to get the route"
-          data-i18n-attr="aria-label:route.back.tool"
-          hidden
+          aria-labelledby="routeBackMethodLabel"
         >
-          <button type="button" data-tool="system" aria-pressed="true" data-i18n="route.back.tool-system">
-            System command
+          <button type="button" data-method="extension" aria-pressed="false" data-i18n="route.back.method-extension">
+            Browser extension
           </button>
-          <button type="button" data-tool="cli" aria-pressed="false">librespeed-route</button>
+          <button type="button" data-method="command" aria-pressed="true" data-i18n="route.back.method-command">
+            Run a command
+          </button>
         </div>
-        <p id="routeBackExtension" class="route-hint" data-i18n="route.back.extension-hint">
-          With the browser extension: click its icon on this page and press Trace; the route comes here by itself.
-        </p>
-        <div id="routeBackTrace" class="route-back-trace">
-          <button
-            type="button"
-            id="routeBackTraceButton"
-            class="route-button route-button-small"
-            data-i18n="route.back.trace"
-            aria-describedby="routeBackTraceHint"
-            disabled
+        <div id="routeBackExtensionArea" hidden>
+          <div id="routeBackTrace" class="route-back-trace">
+            <button
+              type="button"
+              id="routeBackTraceButton"
+              class="route-button route-button-small"
+              data-i18n="route.back.trace"
+              aria-describedby="routeBackTraceHint"
+              disabled
+            >
+              Trace with the extension
+            </button>
+            <button
+              type="button"
+              id="routeBackTraceCancel"
+              class="history-action"
+              data-i18n="route.back.trace-cancel"
+              hidden
+            >
+              Cancel
+            </button>
+            <p id="routeBackTraceNote" class="route-hint" role="status" aria-live="polite" hidden></p>
+            <div id="routeBackTraceHint" class="route-setup">
+              <p class="route-label" data-i18n="route.back.setup-title">To trace from here you need:</p>
+              <ol class="route-steps">
+                <li>
+                  <span data-i18n="route.back.setup-install">
+                    Install the librespeed-route program and its browser extension.
+                  </span>
+                  <a
+                    id="routeBackCliLink"
+                    href="#"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    data-i18n="route.back.cli-download"
+                    hidden
+                  >
+                    Download for Windows, macOS and Linux
+                  </a>
+                </li>
+                <li data-i18n="route.back.setup-allow">
+                  Click the icon of the extension on this page and press “Allow this site”.
+                </li>
+              </ol>
+            </div>
+          </div>
+        </div>
+        <div id="routeBackCommandArea">
+          <p id="routeBackSystemLabel" class="route-label" data-i18n="route.back.system-label">
+            Select your operating system
+          </p>
+          <div
+            id="routeBackSystems"
+            class="route-views route-segments"
+            role="group"
+            aria-labelledby="routeBackSystemLabel"
           >
-            Trace the way back
-          </button>
-          <button
-            type="button"
-            id="routeBackTraceCancel"
-            class="history-action"
-            data-i18n="route.back.trace-cancel"
-            hidden
-          >
-            Cancel
-          </button>
-          <p id="routeBackTraceNote" class="route-hint" role="status" aria-live="polite" hidden></p>
-          <p id="routeBackTraceHint" class="route-hint" data-i18n="route.back.trace-setup">
-            This button works with the browser extension once you allow this site: click the icon of the extension on
-            this page and press “Allow this site”.
+            <button type="button" data-system="windows" aria-pressed="false">Windows</button>
+            <button type="button" data-system="macos" aria-pressed="false">macOS</button>
+            <button type="button" data-system="linux" aria-pressed="false">Linux</button>
+          </div>
+          <div class="route-command route-copy-field">
+            <code id="routeBackCommand" tabindex="0"></code>
+            <button
+              type="button"
+              id="routeBackCopy"
+              class="route-copy-button"
+              aria-label="Copy"
+              title="Copy"
+              data-i18n-attr="aria-label:route.back.copy,title:route.back.copy"
+            >
+              Copy
+            </button>
+          </div>
+          <p id="routeBackCommandHelp" class="route-hint" data-i18n="route.back.command-help">
+            Run this command, then paste the result below.
+          </p>
+          <label id="routeBackClipLabel" class="route-back-clip">
+            <span class="route-switch">
+              <input type="checkbox" id="routeBackClip" role="switch" />
+              <span class="route-switch-track" aria-hidden="true"><span class="route-switch-handle"></span></span>
+            </span>
+            <span class="route-back-clip-text" data-i18n="route.back.clip-label">Send the result to the clipboard</span>
+          </label>
+          <p id="routeBackNoCommand" class="route-hint" data-i18n="route.back.no-command" hidden>
+            No command is shown: the name of this server has a character that a command line should not get. Trace to it
+            by hand and paste the output.
+          </p>
+          <p id="routeBackAlt" class="route-hint" hidden>
+            <span data-i18n="route.back.linux-alt">Without traceroute installed:</span>
+            <code id="routeBackAltCommand"></code>
+          </p>
+          <p class="route-hint" data-i18n="route.back.wait">It can take up to two minutes.</p>
+          <p id="routeBackMobile" class="route-hint" data-i18n="route.back.mobile" hidden>
+            Phones have no traceroute command. Use a network tools app that has traceroute and paste its result here, or
+            use a computer.
           </p>
         </div>
-        <p id="routeBackCli" class="route-hint" hidden>
-          <span data-i18n="route.back.cli-about">
-            A small program that runs the tracert/traceroute of your own system and writes the result for this page,
-            without the addresses of your own network.
-          </span>
-          <a
-            id="routeBackCliLink"
-            href="#"
-            target="_blank"
-            rel="noopener noreferrer"
-            data-i18n="route.back.cli-download"
-          >
-            Download for Windows, macOS and Linux
-          </a>
-        </p>
-        <div
-          id="routeBackSystems"
-          class="route-views"
-          role="group"
-          aria-label="System"
-          data-i18n-attr="aria-label:route.back.system"
-        >
-          <button type="button" data-system="windows" aria-pressed="false">Windows</button>
-          <button type="button" data-system="macos" aria-pressed="false">macOS</button>
-          <button type="button" data-system="linux" aria-pressed="false">Linux</button>
-        </div>
-        <div class="route-command">
-          <code id="routeBackCommand" tabindex="0"></code>
-          <button type="button" id="routeBackCopy" class="history-action" data-i18n="route.back.copy">Copy</button>
-        </div>
-        <p id="routeBackCliRun" class="route-hint" data-i18n="route.back.cli-run" hidden>
-          Run it, then press Paste and show.
-        </p>
-        <label id="routeBackClipLabel" class="route-back-clip">
-          <input type="checkbox" id="routeBackClip" />
-          <span data-i18n="route.back.clip-label">Send the result to the clipboard</span>
-        </label>
-        <p id="routeBackClipHint" class="route-hint" hidden>
-          <span data-i18n="route.back.clip-hint">
-            The terminal shows nothing until the command ends (it can take up to two minutes). Then press Paste and
-            show.
-          </span>
-          <span id="routeBackClipLinux" data-i18n="route.back.clip-linux" hidden>
-            On Linux this uses xclip; with Wayland, use wl-copy in its place.
-          </span>
-        </p>
-        <p id="routeBackNoCommand" class="route-hint" data-i18n="route.back.no-command" hidden>
-          No command is shown: the name of this server has a character that a command line should not get. Trace to it
-          by hand and paste the output.
-        </p>
-        <p id="routeBackAlt" class="route-hint" hidden>
-          <span data-i18n="route.back.linux-alt">Without traceroute installed:</span>
-          <code id="routeBackAltCommand"></code>
-        </p>
-        <p class="route-hint" data-i18n="route.back.wait">It can take up to two minutes.</p>
-        <p id="routeBackMobile" class="route-hint" data-i18n="route.back.mobile" hidden>
-          Phones have no traceroute command. Use a network tools app that has traceroute and paste its result here, or
-          use a computer.
-        </p>
-        <label for="routeBackText" data-i18n="route.back.paste-label">Paste the output here</label>
-        <textarea
-          id="routeBackText"
-          class="route-paste"
-          rows="8"
-          maxlength="32768"
-          spellcheck="false"
-          autocomplete="off"
-          autocapitalize="off"
-        ></textarea>
-        <p class="route-hint" data-i18n="route.back.drop-hint">
-          You can also drop a .txt file with the output on the box.
-        </p>
-        <p class="route-hint" data-i18n="route.back.privacy">
-          When you press Show my route or Paste and show, or when your browser extension hands over a route, only the
-          public addresses of the routers (never your internal network) are sent to this server, to look up their
-          network and country. They are not saved; only a keyed hash of your own address is kept, for up to an hour, to
-          limit how often this can be asked.
-        </p>
-        <div id="routeBackNotes" class="route-back-notes" role="status" aria-live="polite"></div>
-        <div class="route-paste-actions">
+        <label for="routeBackText" class="route-label" data-i18n="route.back.paste-label">Traceroute output</label>
+        <div id="routeBackDrop" class="route-drop">
+          <textarea
+            id="routeBackText"
+            class="route-paste"
+            rows="4"
+            maxlength="32768"
+            spellcheck="false"
+            autocomplete="off"
+            autocapitalize="off"
+            placeholder="Paste the output here (Ctrl+V) or drop a .txt file"
+            data-i18n-attr="placeholder:route.back.paste-placeholder"
+          ></textarea>
           <button
             type="button"
-            id="routeBackPasteClip"
-            class="route-button route-button-small"
-            data-i18n="route.back.paste-clip"
+            id="routeBackUpload"
+            class="route-drop-button"
+            aria-label="Choose a .txt file"
+            title="Choose a .txt file"
+            data-i18n-attr="aria-label:route.back.upload,title:route.back.upload"
+          ></button>
+          <input type="file" id="routeBackFile" accept=".txt,text/plain" hidden tabindex="-1" />
+        </div>
+        <div id="routeBackFileCard" class="route-file" hidden>
+          <span id="routeBackFileIcon" class="route-file-icon" aria-hidden="true"></span>
+          <span class="route-file-body">
+            <span id="routeBackFileName" class="route-file-name"></span>
+            <span id="routeBackFileMeta" class="route-file-meta"></span>
+          </span>
+          <button
+            type="button"
+            id="routeBackFileRemove"
+            class="route-file-remove"
+            aria-label="Remove the file"
+            title="Remove the file"
+            data-i18n-attr="aria-label:route.back.file-remove,title:route.back.file-remove"
+          ></button>
+        </div>
+        <div id="routeBackNotes" class="route-back-notes" role="status" aria-live="polite"></div>
+        <div class="route-back-action">
+          <button
+            type="button"
+            id="routeBackShow"
+            class="route-button route-button-primary route-button-block"
+            data-i18n="route.back.show"
           >
-            Paste and show
+            Show route
           </button>
-          <button type="button" id="routeBackShow" class="route-button route-button-small" data-i18n="route.back.show">
-            Show my route
-          </button>
+        </div>
+        <div class="route-back-secondary">
           <button
             type="button"
             id="routeBackSave"
             class="history-action"
             data-i18n="route.back.save"
             aria-disabled="true"
+            hidden
           >
             Save to history
           </button>
-          <button type="button" id="routeBackClear" class="history-action" data-i18n="route.back.clear">Clear</button>
+          <button type="button" id="routeBackClear" class="history-action" data-i18n="route.back.clear" hidden>
+            Clear
+          </button>
         </div>
+        <p class="route-hint route-privacy-summary" data-i18n="route.back.privacy-summary">
+          Only public router addresses are checked. The route is not stored on the server.
+        </p>
+        <details class="route-disclosure">
+          <summary data-i18n="route.back.privacy-title">How your data is handled</summary>
+          <p class="route-hint" data-i18n="route.back.privacy">
+            When you press Show route or Paste from clipboard and show, or when your browser extension hands over a
+            route, only the public addresses of the routers (never your internal network) are sent to this server, to
+            look up their network and country. They are not saved; only a keyed hash of your own address is kept, for up
+            to an hour, to limit how often this can be asked.
+          </p>
+        </details>
       </section>
     </aside>
 

@@ -22,7 +22,9 @@ var LibreSpeedRouteBack = (function () {
 
   var HOST = /^[A-Za-z0-9._:-]{1,253}$/;
   // The longest text that the box and the parser take (route-parse.js, MAX_TEXT), and the biggest file that can hold it
+  // The choice of the tool (the system command or librespeed-route) is gone from the card: the old key is taken away once
   var TOOL_KEY = "librespeed-better-route-back-tool";
+  var METHOD_KEY = "librespeed-better-route-back-method";
   var MAX_TEXT = 32768;
   // The longest line of LSR1 (route-parse.js, MAX_LSR1)
   var MAX_LSR1 = 1900;
@@ -41,16 +43,12 @@ var LibreSpeedRouteBack = (function () {
     return typeof value === "string" && value.length <= 200 && CLI_URL.test(value) ? value : null;
   }
 
-  // The command to run, with clip true: with its output sent to the clipboard (the terminal shows nothing until it ends). With tool "cli":
-  // librespeed-route, which writes one line for the page to its output and its table to the error output, so it is always piped
-  function commands(system, host, family, clip, tool) {
+  // The command to run, with clip true: with its output sent to the clipboard (the terminal shows nothing until it ends)
+  function commands(system, host, family, clip) {
     if (typeof host !== "string") return null;
     var name = host.replace(/^\[|\]$/g, "");
     if (!HOST.test(name) || name.charAt(0) === "-") return null;
     var flag = family === 4 ? " -4" : family === 6 ? " -6" : "";
-    if (tool === "cli") {
-      return CLIPBOARD[system] ? { main: "librespeed-route" + flag + " " + name + CLIPBOARD[system], alt: null } : null;
-    }
     var tail = clip === true && CLIPBOARD[system] ? CLIPBOARD[system] : "";
     if (system === "windows") return { main: "tracert -d -h 30 -w 1000" + flag + " " + name + tail, alt: null };
     if (system === "macos") {
@@ -185,23 +183,29 @@ var LibreSpeedRouteBack = (function () {
     var commandBox = byId("routeBackCommand");
     var altBox = byId("routeBackAlt");
     var clipBox = byId("routeBackClip");
-    var clipHint = byId("routeBackClipHint");
-    var clipLinux = byId("routeBackClipLinux");
-    var pasteClipButton = byId("routeBackPasteClip");
-    var toolBox = byId("routeBackTool");
     var clipLabel = byId("routeBackClipLabel");
-    var cliBox = byId("routeBackCli");
+    // Where to get the program and the extension, when the server offers an address for it: a link in the steps of the extension
     var cliLink = byId("routeBackCliLink");
-    var cliRun = byId("routeBackCliRun");
-    // "system": the tracert/traceroute of the system; "cli": librespeed-route (only when the server offers it)
-    var tool = "system";
-    var cliAddress = null;
+    try {
+      window.localStorage.removeItem(TOOL_KEY);
+    } catch (error) {
+      // Nothing to remove
+    }
     var noCommandBox = byId("routeBackNoCommand");
     var altCommand = byId("routeBackAltCommand");
     var mobileBox = byId("routeBackMobile");
     var copyButton = byId("routeBackCopy");
     var systems = byId("routeBackSystems");
     var showButton = byId("routeBackShow");
+    var methodBox = byId("routeBackMethod");
+    var extensionArea = byId("routeBackExtensionArea");
+    var commandArea = byId("routeBackCommandArea");
+    var drop = byId("routeBackDrop");
+    var fileCard = byId("routeBackFileCard");
+    var fileRemove = byId("routeBackFileRemove");
+    var uploadButton = byId("routeBackUpload");
+    var fileInput = byId("routeBackFile");
+    var clearButton = byId("routeBackClear");
     var traceButton = byId("routeBackTraceButton");
     var traceCancel = byId("routeBackTraceCancel");
     var traceHint = byId("routeBackTraceHint");
@@ -230,19 +234,47 @@ var LibreSpeedRouteBack = (function () {
       drawNotes();
     }
 
-    function drawCommand() {
-      var found = commands(system, options.host, options.family(), clipBox.checked, tool);
-      commandBox.textContent = found ? found.main : "";
-      var cli = tool === "cli";
-      cliBox.hidden = !cli;
-      cliRun.hidden = !cli;
-      clipLabel.hidden = cli;
-      toolBox.hidden = cliAddress === null;
-      Array.prototype.forEach.call(toolBox.querySelectorAll("[data-tool]"), function (button) {
-        button.setAttribute("aria-pressed", String(button.dataset.tool === tool));
+    // "extension": the browser extension traces and hands the route over; "command": the person runs the command and pastes what it prints.
+    // The first visit starts on the command (most people have no extension); the extension saying it is here moves it to the extension, unless
+    // the person has already chosen
+    var method = "command";
+    var methodChosen = false;
+    try {
+      var savedMethod = window.localStorage.getItem(METHOD_KEY);
+      if (savedMethod === "extension" || savedMethod === "command") {
+        method = savedMethod;
+        methodChosen = true;
+      }
+    } catch (error) {
+      // Only the default
+    }
+
+    function drawMethod() {
+      Array.prototype.forEach.call(methodBox.querySelectorAll("[data-method]"), function (button) {
+        button.setAttribute("aria-pressed", String(button.dataset.method === method));
       });
-      clipHint.hidden = cli || !(found && clipBox.checked);
-      clipLinux.hidden = system !== "linux";
+      extensionArea.hidden = method !== "extension";
+      commandArea.hidden = method !== "command";
+    }
+
+    // Clear is there only when there is something to clear: text in the box, or a route that was brought
+    function drawActions() {
+      clearButton.hidden = !(textarea.value !== "" || (typeof options.hasRoute === "function" && options.hasRoute()));
+    }
+
+    // While the networks of the text that is shown are being looked up the button says so and is off: the same text pressed again would ask
+    // nothing new. Another text can be shown at once.
+    function drawShow() {
+      var waiting = !!current && !current.settled && current.text === textarea.value;
+      showButton.disabled = waiting;
+      if (waiting) showButton.setAttribute("aria-busy", "true");
+      else showButton.removeAttribute("aria-busy");
+      showButton.textContent = t(waiting ? "route.back.show-busy" : "route.back.show");
+    }
+
+    function drawCommand() {
+      var found = commands(system, options.host, options.family(), clipBox.checked);
+      commandBox.textContent = found ? found.main : "";
       copyButton.disabled = !found;
       noCommandBox.hidden = !!found;
       altBox.hidden = !(found && found.alt);
@@ -251,16 +283,35 @@ var LibreSpeedRouteBack = (function () {
         button.setAttribute("aria-pressed", String(button.dataset.system === system));
       });
       mobileBox.hidden = !seen.mobile;
+      drawMethod();
+      drawActions();
+      drawShow();
+    }
+
+    // The button inside the field of the command is an icon (the copy, and the check for a moment after copying), in the icon set that the
+    // visitor chose; its name for a screen reader and for the tip is the word. Without the icons it is the word.
+    var copied = false;
+    function drawCopy() {
+      var label = t(copied ? "route.back.copied" : "route.back.copy");
+      copyButton.setAttribute("aria-label", label);
+      copyButton.title = label;
+      var icon = window.LibreSpeedIcons && window.LibreSpeedIcons.html(copied ? "check" : "copy", "1.2em");
+      if (icon) copyButton.innerHTML = icon;
+      else copyButton.textContent = label;
     }
 
     function copy() {
-      var found = commands(system, options.host, options.family(), clipBox.checked, tool);
+      var found = commands(system, options.host, options.family(), clipBox.checked);
       if (!found) return;
       var done = function () {
-        copyButton.textContent = t("route.back.copied");
+        copied = true;
+        drawCopy();
+        // Said as well as shown: the toast is in a polite live region, and the button is only an icon
+        if (window.LibreSpeedToast) window.LibreSpeedToast.show(t("route.back.copied"));
         window.clearTimeout(copiedTimer);
         copiedTimer = window.setTimeout(function () {
-          copyButton.textContent = t("route.back.copy");
+          copied = false;
+          drawCopy();
         }, 1500);
       };
       var fallback = function () {
@@ -284,6 +335,7 @@ var LibreSpeedRouteBack = (function () {
     function settle(mine) {
       if (mine !== ticket || !current) return;
       current.settled = true;
+      drawShow();
       if (options.onSettled) options.onSettled();
     }
 
@@ -362,6 +414,8 @@ var LibreSpeedRouteBack = (function () {
       ticket++;
       var data = build(parsed);
       current = { text: textarea.value, data: data, merged: null, settled: false };
+      drawShow();
+      drawActions();
       var list = fromExtension === true ? [{ key: "route.back.from-extension" }] : [];
       var host = String(options.host || "")
         .replace(/^\[|\]$/g, "")
@@ -384,33 +438,83 @@ var LibreSpeedRouteBack = (function () {
       ticket++;
       current = null;
       textarea.value = "";
+      drawFileCard(null);
       setNotes([]);
+      drawShow();
       options.onClear();
+      drawActions();
     }
 
-    // The output of the command, taken from the clipboard and shown: one press, which is the one that says "show"
-    function pasteFromClipboard() {
-      var denied = function () {
-        setNotes([{ key: "route.back.clip-denied", error: true }]);
-      };
-      if (!navigator.clipboard || typeof navigator.clipboard.readText !== "function") {
-        denied();
+    // The output comes into the box in four ways: typed or pasted in it, pasted anywhere on the card (Ctrl+V), dropped on it as text or as a .txt
+    // file, or chosen with the clip. In none of them is anything shown or sent: it is in the box, to be shown with the button (what is sent is
+    // still what the person presses).
+    var loadedText = null;
+
+    function extensionOf(name) {
+      var parts = String(name).split(".");
+      return parts.length > 1 ? parts.pop().slice(0, 8).toUpperCase() : "";
+    }
+
+    function sizeOf(bytes) {
+      if (bytes < 1024) return bytes + " B";
+      return (bytes / 1024).toFixed(bytes < 10240 ? 1 : 0) + " KB";
+    }
+
+    // The file that the text came from, as a card with its name, its kind and its size, while the box has that text as it came
+    function drawFileCard(file) {
+      if (!file) {
+        fileCard.hidden = true;
+        loadedText = null;
         return;
       }
-      navigator.clipboard.readText().then(function (text) {
-        if (typeof text !== "string" || !text.trim()) {
-          setNotes([{ key: "route.back.error.empty", error: true }]);
-          return;
-        }
-        textarea.value = text;
-        show();
-      }, denied);
+      byId("routeBackFileName").textContent = file.name;
+      byId("routeBackFileName").title = file.name;
+      byId("routeBackFileMeta").textContent = [extensionOf(file.name), sizeOf(file.size)].filter(Boolean).join(" · ");
+      fileCard.hidden = false;
     }
 
-    // A file dropped on the box: put in the box, to be shown with the button (what is sent is still what the person presses)
+    // The icons of the box (the clip, and the ones of the card of the file), in the set of icons that the visitor chose
+    function drawDropIcons() {
+      var icons = window.LibreSpeedIcons;
+      var clip = icons && icons.html("attach", "1.2em");
+      var cross = icons && icons.html("close", "1.1em");
+      if (clip) uploadButton.innerHTML = clip;
+      else uploadButton.textContent = uploadButton.getAttribute("aria-label") || "";
+      byId("routeBackFileIcon").innerHTML = (icons && icons.html("attach", "1.2em")) || "";
+      if (cross) fileRemove.innerHTML = cross;
+      else fileRemove.textContent = "\u00d7";
+    }
+
+    // Text that arrives on the card (pasted outside the box, or dropped): it goes into the box, in place of what was there
+    function putText(text) {
+      if (typeof text !== "string" || !text.trim()) return false;
+      if (text.length > MAX_TEXT) {
+        setNotes([{ key: "route.back.error.too-long", error: true }]);
+        return false;
+      }
+      setNotes([]);
+      textarea.value = text;
+      drawFileCard(null);
+      drawActions();
+      drawShow();
+      showButton.focus();
+      return true;
+    }
+
+    // Something that is not text (an image, a PDF) is told so; a text file is read and put in the box
+    function isTextFile(file) {
+      if (file.type && file.type.indexOf("text/") === 0) return true;
+      if (file.type && file.type !== "application/octet-stream") return /\.(txt|log|out|text)$/i.test(file.name);
+      return !/\.(png|jpe?g|gif|webp|bmp|svg|pdf|zip|gz|docx?|xlsx?)$/i.test(file.name);
+    }
+
     function takeFile(file) {
+      if (!file || !isTextFile(file)) {
+        setNotes([{ key: "route.back.file-type", error: true }]);
+        return;
+      }
       // 32768 characters (the limit of the box and of the parser) are at most 131072 bytes, at 4 bytes a character
-      if (!file || file.size > MAX_FILE_BYTES || typeof file.arrayBuffer !== "function") {
+      if (file.size > MAX_FILE_BYTES || typeof file.arrayBuffer !== "function") {
         setNotes([{ key: "route.back.file-bad", error: true }]);
         return;
       }
@@ -423,6 +527,10 @@ var LibreSpeedRouteBack = (function () {
           }
           setNotes([]);
           textarea.value = text;
+          loadedText = text;
+          drawFileCard(file);
+          drawActions();
+          drawShow();
           showButton.focus();
         },
         function () {
@@ -431,33 +539,127 @@ var LibreSpeedRouteBack = (function () {
       );
     }
 
-    textarea.addEventListener("dragover", function (event) {
+    // Dropping on the box: it takes the colour of the action while something is over it
+    function carries(event) {
+      var types = (event.dataTransfer && event.dataTransfer.types) || [];
+      return (
+        Array.prototype.indexOf.call(types, "Files") >= 0 || Array.prototype.indexOf.call(types, "text/plain") >= 0
+      );
+    }
+    drop.addEventListener("dragenter", function (event) {
+      if (!carries(event)) return;
       event.preventDefault();
+      drop.classList.add("dragging");
     });
-    textarea.addEventListener("drop", function (event) {
-      var files = event.dataTransfer && event.dataTransfer.files;
-      if (!files || !files.length) return;
+    drop.addEventListener("dragover", function (event) {
+      if (!carries(event)) return;
       event.preventDefault();
-      takeFile(files[0]);
+      drop.classList.add("dragging");
     });
-    clipBox.addEventListener("change", drawCommand);
-    Array.prototype.forEach.call(toolBox.querySelectorAll("[data-tool]"), function (button) {
+    drop.addEventListener("dragleave", function (event) {
+      if (!drop.contains(event.relatedTarget)) drop.classList.remove("dragging");
+    });
+    drop.addEventListener("drop", function (event) {
+      drop.classList.remove("dragging");
+      var transfer = event.dataTransfer;
+      if (!transfer) return;
+      if (transfer.files && transfer.files.length) {
+        event.preventDefault();
+        takeFile(transfer.files[0]);
+        return;
+      }
+      // Text dropped on the box itself goes where it is dropped; on the rest of the field it goes into the box
+      if (event.target === textarea) return;
+      var text = transfer.getData("text/plain");
+      if (text) {
+        event.preventDefault();
+        putText(text);
+      }
+    });
+    // Ctrl+V on the card, with the focus anywhere (the box itself keeps its own paste): a file is read, a text goes into the box. The listener is
+    // on the window and does nothing while the card is not on the screen, or when the paste is for another field of the page.
+    window.addEventListener("paste", function (event) {
+      if (byId("routeBack").getClientRects().length === 0) return;
+      var data = event.clipboardData;
+      if (!data) return;
+      if (data.files && data.files.length) {
+        event.preventDefault();
+        takeFile(data.files[0]);
+        return;
+      }
+      // The box itself, and any other field, keep their own paste
+      var target = event.target;
+      if (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
+      var text = data.getData("text/plain");
+      if (!text) return;
+      event.preventDefault();
+      putText(text);
+    });
+    fileRemove.addEventListener("click", function () {
+      textarea.value = "";
+      drawFileCard(null);
+      setNotes([]);
+      drawActions();
+      drawShow();
+      textarea.focus();
+    });
+    window.addEventListener("iconschange", drawDropIcons);
+    drawDropIcons();
+    // What to do after turning the clipboard on is a toast, once, when it is turned on (and, on Linux, which tool puts it there): the command
+    // shows nothing until it ends, and then the output is pasted on the card
+    function tellClipboard() {
+      if (!window.LibreSpeedToast || !clipBox.checked || !commands(system, options.host, options.family(), true))
+        return;
+      window.LibreSpeedToast.show(t("route.back.clip-hint"));
+      if (system === "linux") window.LibreSpeedToast.show(t("route.back.clip-linux"));
+    }
+    clipBox.addEventListener("change", function () {
+      drawCommand();
+      tellClipboard();
+    });
+    Array.prototype.forEach.call(methodBox.querySelectorAll("[data-method]"), function (button) {
       button.addEventListener("click", function () {
-        tool = button.dataset.tool === "cli" && cliAddress !== null ? "cli" : "system";
+        method = button.dataset.method === "extension" ? "extension" : "command";
+        methodChosen = true;
         try {
-          window.localStorage.setItem(TOOL_KEY, tool);
+          window.localStorage.setItem(METHOD_KEY, method);
         } catch (error) {
           // The choice only lasts until the page is closed
         }
-        drawCommand();
+        drawMethod();
       });
     });
-    pasteClipButton.addEventListener("click", pasteFromClipboard);
+    // The file can be chosen as well as dropped on the box; what is in it is read as a dropped one is
+    uploadButton.addEventListener("click", function () {
+      fileInput.click();
+    });
+    fileInput.addEventListener("change", function () {
+      var file = fileInput.files && fileInput.files[0];
+      fileInput.value = "";
+      if (file) takeFile(file);
+    });
+    textarea.addEventListener("input", function () {
+      // Edited, the box is no longer the text of the file: the card goes
+      if (loadedText !== null && textarea.value !== loadedText) drawFileCard(null);
+      drawActions();
+      drawShow();
+    });
 
     Array.prototype.forEach.call(systems.querySelectorAll("[data-system]"), function (button) {
       button.addEventListener("click", function () {
+        var before = system;
         system = button.dataset.system;
         drawCommand();
+        // Already on, and the system is now Linux: the note about the tool that it uses
+        if (
+          clipBox.checked &&
+          system === "linux" &&
+          before !== "linux" &&
+          window.LibreSpeedToast &&
+          commands(system, options.host, options.family(), true)
+        ) {
+          window.LibreSpeedToast.show(t("route.back.clip-linux"));
+        }
       });
     });
     copyButton.addEventListener("click", copy);
@@ -607,6 +809,11 @@ var LibreSpeedRouteBack = (function () {
         // "off": the person turned this site off in the extension while the page was open
         extensionHere = data.state === "ready";
         if (!extensionHere) sayTrace(null);
+        // The extension is here and the person has not chosen: it is the easier way
+        if (extensionHere && !methodChosen && method !== "extension") {
+          method = "extension";
+          drawMethod();
+        }
         drawTrace();
         return;
       }
@@ -626,25 +833,17 @@ var LibreSpeedRouteBack = (function () {
     drawTrace();
 
     byId("routeBackClear").addEventListener("click", clear);
+    // The icon is there when the set of icons is: now, or when it changes
+    window.addEventListener("iconschange", drawCopy);
+    drawCopy();
     drawCommand();
 
     return {
-      // The address that the server offers to get librespeed-route from (null or anything that is not a plain https address: not offered)
+      // The address that the server offers to get the program and the extension from (null or anything that is not a plain https address: no link)
       setCli: function (value) {
-        cliAddress = cliUrl(value);
-        if (cliAddress === null) {
-          tool = "system";
-        } else {
-          cliLink.href = cliAddress;
-          var saved = null;
-          try {
-            saved = window.localStorage.getItem(TOOL_KEY);
-          } catch (error) {
-            saved = null;
-          }
-          tool = saved === "cli" ? "cli" : "system";
-        }
-        drawCommand();
+        var address = cliUrl(value);
+        cliLink.hidden = address === null;
+        if (address !== null) cliLink.href = address;
       },
       // Another route took the screen (a saved one was shown): what is on its way for the pasted one is no longer wanted
       forget: function () {
@@ -659,7 +858,7 @@ var LibreSpeedRouteBack = (function () {
       refresh: function () {
         drawCommand();
         drawNotes();
-        copyButton.textContent = t("route.back.copy");
+        drawCopy();
       },
       clear: clear
     };
