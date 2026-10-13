@@ -13,6 +13,7 @@ var LibreSpeedRouteCrossings = {
     "es-north": { country: "ES", lon: -3, lat: 43 },
     "fr-west": { country: "FR", lon: -2, lat: 47 },
     "gb-southwest": { country: "GB", lon: -4, lat: 51 },
+    "ie-west": { country: "IE", lon: -8, lat: 53 },
     "us-west": { country: "US", lon: -123, lat: 41 },
     "jp-east": { country: "JP", lon: 140, lat: 35 },
     "kr-southeast": { country: "KR", lon: 129, lat: 35 },
@@ -34,6 +35,7 @@ var LibreSpeedRouteCrossings = {
     { pair: ["ES", "US"], ends: ["es-north", "us-east"] },
     { pair: ["FR", "US"], ends: ["fr-west", "us-east"] },
     { pair: ["GB", "US"], ends: ["gb-southwest", "us-east"] },
+    { pair: ["IE", "US"], ends: ["ie-west", "us-east"] },
     // The Pacific: all of them go round the date line in the map
     { pair: ["JP", "US"], ends: ["jp-east", "us-west"] },
     { pair: ["KR", "US"], ends: ["kr-southeast", "us-west"] },
@@ -47,6 +49,10 @@ var LibreSpeedRouteCrossings = {
     // South East Asia and the Indian Ocean
     { pair: ["AU", "SG"], ends: ["au-west", "sg"] },
     { pair: ["IN", "SG"], ends: ["in-east", "sg"] },
-    { pair: ["JP", "SG"], ends: ["jp-east", "sg"] }
+    { pair: ["JP", "SG"], ends: ["jp-east", "sg"] },
+    // East Asia: the seas between Hong Kong, the coast of China, Japan and Singapore
+    { pair: ["HK", "SG"], ends: ["hk", "sg"] },
+    { pair: ["HK", "JP"], ends: ["hk", "jp-east"] },
+    { pair: ["CN", "SG"], ends: ["cn-east", "sg"] }
   ]
 };

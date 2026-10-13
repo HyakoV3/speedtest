@@ -46,7 +46,7 @@ that sea land. The table is by pair of countries (a corridor), not by network: t
 own more than one cable. A crossing is drawn only when the time rose at least what light in fiber needs to cross that sea.
 A line is added only with a source, and a region is in whole degrees, never a town. Verified with the public API of the Submarine Cable
 Map (TeleGeography), `https://www.submarinecablemap.com/api/v3/cable/<id>.json`: the Atlantic on 2026-10-10, the Pacific, South East Asia and the
-Indian Ocean (IN-SG) on 2026-10-11. The method: cables that are not planned, with the two countries among their landings (Hong Kong
+Indian Ocean (IN-SG) on 2026-10-11, Ireland and East Asia (IE-US, HK-SG, HK-JP, CN-SG) on 2026-10-13. The method: cables that are not planned, with the two countries among their landings (Hong Kong
 landings are labelled "China" by the source and are counted as HK, the country the map uses). A corridor ends in the region of each
 side; all the ones of the Pacific go round the date line in the map (the curve is drawn in two parts, one to each edge).
 
@@ -64,6 +64,9 @@ side; all the ones of the Pacific go round the date line in the map (the curve i
 | ES-US | es-north / us-east | Grace Hopper (Bilbao; Bellport NY) | https://www.submarinecablemap.com/api/v3/cable/grace-hopper.json |
 | FR-US | fr-west / us-east | Dunant (Saint-Hilaire-de-Riez; Virginia Beach VA) | https://www.submarinecablemap.com/api/v3/cable/dunant.json |
 | GB-US | gb-southwest / us-east | Grace Hopper (Bude; Bellport NY) | https://www.submarinecablemap.com/api/v3/cable/grace-hopper.json |
+| IE-US | ie-west / us-east | AEC-1 (Killala; Shirley NY) | https://www.submarinecablemap.com/api/v3/cable/aec-1.json |
+| IE-US | ie-west / us-east | EXA North and South (Dublin; Lynn MA) | https://www.submarinecablemap.com/api/v3/cable/exa-north-and-south.json |
+| IE-US | ie-west / us-east | Havfrue/AEC-2 (Lecanvey; Wall Township NJ) | https://www.submarinecablemap.com/api/v3/cable/havfrueaec-2.json |
 | JP-US | jp-east / us-west | FASTER (Chikura, Shima; Bandon, OR) | https://www.submarinecablemap.com/api/v3/cable/faster.json |
 | JP-US | jp-east / us-west | JUPITER (Maruyama, Shima; Cloverdale, OR, Hermosa Beach, CA) | https://www.submarinecablemap.com/api/v3/cable/jupiter.json |
 | JP-US | jp-east / us-west | JUNO (Minamiboso, Shima; Grover Beach, CA) | https://www.submarinecablemap.com/api/v3/cable/juno.json |
@@ -112,14 +115,41 @@ side; all the ones of the Pacific go round the date line in the map (the curve i
 | JP-SG | jp-east / sg | EAC-C2C (Ajigaura, Chikura, Shima; Changi North, Changi South) | https://www.submarinecablemap.com/api/v3/cable/eac-c2c.json |
 | JP-SG | jp-east / sg | APCN-2 (Chikura, Kitaibaraki; Katong) | https://www.submarinecablemap.com/api/v3/cable/apcn-2.json |
 | JP-SG | jp-east / sg | Asia Submarine-cable Express (ASE)/Cahaya Malaysia (Komesu, Maruyama; Changi South) | https://www.submarinecablemap.com/api/v3/cable/asia-submarine-cable-express-asecahaya-malaysia.json |
+| HK-SG | hk / sg | APCN-2 (Lantau Island; Katong) | https://www.submarinecablemap.com/api/v3/cable/apcn-2.json |
+| HK-SG | hk / sg | Asia-America Gateway (AAG) Cable System (Lantau Island; Changi North) | https://www.submarinecablemap.com/api/v3/cable/asia-america-gateway-aag-cable-system.json |
+| HK-SG | hk / sg | Asia Direct Cable (ADC) (Chung Hom Kok; Tuas) | https://www.submarinecablemap.com/api/v3/cable/asia-direct-cable-adc.json |
+| HK-SG | hk / sg | Asia Pacific Gateway (APG) (Tseung Kwan O; Changi South) | https://www.submarinecablemap.com/api/v3/cable/asia-pacific-gateway-apg.json |
+| HK-SG | hk / sg | Asia Submarine-cable Express (ASE)/Cahaya Malaysia (Tseung Kwan O; Changi South) | https://www.submarinecablemap.com/api/v3/cable/asia-submarine-cable-express-asecahaya-malaysia.json |
+| HK-SG | hk / sg | EAC-C2C (Chung Hom Kok, Tseung Kwan O; Changi North, Changi South) | https://www.submarinecablemap.com/api/v3/cable/eac-c2c.json |
+| HK-SG | hk / sg | SEA-H2X (Tseung Kwan O; Tuas) | https://www.submarinecablemap.com/api/v3/cable/sea-h2x.json |
+| HK-SG | hk / sg | Southeast Asia-Japan Cable 2 (SJC2) (Chung Hom Kok; Changi South) | https://www.submarinecablemap.com/api/v3/cable/southeast-asia-japan-cable-2-sjc2.json |
+| HK-SG | hk / sg | Southeast Asia-Japan Cable (SJC) (Chung Hom Kok; Tuas) | https://www.submarinecablemap.com/api/v3/cable/southeast-asia-japan-cable-sjc.json |
+| HK-SG | hk / sg | Tata TGN-Intra Asia (TGN-IA) (Deep Water Bay; Changi North) | https://www.submarinecablemap.com/api/v3/cable/tata-tgn-intra-asia-tgn-ia.json |
+| HK-JP | hk / jp-east | APCN-2 (Lantau Island; Chikura, Kitaibaraki) | https://www.submarinecablemap.com/api/v3/cable/apcn-2.json |
+| HK-JP | hk / jp-east | Asia Direct Cable (ADC) (Chung Hom Kok; Maruyama) | https://www.submarinecablemap.com/api/v3/cable/asia-direct-cable-adc.json |
+| HK-JP | hk / jp-east | Asia Pacific Gateway (APG) (Tseung Kwan O; Maruyama, Shima) | https://www.submarinecablemap.com/api/v3/cable/asia-pacific-gateway-apg.json |
+| HK-JP | hk / jp-east | Asia Submarine-cable Express (ASE)/Cahaya Malaysia (Tseung Kwan O; Komesu, Maruyama) | https://www.submarinecablemap.com/api/v3/cable/asia-submarine-cable-express-asecahaya-malaysia.json |
+| HK-JP | hk / jp-east | EAC-C2C (Chung Hom Kok, Tseung Kwan O; Ajigaura, Chikura, Shima) | https://www.submarinecablemap.com/api/v3/cable/eac-c2c.json |
+| HK-JP | hk / jp-east | FLAG North Asia Loop/REACH North Asia Loop (Tong Fuk; Wada) | https://www.submarinecablemap.com/api/v3/cable/flag-north-asia-loopreach-north-asia-loop.json |
+| HK-JP | hk / jp-east | Southeast Asia-Japan Cable 2 (SJC2) (Chung Hom Kok; Chikura, Shima) | https://www.submarinecablemap.com/api/v3/cable/southeast-asia-japan-cable-2-sjc2.json |
+| HK-JP | hk / jp-east | Southeast Asia-Japan Cable (SJC) (Chung Hom Kok; Chikura) | https://www.submarinecablemap.com/api/v3/cable/southeast-asia-japan-cable-sjc.json |
+| CN-SG | cn-east / sg | APCN-2 (Chongming, Shantou; Katong) | https://www.submarinecablemap.com/api/v3/cable/apcn-2.json |
+| CN-SG | cn-east / sg | Asia Direct Cable (ADC) (Shantou; Tuas) | https://www.submarinecablemap.com/api/v3/cable/asia-direct-cable-adc.json |
+| CN-SG | cn-east / sg | Asia Pacific Gateway (APG) (Chongming, Nanhui; Changi South) | https://www.submarinecablemap.com/api/v3/cable/asia-pacific-gateway-apg.json |
+| CN-SG | cn-east / sg | EAC-C2C (Nanhui, Qingdao; Changi North, Changi South) | https://www.submarinecablemap.com/api/v3/cable/eac-c2c.json |
+| CN-SG | cn-east / sg | SEA-H2X (Lingshui; Tuas) | https://www.submarinecablemap.com/api/v3/cable/sea-h2x.json |
+| CN-SG | cn-east / sg | Southeast Asia-Japan Cable 2 (SJC2) (Lingang; Changi South) | https://www.submarinecablemap.com/api/v3/cable/southeast-asia-japan-cable-2-sjc2.json |
+| CN-SG | cn-east / sg | Southeast Asia-Japan Cable (SJC) (Shantou; Tuas) | https://www.submarinecablemap.com/api/v3/cable/southeast-asia-japan-cable-sjc.json |
 
 The US end of the Pacific is one region (-123, 41): the cables land from Washington to Los Angeles (lat 34 to 48), and that is within 8 degrees of
 all of them. Cables that go by Guam or Hawaii (AAG, SEA-US, Bifrost, Echo, Southern Cross, Hawaiki) are counted by the countries they land
 in; Hawaii is the US. A corridor is used only when the time rose at least what light in fiber needs for its distance, and the table does not
 have a corridor whose least rise is under 20 ms (the last mile of the visitor alone could make it).
 
+The US end of IE-US is the one of the Atlantic (us-east): the cables land from New Jersey to Massachusetts (lat 40 to 43), within 8 degrees of it. HK-SG is at 20 ms, the edge of the rule. The China end of CN-SG is the delta of the Yangtze (cn-east), and some of its cables land further south (Shantou, Lingshui in Hainan), so read CN-SG as likely and not as sure; the Hong Kong ends (HK) are the region hk.
+
 The rise is only a lower bound. For SG-US and HK-US the time of a route by the Pacific and the one of a route by Europe (Marseille, then the Atlantic) cannot be told apart, and the US end of a corridor is one region on the west coast: when a route goes by the other way, the map draws a Pacific cable that the route may not have used, so read these two as likely and not as sure. The region ph-luzon is the Luzon end (4 of the 6 cables land there: Daet, Baler, La Union, Claveria); SEA-US and Bifrost land at Davao, in Mindanao, about 7 degrees to the south.
 
-The BR end is the northeast coast because 4 of the 6 US-BR systems land at Fortaleza. Left out: pairs with a land route (AR-BR), the short seas (AE-IN, IN-OM, AU-NZ and the like: under 20 ms), the ones with no demand yet (HK-SG, which is 20 ms and at the edge of the rule, IN-KE, AE-KE, DJ-IN, IN-ZA, AU-OM), and the Europe to Asia and Europe to West Africa pairs (FR-IN, GB-IN, FR-SG, PT-NG, PT-ZA: a straight curve between them crosses land, they need points at sea),
+The BR end is the northeast coast because 4 of the 6 US-BR systems land at Fortaleza. Left out: pairs with a land route (AR-BR), the short seas (AE-IN, IN-OM, AU-NZ and the like: under 20 ms), the ones with no demand yet (IN-KE, AE-KE, DJ-IN, IN-ZA, AU-OM), and the Europe to Asia and Europe to West Africa pairs (FR-IN, GB-IN, FR-SG, PT-NG, PT-ZA: a straight curve between them crosses land, they need points at sea),
 and US to NL or DE (the traffic often crosses into GB or FR and goes on by land). Seabras-1 at Fortaleza is not confirmed by the
 Submarine Cable Map (only Praia Grande), so it is not counted. The state of the ARBR cable (same operator as AS13786) was not verified.
