@@ -207,7 +207,7 @@ test("the commands carry the host of the page and the IP version of the route fr
   await expect(page.locator("#routeBackCommand")).toHaveText("traceroute -n -m 30 -w 1 -6 127.0.0.1");
   await expect(page.locator("#routeBackAltCommand")).toHaveText("tracepath -n -6 127.0.0.1");
   await page.locator("#routeBackCopy").click();
-  await expect(page.locator("#routeBackCopy")).toHaveText("Copied");
+  await expect(page.locator("#routeBackCopy")).toHaveAttribute("aria-label", "Copied");
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("traceroute -n -m 30 -w 1 -6 127.0.0.1");
 });
 

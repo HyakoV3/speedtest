@@ -418,9 +418,18 @@
             <button type="button" data-system="macos" aria-pressed="false">macOS</button>
             <button type="button" data-system="linux" aria-pressed="false">Linux</button>
           </div>
-          <div class="route-command">
+          <div class="route-command route-copy-field">
             <code id="routeBackCommand" tabindex="0"></code>
-            <button type="button" id="routeBackCopy" class="history-action" data-i18n="route.back.copy">Copy</button>
+            <button
+              type="button"
+              id="routeBackCopy"
+              class="route-copy-button"
+              aria-label="Copy"
+              title="Copy"
+              data-i18n-attr="aria-label:route.back.copy,title:route.back.copy"
+            >
+              Copy
+            </button>
           </div>
           <p id="routeBackCommandHelp" class="route-hint" data-i18n="route.back.command-help">
             Run this command, then paste the result below.

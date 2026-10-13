@@ -27,7 +27,8 @@ const ICONS = [
   "link",
   "image",
   "download",
-  "route"
+  "route",
+  "copy"
 ];
 
 // The sets, in the order the theme panel lists them. names: our name -> the name of the icon in that set. prefix is the
@@ -37,9 +38,24 @@ const ICONS = [
 const SETS = [
   {
     id: "material-symbols",
-    names: { sun: "light-mode", moon: "dark-mode", "chevron-down": "expand-more", play: "play-arrow" }
+    names: {
+      sun: "light-mode",
+      moon: "dark-mode",
+      "chevron-down": "expand-more",
+      play: "play-arrow",
+      copy: "content-copy"
+    }
   },
-  { id: "mdi", names: { sun: "weather-sunny", moon: "weather-night", share: "share-variant", route: "routes" } },
+  {
+    id: "mdi",
+    names: {
+      sun: "weather-sunny",
+      moon: "weather-night",
+      share: "share-variant",
+      route: "routes",
+      copy: "content-copy"
+    }
+  },
   { id: "tabler", names: { pause: "player-pause", play: "player-play", close: "x", image: "photo" } },
   { id: "lucide", names: { share: "share-2", close: "x" } },
   {
@@ -57,7 +73,8 @@ const SETS = [
       play: "play",
       check: "check",
       close: "x",
-      route: "path"
+      route: "path",
+      copy: "copy"
     }
   }
 ];

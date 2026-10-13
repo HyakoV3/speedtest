@@ -290,14 +290,30 @@ var LibreSpeedRouteBack = (function () {
       drawShow();
     }
 
+    // The button inside the field of the command is an icon (the copy, and the check for a moment after copying), in the icon set that the
+    // visitor chose; its name for a screen reader and for the tip is the word. Without the icons it is the word.
+    var copied = false;
+    function drawCopy() {
+      var label = t(copied ? "route.back.copied" : "route.back.copy");
+      copyButton.setAttribute("aria-label", label);
+      copyButton.title = label;
+      var icon = window.LibreSpeedIcons && window.LibreSpeedIcons.html(copied ? "check" : "copy", "1.2em");
+      if (icon) copyButton.innerHTML = icon;
+      else copyButton.textContent = label;
+    }
+
     function copy() {
       var found = commands(system, options.host, options.family(), clipBox.checked);
       if (!found) return;
       var done = function () {
-        copyButton.textContent = t("route.back.copied");
+        copied = true;
+        drawCopy();
+        // Said as well as shown: the toast is in a polite live region, and the button is only an icon
+        if (window.LibreSpeedToast) window.LibreSpeedToast.show(t("route.back.copied"));
         window.clearTimeout(copiedTimer);
         copiedTimer = window.setTimeout(function () {
-          copyButton.textContent = t("route.back.copy");
+          copied = false;
+          drawCopy();
         }, 1500);
       };
       var fallback = function () {
@@ -689,6 +705,9 @@ var LibreSpeedRouteBack = (function () {
     drawTrace();
 
     byId("routeBackClear").addEventListener("click", clear);
+    // The icon is there when the set of icons is: now, or when it changes
+    window.addEventListener("iconschange", drawCopy);
+    drawCopy();
     drawCommand();
 
     return {
@@ -711,7 +730,7 @@ var LibreSpeedRouteBack = (function () {
       refresh: function () {
         drawCommand();
         drawNotes();
-        copyButton.textContent = t("route.back.copy");
+        drawCopy();
       },
       clear: clear
     };

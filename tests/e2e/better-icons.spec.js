@@ -30,7 +30,8 @@ test("every set of the file has every icon the pages use", () => {
     "link",
     "image",
     "download",
-    "route"
+    "route",
+    "copy"
   ];
   expect(subset.sets.map(set => set.id)).toEqual(["material-symbols", "mdi", "tabler", "lucide", "ph"]);
   for (const set of subset.sets) {

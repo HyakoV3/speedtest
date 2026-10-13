@@ -120,7 +120,9 @@ test("C3 the system chosen changes the command, and Copy copies the one that is 
     await expect(page.locator("#routeBackCommand")).toHaveText(pattern);
     await expect(page.locator("#routeBackCommandHelp")).toHaveText("Run this command, then paste the result below.");
     await page.locator("#routeBackCopy").click();
-    await expect(page.locator("#routeBackCopy")).toHaveText("Copied");
+    // The button is an icon: its name says what happened, and a toast says it too
+    await expect(page.locator("#routeBackCopy")).toHaveAttribute("aria-label", "Copied");
+    await expect(page.locator("#routeBackCopy svg")).toHaveCount(1);
     const copied = await page.evaluate(() => navigator.clipboard.readText());
     expect(copied).toBe(await page.locator("#routeBackCommand").innerText());
   }
@@ -430,4 +432,65 @@ test("C15 the clipboard option is a switch: the keyboard and the click turn it o
   await page.keyboard.press("Space");
   await expect(input).not.toBeChecked();
   await expect(page.locator("#routeBackCommand")).not.toContainText("| clip");
+});
+
+test("C16 the copy button is inside the field of the command, as an icon of the set of icons chosen, and says what it does", async ({
+  page,
+  context
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await openRoute(page);
+  await openBackPanel(page);
+  const button = page.locator("#routeBackCopy");
+  // Inside the box of the command, at its right, over the field (not beside it)
+  const place = await page.evaluate(() => {
+    const field = document.querySelector(".route-copy-field").getBoundingClientRect();
+    const code = document.getElementById("routeBackCommand").getBoundingClientRect();
+    const copy = document.getElementById("routeBackCopy").getBoundingClientRect();
+    return { field, code, copy };
+  });
+  expect(place.copy.left).toBeGreaterThanOrEqual(place.code.left);
+  expect(place.copy.right).toBeLessThanOrEqual(place.code.right + 1);
+  expect(place.copy.top).toBeGreaterThanOrEqual(place.code.top);
+  expect(place.copy.bottom).toBeLessThanOrEqual(place.code.bottom + 1);
+  expect(place.copy.left).toBeGreaterThan(place.code.left + place.code.width / 2);
+  expect(place.copy.width).toBeGreaterThanOrEqual(28);
+  // An icon, with the word as its name and as its tip
+  await expect(button.locator("svg")).toHaveCount(1);
+  await expect(button).toHaveAttribute("aria-label", "Copy");
+  await expect(button).toHaveAttribute("title", "Copy");
+  expect((await button.innerText()).trim()).toBe("");
+  // The command does not run under the button: it has room for it
+  expect(
+    await page.evaluate(() => parseFloat(getComputedStyle(document.getElementById("routeBackCommand")).paddingRight))
+  ).toBeGreaterThan(place.copy.width * 0.9);
+  // Copying: the check for a moment, a toast that says it, and the icon back
+  const before = await button.locator("svg").innerHTML();
+  await button.click();
+  await expect(button).toHaveAttribute("aria-label", "Copied");
+  expect(await button.locator("svg").innerHTML()).not.toBe(before);
+  await expect(page.locator(".toast", { hasText: "Copied" })).toHaveCount(1);
+  await expect(button).toHaveAttribute("aria-label", "Copy", { timeout: 4000 });
+  expect(await button.locator("svg").innerHTML()).toBe(before);
+  // Every set of icons has it, and the button follows the one that is chosen
+  const sets = await page.evaluate(() => window.LibreSpeedIcons.sets().map(set => set.id));
+  expect(sets.length).toBeGreaterThanOrEqual(5);
+  const drawings = new Set();
+  for (const id of sets) {
+    await page.evaluate(value => window.LibreSpeedIcons.set(value, false), id);
+    await expect(button.locator("svg")).toHaveCount(1);
+    drawings.add(await button.locator("svg").innerHTML());
+  }
+  expect(drawings.size).toBe(sets.length);
+  // The keyboard reaches it, with a mark that shows it
+  await page.locator("#routeBackCommand").focus();
+  await page.keyboard.press("Tab");
+  expect(await page.evaluate(() => document.activeElement.id)).toBe("routeBackCopy");
+  expect(await button.evaluate(el => getComputedStyle(el).outlineStyle)).not.toBe("none");
+  // The word is in the four languages
+  for (const [lang, word] of Object.entries({ en: "Copy", pt: "Copiar", es: "Copiar", sv: "Kopiera" })) {
+    await page.evaluate(code => window.LibreSpeedI18n.set(code, false), lang);
+    await expect(button).toHaveAttribute("aria-label", word);
+    await expect(button).toHaveAttribute("title", word);
+  }
 });
