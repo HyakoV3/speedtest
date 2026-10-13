@@ -363,5 +363,9 @@
   "route.history.col-routes": "Rotas",
   "route.history.col-time": "Última resposta (ms)",
   "route.history.col-mtu": "Menor MTU",
-  "route.history.col-changes": "Mudanças de caminho"
+  "route.history.col-changes": "Mudanças de caminho",
+  "route.compare.seas.title": "Mares cruzados por cabo submarino",
+  "route.compare.seas.same": "Os dois sentidos cruzam os mesmos mares: {list}.",
+  "route.compare.seas.diff": "Os dois sentidos não cruzam os mesmos mares.",
+  "route.compare.seas.note": "Um traceroute mostra o mar, não qual cabo dele levou o tráfego."
 }
