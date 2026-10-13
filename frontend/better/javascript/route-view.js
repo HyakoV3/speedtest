@@ -492,6 +492,33 @@
     return result;
   }
 
+  // The seas that the two directions cross by submarine cable: { state, there, back, onlyThere, onlyBack } with the keys "AA-BB" of the
+  // corridors (the same key in both ways, whatever the way the route goes). state "none": neither crosses one; "same": the same seas in
+  // both; "different": a sea that is in only one of them. A traceroute does not say which cable of a sea carried it: only the sea.
+  // there and back are routes (as the API gives them); table is the one of route-crossings.js.
+  function compareSeas(there, back, table) {
+    var result = { state: "none", there: [], back: [], onlyThere: [], onlyBack: [] };
+    if (!there || !back) return result;
+    function keysOf(data) {
+      var keys = [];
+      (mapData(data, table).crossings || []).forEach(function (crossing) {
+        if (keys.indexOf(crossing.key) < 0) keys.push(crossing.key);
+      });
+      return keys;
+    }
+    result.there = keysOf(there);
+    result.back = keysOf(back);
+    if (!result.there.length && !result.back.length) return result;
+    result.onlyThere = result.there.filter(function (key) {
+      return result.back.indexOf(key) < 0;
+    });
+    result.onlyBack = result.back.filter(function (key) {
+      return result.there.indexOf(key) < 0;
+    });
+    result.state = result.onlyThere.length || result.onlyBack.length ? "different" : "same";
+    return result;
+  }
+
   // The networks of the other way as the ones of this way: for each network of other.nodes (in order), the n of the network of
   // main.nodes that is the same one, or null. The same one is a network with a number (kind "as") with the same ASN and the same
   // country (the country is where it hands the route on: a carrier that crosses a country one way and leaves it the other is not
@@ -545,6 +572,7 @@
     niceMax: niceMax,
     asPath: asPath,
     compareDirections: compareDirections,
+    compareSeas: compareSeas,
     joinNodes: joinNodes,
     mtuText: mtuText,
     countryName: countryName

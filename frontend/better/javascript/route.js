@@ -34,6 +34,8 @@
   var compareBox = document.getElementById("routeCompare");
   var compareText = document.getElementById("routeCompareText");
   var compareLists = document.getElementById("routeCompareLists");
+  var compareSeasTitle = document.getElementById("routeCompareSeasTitle");
+  var compareSeas = document.getElementById("routeCompareSeas");
   var bothBox = document.getElementById("routeMapBoth");
   // The chin under each of the three views (the table, the chart and the map): the button for the two directions and the two directions
   // themselves, which are also how one of them is chosen. Only there when there are two routes.
@@ -111,6 +113,10 @@
 
   var chartFiles = loader(CHART_CSS, CHART_SCRIPTS);
   // The shapes of the countries (about 25 KB with gzip) and the code that draws them
+  // The table of the sea crossings alone: the comparison of the two directions needs it without the map
+  var crossingFiles = loader(null, [
+    { src: "frontend/better/javascript/route-crossings.js", global: "LibreSpeedRouteCrossings" }
+  ]);
   var mapFiles = loader(null, [
     { src: "frontend/better/vendor/world-110m.js", global: "LibreSpeedWorld" },
     { src: "frontend/better/javascript/route-crossings.js", global: "LibreSpeedRouteCrossings" },
@@ -561,7 +567,54 @@
         compareLists.appendChild(box);
       });
     }
+    drawSeas(there, back);
     compareBox.hidden = false;
+  }
+
+  // The seas that the two directions cross by submarine cable, said by the names of the two countries of each. It says the sea and never
+  // the cable: a traceroute does not show which of the cables of a sea carried the traffic.
+  function drawSeas(there, back) {
+    compareSeas.textContent = "";
+    compareSeasTitle.hidden = true;
+    compareSeas.hidden = true;
+    if (!there || !back) return;
+    // The table of the corridors is small (a few KB) and is asked for here, not only with the map; without it nothing is said
+    crossingFiles.load().then(
+      function () {
+        // The routes may have changed while it was coming: the ones of now are compared
+        paintSeas(view.compareSeas(thereOf(), backOf(), window.LibreSpeedRouteCrossings));
+      },
+      function () {}
+    );
+  }
+
+  function paintSeas(seas) {
+    if (seas.state === "none" || compareBox.hidden) return;
+    compareSeasTitle.hidden = false;
+    compareSeas.hidden = false;
+    var language = window.LibreSpeedI18n.language;
+    var name = function (key) {
+      return key
+        .split("-")
+        .map(function (code) {
+          return view.countryName(code, language);
+        })
+        .join(" – ");
+    };
+    var parts = [];
+    if (seas.state === "same") {
+      parts.push(t("route.compare.seas.same", { list: seas.there.map(name).join(", ") }));
+    } else {
+      parts.push(t("route.compare.seas.diff"));
+      if (seas.onlyThere.length) {
+        parts.push(t("route.compare.only-there", { list: seas.onlyThere.map(name).join(", ") }));
+      }
+      if (seas.onlyBack.length) {
+        parts.push(t("route.compare.only-back", { list: seas.onlyBack.map(name).join(", ") }));
+      }
+    }
+    parts.push(t("route.compare.seas.note"));
+    compareSeas.textContent = parts.join(" ");
   }
 
   // Each view: the element it shows, and what it does when it is shown (the table is drawn by draw())

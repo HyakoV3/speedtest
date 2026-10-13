@@ -363,5 +363,9 @@
   "route.history.col-routes": "Rutas",
   "route.history.col-time": "Última respuesta (ms)",
   "route.history.col-mtu": "MTU más bajo",
-  "route.history.col-changes": "Cambios de camino"
+  "route.history.col-changes": "Cambios de camino",
+  "route.compare.seas.title": "Mares cruzados por cable submarino",
+  "route.compare.seas.same": "Los dos sentidos cruzan los mismos mares: {list}.",
+  "route.compare.seas.diff": "Los dos sentidos no cruzan los mismos mares.",
+  "route.compare.seas.note": "Un traceroute muestra el mar, no cuál de sus cables llevó el tráfico."
 }
