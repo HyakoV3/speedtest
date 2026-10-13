@@ -202,7 +202,7 @@ test("the commands carry the host of the page and the IP version of the route fr
   await page.locator('[data-system="windows"]').click();
   await expect(page.locator("#routeBackCommand")).toHaveText("tracert -d -h 30 -w 1000 -6 127.0.0.1");
   await page.locator('[data-system="macos"]').click();
-  await expect(page.locator("#routeBackCommand")).toHaveText("traceroute6 -n -m 30 127.0.0.1");
+  await expect(page.locator("#routeBackCommand")).toHaveText("traceroute6 -n -m 30 -w 1 127.0.0.1");
   await page.locator('[data-system="linux"]').click();
   await expect(page.locator("#routeBackCommand")).toHaveText("traceroute -n -m 30 -w 1 -6 127.0.0.1");
   await expect(page.locator("#routeBackAltCommand")).toHaveText("tracepath -n -6 127.0.0.1");

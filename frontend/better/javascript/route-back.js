@@ -53,7 +53,7 @@ var LibreSpeedRouteBack = (function () {
     if (system === "windows") return { main: "tracert -d -h 30 -w 1000" + flag + " " + name + tail, alt: null };
     if (system === "macos") {
       return {
-        main: (family === 6 ? "traceroute6 -n -m 30 " + name : "traceroute -n -m 30 -w 1 " + name) + tail,
+        main: (family === 6 ? "traceroute6 -n -m 30 -w 1 " + name : "traceroute -n -m 30 -w 1 " + name) + tail,
         alt: null
       };
     }
