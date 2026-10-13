@@ -57,14 +57,16 @@ const ENRICH = body => ({
   target_country: "US"
 });
 
-async function openRoute(page, view) {
+async function openRoute(page, view, gate = null) {
   await page.route("**/backend/route.php*", route => {
     if (route.request().method() === "POST") return route.fulfill({ json: THERE });
     return route.fulfill({ json: CAPS });
   });
-  await page.route("**/backend/route_enrich.php", route =>
-    route.fulfill({ json: ENRICH(JSON.parse(route.request().postData())) })
-  );
+  // With a gate the networks of the pasted route arrive when the test says
+  await page.route("**/backend/route_enrich.php", async route => {
+    if (gate) await gate;
+    return route.fulfill({ json: ENRICH(JSON.parse(route.request().postData())) });
+  });
   await page.goto(`${staticRepositoryUrl}/route-better.html?routeview=${view}`);
   await page.waitForFunction(() => !!window.LibreSpeedI18n);
   await page.evaluate(() => window.LibreSpeedI18n.ready);
@@ -177,7 +179,7 @@ test("W4 the chart draws the other direction too, dashed, and the button turns i
   await expect.poll(() => page.evaluate(() => window.LibreSpeedRouteChart.info().other)).toBe(true);
   // The legend of the lines: a sample for each direction, the second one dashed
   await expect(chin(page, "routeChartBoth").locator("svg")).toHaveCount(2);
-  await expect(chin(page, "routeChartBoth").locator("svg line.route-map-leg-other")).toHaveCount(1);
+  await expect(chin(page, "routeChartBoth").locator("svg line.route-chart-leg-other")).toHaveCount(1);
   await chin(page, "routeChartBoth").locator(".route-both-button").click();
   await expect.poll(() => page.evaluate(() => window.LibreSpeedRouteChart.info().other)).toBe(false);
   await expect(chin(page, "routeChartBoth").locator("svg")).toHaveCount(0);
@@ -319,4 +321,116 @@ test("W9 how the route ended and its MTU are toasts at the bottom left, said onc
   await paste(page);
   await expect.poll(texts).toContain("The server answered");
   expect(await texts()).toContain("You measured it on your device");
+});
+
+test("W10 the samples in the legend of the chart are the lines that the chart draws: solid in the colour of the action, dashed in the second, also in high contrast", async ({
+  page
+}) => {
+  await openRoute(page, "chart");
+  await trace(page);
+  await paste(page);
+  await expect.poll(() => page.evaluate(() => window.LibreSpeedRouteChart.info().other)).toBe(true);
+  const samples = () =>
+    page.evaluate(() => {
+      const colour = token => {
+        const probe = document.createElement("span");
+        probe.style.color = `var(${token})`;
+        document.body.appendChild(probe);
+        const value = getComputedStyle(probe).color;
+        probe.remove();
+        return value;
+      };
+      const first = document.querySelector("#routeChartBoth .route-chart-leg:not(.route-chart-leg-other)");
+      const other = document.querySelector("#routeChartBoth .route-chart-leg-other");
+      return {
+        firstStroke: getComputedStyle(first).stroke,
+        firstDash: getComputedStyle(first).strokeDasharray,
+        otherStroke: getComputedStyle(other).stroke,
+        otherDash: getComputedStyle(other).strokeDasharray,
+        primary: colour("--primary"),
+        secondary: colour("--secondary"),
+        // The map has its own samples, and the chart does not borrow them
+        borrowed: document.querySelectorAll("#routeChartBoth .route-map-leg").length
+      };
+    });
+  for (const contrast of [false, true]) {
+    await page.evaluate(on => document.documentElement.classList.toggle("high-contrast", on), contrast);
+    const look = await samples();
+    expect(look.borrowed).toBe(0);
+    expect(look.firstStroke, `contrast ${contrast}`).toBe(look.primary);
+    expect(look.firstDash).toBe("none");
+    expect(look.otherStroke, `contrast ${contrast}`).toBe(look.secondary);
+    expect(look.otherDash).not.toBe("none");
+    expect(look.firstStroke).not.toBe(look.otherStroke);
+  }
+});
+
+test("W11 the Save button that cannot be pressed yet looks that way", async ({ page }) => {
+  let release;
+  const gate = new Promise(resolve => (release = resolve));
+  await openRoute(page, "table", gate);
+  await trace(page);
+  await openBackPanel(page);
+  await page.locator("#routeBackText").fill(sample("windows-ptbr-tracert.txt"));
+  await page.locator("#routeBackShow").click();
+  const save = page.locator("#routeBackSave");
+  await expect(save).toBeVisible();
+  await expect(save).toHaveAttribute("aria-disabled", "true");
+  // Until the networks arrive: grey, a plain cursor and not full strength, as the history buttons that are off
+  const look = () =>
+    save.evaluate(el => ({
+      color: getComputedStyle(el).color,
+      muted: (() => {
+        const probe = document.createElement("span");
+        probe.style.color = "var(--muted)";
+        document.body.appendChild(probe);
+        const value = getComputedStyle(probe).color;
+        probe.remove();
+        return value;
+      })(),
+      cursor: getComputedStyle(el).cursor,
+      opacity: getComputedStyle(el).opacity
+    }));
+  const off = await look();
+  expect(off.color).toBe(off.muted);
+  expect(off.cursor).toBe("default");
+  expect(Number(off.opacity)).toBeLessThan(1);
+  release();
+  await expect(save).toHaveAttribute("aria-disabled", "false");
+  // (the colours of a button fade in a moment)
+  await expect.poll(async () => (await look()).opacity).toBe("1");
+  expect((await look()).cursor).not.toBe("default");
+});
+
+test("W12 the networks of the other direction that arrive late, and the other direction that is cleared, are seen in the table, the networks on the way and the chart", async ({
+  page
+}) => {
+  let release;
+  const gate = new Promise(resolve => (release = resolve));
+  await openRoute(page, "chart", gate);
+  await trace(page);
+  await paste(page);
+  // The pasted route is on the screen without networks; the person goes to the way from the server, where it is the other one
+  await chin(page, "routeChartBoth").locator('[data-shown="there"]').click();
+  await page.locator('#routeViews [data-view="table"]').click();
+  await expect(page.locator("#routeTableOther")).toBeVisible();
+  await expect(rowsOf(page, "routeTableOther")).toHaveCount(7);
+  await expect(page.locator("#routeTableOther")).not.toContainText("Net 8");
+  await expect(page.locator("#routeGroups")).not.toContainText("Net 8");
+  release();
+  // The networks arrive: the second table and the networks on the way have them, without pressing anything
+  await expect(page.locator("#routeTableOther")).toContainText("Net 8");
+  await expect(page.locator("#routeGroups")).toContainText("Net 8");
+  // The chart was drawn again with the line of the other direction
+  await page.locator('#routeViews [data-view="chart"]').click();
+  await expect.poll(() => page.evaluate(() => window.LibreSpeedRouteChart.info().other)).toBe(true);
+  // Clearing the way back takes everything of it from the three views
+  await page.locator("#routeBackClear").click();
+  await expect(page.locator("#routeTableOther")).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => window.LibreSpeedRouteChart.info().other)).toBe(false);
+  await expect(page.locator("#routeGroups ol")).toHaveCount(1);
+  await expect(page.locator("#routeGroups .route-groups-way")).toHaveCount(0);
+  await expect(chin(page, "routeChartBoth")).toBeHidden();
+  await page.locator('#routeViews [data-view="table"]').click();
+  await expect(page.locator("#routeTableOther")).toHaveCount(0);
 });

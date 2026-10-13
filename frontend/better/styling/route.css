@@ -952,8 +952,8 @@ p.route-hint code {
 }
 
 /* "Save to history" while it cannot be pressed: it looks off but stays a button the keyboard can stay on */
-.route-paste-actions .history-action[aria-disabled="true"],
-.route-paste-actions .history-action[aria-disabled="true"]:hover {
+.route-back-secondary .history-action[aria-disabled="true"],
+.route-back-secondary .history-action[aria-disabled="true"]:hover {
   color: var(--muted);
   cursor: default;
   background: none;
@@ -1465,4 +1465,24 @@ body.route-side-on {
 .route-steps a {
   display: block;
   color: var(--primary);
+}
+
+/* The samples in the chin of the chart: the lines that the chart draws (solid, in the colour of the action, for the direction on the screen;
+   dashed, in the second colour, for the other), so the legend never says another colour than the chart */
+.route-chart-leg,
+.route-chart-leg-other {
+  fill: none;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.route-chart-leg {
+  stroke: var(--primary);
+  stroke-width: 2.5px;
+}
+
+.route-chart-leg-other {
+  stroke: var(--secondary);
+  stroke-width: 2px;
+  stroke-dasharray: 6 4;
 }

@@ -43,8 +43,10 @@
       box: box,
       button: box.querySelector(".route-both-button"),
       list: box.querySelector(".route-both-ways"),
-      // The map and the chart draw a line for each direction, and the legend shows it; the table has none
-      lines: index > 0
+      // The map and the chart draw a line for each direction, and the legend shows it; the table has none. Each draws its own lines, and so
+      // has its own samples (the chart: solid in the colour of the action, and dashed in the second one; the map has its own dashes)
+      lines: index > 0,
+      sample: index === 2 ? "route-map-leg" : "route-chart-leg"
     };
   });
 
@@ -765,7 +767,7 @@
         line.setAttribute("x2", "27");
         line.setAttribute("y1", "5");
         line.setAttribute("y2", "5");
-        line.setAttribute("class", "route-map-leg" + (way.other ? " route-map-leg-other" : ""));
+        line.setAttribute("class", chin.sample + (way.other ? " " + chin.sample + "-other" : ""));
         svg.appendChild(line);
         choice.appendChild(svg);
       }
@@ -1019,6 +1021,20 @@
   // The way back from the panel (a paste, the extension) or its networks arriving later. A new one is shown at once; one that arrives while
   // the route from the server is traced is only kept (drawing it would wipe the status of the trace); the networks that arrive late never
   // take the person back to the way back after they chose the other route
+  // What comes from the other direction in the three views (the networks on the way, the second table, the second line of the chart and of
+  // the map), made again: when the button for the two directions is pressed, when the networks of the other direction arrive, and when it is
+  // cleared. The route on the screen is not drawn again.
+  function redrawOther() {
+    if (!shownData()) return;
+    groupBox.textContent = "";
+    groupBox.hidden = true;
+    drawGroups(shownData());
+    drawOtherTable();
+    markShown();
+    if (current === "chart" && chartReady()) renderChart();
+    if (current === "map" && mapFiles.ready()) renderMap();
+  }
+
   function showBack(data, first) {
     backData = data;
     if (first) {
@@ -1042,9 +1058,9 @@
       draw(data);
       return;
     }
-    // The networks of the way back arrive when the person is looking at the way from the server: the map and the comparison show them
-    // as soon as they are there
-    if (shownData() && current === "map" && mapFiles.ready()) renderMap();
+    // The networks of the way back arrive when the person is looking at the way from the server: everything that comes from the other
+    // direction (the table, the networks on the way, the lines of the chart and of the map) and the comparison show them as soon as they are there
+    redrawOther();
     drawCompare();
   }
 
@@ -1055,8 +1071,8 @@
     backSaved = false;
     drawSave();
     if (shown !== "back") {
-      markShown();
-      if (shownData() && current === "map" && mapFiles.ready()) renderMap();
+      // The way back that is gone is not on the screen any more: not its table, not its networks, not its lines
+      redrawOther();
       drawCompare();
       return;
     }
@@ -1504,14 +1520,7 @@
       } catch (error) {
         // The choice only lasts until the page is closed
       }
-      if (!shownData()) return;
-      groupBox.textContent = "";
-      groupBox.hidden = true;
-      drawGroups(shownData());
-      drawOtherTable();
-      markShown();
-      if (current === "chart" && chartReady()) renderChart();
-      if (current === "map" && mapFiles.ready()) renderMap();
+      redrawOther();
     });
   });
   Promise.resolve(window.LibreSpeedI18n && window.LibreSpeedI18n.ready).then(init);
