@@ -1165,6 +1165,12 @@ div.closePrivacyPolicy a {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+
+  /* An infinite animation at 0.01ms spins wildly: keep the spinner slow instead of removing its motion cue */
+  span.loadCircle,
+  .route-spinner {
+    animation-duration: 2s !important;
+  }
 }
 
 /* Share results of the speed test: the button under the numbers and the picture of the result */
