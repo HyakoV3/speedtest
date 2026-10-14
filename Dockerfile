@@ -13,6 +13,8 @@ RUN install-php-extensions iconv gd pdo pdo_mysql pdo_pgsql pgsql \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 COPY docker/librespeed-php.ini ${PHP_INI_DIR}/conf.d/99-librespeed.ini
+COPY docker/librespeed-headers.conf /etc/apache2/conf-available/librespeed-headers.conf
+RUN a2enmod headers && a2enconf librespeed-headers
 
 # Prepare files and folders
 RUN mkdir -p /speedtest/
