@@ -58,31 +58,6 @@ async function openRoute(page, post) {
 
 const view = (page, name, ...args) => page.evaluate(([n, a]) => window.LibreSpeedRouteView[n](...a), [name, args]);
 
-test("pathNumbers: the number is the place in the list of networks, not the count of the entries of asPath", async ({
-  page
-}) => {
-  await openRoute(page, fixture("normal"));
-  // The internal network is the first of the list: the networks that follow are 2 and 3, and the end of the route is left out
-  const first = route([internal(1), hop(2, 5), hop(3, 6), hop(4, 7, { is_target: true })]);
-  expect(await view(page, "asPath", first)).toEqual(["AS5", "AS6"]);
-  expect(await view(page, "pathNumbers", first)).toEqual([2, 3]);
-  // The same network on both sides of another one is two entries and two places
-  const again = route([hop(1, 1), hop(2, 2), hop(3, 1), hop(4, 9, { is_target: true })]);
-  expect(await view(page, "asPath", again)).toEqual(["AS1", "AS2", "AS1"]);
-  expect(await view(page, "pathNumbers", again)).toEqual([1, 2, 3]);
-  // An internal router or a router with no network in the middle: asPath joins the two, the list has three places
-  const joined = route([hop(1, 1), internal(2), hop(3, 1), hop(4, 9, { is_target: true })]);
-  expect(await view(page, "asPath", joined)).toEqual(["AS1"]);
-  expect(await view(page, "pathNumbers", joined)).toEqual([1]);
-  const unknown = route([hop(1, null), hop(2, 1), hop(3, null), hop(4, 1), hop(5, 9, { is_target: true })]);
-  expect(await view(page, "asPath", unknown)).toEqual(["AS1"]);
-  expect(await view(page, "pathNumbers", unknown)).toEqual([2]);
-  // Silent hops belong to the group that is open: they do not move the numbers
-  const silent = route([hop(1, 1), hop(2, null, { scope: "none", rtt_min: null, answered: 0 }), hop(3, 2)]);
-  expect(await view(page, "pathNumbers", silent)).toEqual([1, 2]);
-  expect(await view(page, "pathNumbers", null)).toEqual([]);
-});
-
 test("networkLetters: the way from the server first, then the networks only of the way back, and the same in both", async ({
   page
 }) => {
@@ -108,21 +83,47 @@ test("networkLetters: the way from the server first, then the networks only of t
   expect(letters.AS127).toBe("AB");
 });
 
-test("the comparison has the numbers of the list of networks, and the same letter for the same network in both directions", async ({
+const there = () => ({
+  ...fixture("normal"),
+  hops: [internal(1), hop(2, 12), hop(3, 13), hop(4, 14), hop(5, 15, { is_target: true })]
+});
+const texts = (page, selector) => page.locator(selector).allTextContents();
+
+test("one direction: the networks are told by letters, in the lists, the table and the map, and there are no numbers", async ({
   page
 }) => {
-  // The way from the server: an internal router, then 12, 13 and 14, then the visitor (15)
-  const there = {
-    ...fixture("normal"),
-    hops: [internal(1), hop(2, 12), hop(3, 13), hop(4, 14), hop(5, 15, { is_target: true })]
-  };
-  await openRoute(page, there);
+  await openRoute(page, there());
   await page.locator("#routeStart").click();
   await expect(page.locator("#routeTable tbody tr")).toHaveCount(5);
-  // With one direction there is nothing to tell apart: no letter
-  await expect(page.locator(".route-letter")).toHaveCount(0);
+  // The list of the networks: a dot for the internal network, then A, B, C and D (the end of the route is a network too)
+  expect(await texts(page, "#routeGroups li .route-letter")).toEqual(["\u2022", "A", "B", "C", "D"]);
+  await expect(page.locator("#routeGroups li")).toHaveCount(5);
+  // No number from the list: the marker of the list is off
+  expect(
+    await page
+      .locator("#routeGroups li")
+      .first()
+      .evaluate(item => getComputedStyle(item).listStyleType)
+  ).toBe("none");
+  // The table: the letter in the cell of the network of each hop (the number of the first column is the hop, not a network)
+  expect(await texts(page, "#routeTable td.route-network .route-letter")).toEqual(["A", "B", "C", "D"]);
+  // The map: the circles say the letter
+  await page.locator('#routeViews [data-view="map"]').click();
+  await expect(page.locator("#routeMapHost svg")).toBeVisible();
+  const circles = await texts(page, "#routeMapHost .route-map-node text");
+  expect(circles.length).toBeGreaterThan(0);
+  circles.forEach(text => expect(text).toMatch(/^[A-Z\u2022?]+$/));
+  expect(circles).toContain("A");
+  // Nothing to compare with one direction: no note about the letters
   await expect(page.locator("#routeCompareLetters")).toBeHidden();
+});
 
+test("two directions: the same network has the same letter in the comparison, the lists, the table and the map", async ({
+  page
+}) => {
+  await openRoute(page, there());
+  await page.locator("#routeStart").click();
+  await expect(page.locator("#routeTable tbody tr")).toHaveCount(5);
   await openBackPanel(page);
   await page
     .locator("#routeBackText")
@@ -132,13 +133,8 @@ test("the comparison has the numbers of the list of networks, and the same lette
   await page.locator("#routeBackShow").click();
   await expect(page.locator("#routeCompare")).toBeVisible();
 
-  // The numbers of each column are the ones of the list "Networks on the way" of that direction (the internal network is the first)
+  // The comparison: the letters of the way from the server first (12 is A, 13 B, 14 C, 15 D), then the ones only of the way back (99 is E)
   const columns = page.locator("#routeCompareLists > div");
-  const numbers = column => column.locator("li").evaluateAll(items => items.map(item => item.value));
-  expect(await numbers(columns.nth(0))).toEqual([2, 3, 4]);
-  expect(await numbers(columns.nth(1))).toEqual([1, 2, 3]);
-
-  // The letters: the way from the server gives A (12), B (13), C (14) and D (15); the way back adds 99 (E) and 9 (F)
   const letterOfItem = (column, text) =>
     column.locator("li", { hasText: text }).locator(".route-letter").first().textContent();
   expect(await letterOfItem(columns.nth(0), "AS12")).toBe("A");
@@ -147,11 +143,29 @@ test("the comparison has the numbers of the list of networks, and the same lette
   expect(await letterOfItem(columns.nth(1), "AS14")).toBe("C");
   expect(await letterOfItem(columns.nth(1), "AS99")).toBe("E");
   await expect(page.locator("#routeCompareLetters")).toBeVisible();
+  expect(
+    await columns
+      .nth(0)
+      .locator("li")
+      .first()
+      .evaluate(item => getComputedStyle(item).listStyleType)
+  ).toBe("none");
 
-  // The list "Networks on the way" (both directions are in it) has the same letters; the internal network has none
-  const groups = page.locator("#routeGroups li");
-  // AS14 is in the two directions, with the same letter in both
-  await expect(groups.filter({ hasText: "AS14" }).locator(".route-letter")).toHaveText(["C", "C"]);
-  await expect(groups.filter({ hasText: "AS99" }).locator(".route-letter")).toHaveText("E");
-  await expect(groups.filter({ hasText: "internal" }).locator(".route-letter")).toHaveCount(0);
+  // The lists of the networks of both directions: AS14 is in both, with the same letter
+  await expect(page.locator("#routeGroups li").filter({ hasText: "AS14" }).locator(".route-letter")).toHaveText([
+    "C",
+    "C"
+  ]);
+  // The table is the one of the way back: its networks have the letters of the two directions
+  const tableLetters = await texts(page, "#routeTable td.route-network .route-letter");
+  expect(tableLetters).toEqual(["C", "E", "A", "F"]);
+
+  // The map: the circles of the way that is shown, and a hollow point, with its letter, for each network that is only in the other one
+  await page.locator('#routeViews [data-view="map"]').click();
+  await expect(page.locator("#routeMapHost svg")).toBeVisible();
+  const circles = await texts(page, "#routeMapHost .route-map-node text");
+  expect(circles).toEqual(expect.arrayContaining(["C", "E", "A"]));
+  circles.forEach(text => expect(text).toMatch(/^[A-Z\u2022?]+$/));
+  const hollow = await texts(page, "#routeMapHost .route-map-dot-group text");
+  expect(hollow).toEqual(expect.arrayContaining(["B", "D"]));
 });
