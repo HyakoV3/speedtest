@@ -34,6 +34,7 @@
   var compareBox = document.getElementById("routeCompare");
   var compareText = document.getElementById("routeCompareText");
   var compareLists = document.getElementById("routeCompareLists");
+  var compareLettersNote = document.getElementById("routeCompareLetters");
   var compareSeasTitle = document.getElementById("routeCompareSeasTitle");
   var compareSeas = document.getElementById("routeCompareSeas");
   var bothBox = document.getElementById("routeMapBoth");
@@ -308,6 +309,19 @@
     return row;
   }
 
+  // The letter of each network when the two directions are known, the same in both; nothing when there is only one, where there is
+  // no network to tell from the other direction
+  function lettersOf() {
+    var there = thereOf();
+    var back = backOf();
+    if (!there || !back || !(there.hops || []).length || !(back.hops || []).length) return {};
+    return view.networkLetters(there, back);
+  }
+
+  function letterBadge(letter) {
+    return cell("span", letter, "route-letter");
+  }
+
   // The networks on the way: of the route on the screen, and, with both directions on, of the other one too (each under its own direction)
   function drawGroups(data) {
     var second = mapBoth ? otherData() : null;
@@ -315,6 +329,7 @@
     if (second && (second.hops || []).length) routes.push(second);
     var both = routes.length > 1;
     var heading = cell("p", t("route.groups"), "route-groups-title");
+    var letters = lettersOf();
     var added = false;
     routes.forEach(function (route) {
       var list = view.groups(route.hops || []);
@@ -339,7 +354,10 @@
               ? t("route.internal")
               : t("route.unknown-network");
         var key = group.from === group.to ? "route.group-one" : "route.group";
-        items.appendChild(cell("li", t(key, { name: name, from: group.from, to: group.to })));
+        var item = cell("li", t(key, { name: name, from: group.from, to: group.to }));
+        if (group.kind === "as" && letters[group.asn])
+          item.insertBefore(letterBadge(letters[group.asn]), item.firstChild);
+        items.appendChild(item);
       });
       groupBox.appendChild(items);
     });
@@ -543,16 +561,22 @@
       }
       compareText.textContent = text + " " + extra.join(" ");
     }
-    if (result.state === "same" || result.state === "order" || result.state === "different") {
+    var listed = result.state === "same" || result.state === "order" || result.state === "different";
+    compareLettersNote.hidden = !listed;
+    if (listed) {
+      var letters = lettersOf();
       [
-        { title: "route.direction.there", list: result.there, only: result.onlyThere },
-        { title: "route.direction.back", list: result.back, only: result.onlyBack }
+        { title: "route.direction.there", list: result.there, numbers: result.thereN, only: result.onlyThere },
+        { title: "route.direction.back", list: result.back, numbers: result.backN, only: result.onlyBack }
       ].forEach(function (column) {
         var box = document.createElement("div");
         box.appendChild(cell("h4", t(column.title)));
         var items = document.createElement("ol");
-        column.list.forEach(function (asn) {
+        column.list.forEach(function (asn, index) {
           var item = cell("li", name(asn));
+          // The number of the list "Networks on the way", not the count of this list, which leaves some networks out
+          item.value = column.numbers[index];
+          if (letters[asn]) item.insertBefore(letterBadge(letters[asn]), item.firstChild);
           if (column.only.indexOf(asn) >= 0) {
             item.className = "route-compare-only";
             var mark = cell("span", "◆", "route-compare-mark");
