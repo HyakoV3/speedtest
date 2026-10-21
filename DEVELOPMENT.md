@@ -4,7 +4,8 @@ This document describes how to use the package manager (npm) for development tas
 
 ## Prerequisites
 
-- Node.js 14.0.0 or higher
+- Node.js 20 (what the CI uses) or newer; the linting scripts alone run on older versions, the Playwright suite does not
+- Docker, for the end-to-end tests (they build the image)
 - npm (comes with Node.js)
 
 ## Getting Started
@@ -57,11 +58,14 @@ npm run validate
 
 ### Testing
 
-Currently, there are no automated tests configured:
+`npm run test` is a placeholder that does nothing. The tests are:
 
 ```bash
-npm run test
+npm run test:e2e   # Playwright specs in tests/e2e; builds and starts the Docker image, so Docker must be running
 ```
+
+The PHP tests of the route and of the stats summary (`tests/*.php`) are plain scripts that are run by hand, not by the CI; the first
+line of each says how. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ### Docker
 
@@ -87,11 +91,15 @@ These tools are configured but non-intrusive to the existing codebase.
 .
 ├── speedtest.js              # Main speedtest library
 ├── speedtest_worker.js       # Web Worker for speed testing
-├── index.html                # Default UI
+├── index.html                # Switcher between the classic and modern UI
+├── index-better.html, stability-better.html, route-better.html   # The better pages (frontend/better/)
 ├── backend/                  # PHP backend files
 ├── examples/                 # Example implementations
 ├── results/                  # Results/telemetry handling
 ├── docker/                   # Docker-related files
+├── frontend/                 # Assets of the modern UI, and frontend/better/ of the better pages
+├── tests/                    # Playwright specs, PHP tests, fixtures
+├── docs/                     # Operator documentation (route page)
 └── package.json              # npm package configuration
 ```
 

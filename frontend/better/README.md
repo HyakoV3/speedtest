@@ -1,5 +1,8 @@
 # Better pages
 
+This is the reference for the options and assets of the better pages. For what the fork is see the [README](../../README.md); for
+the route page on a server see [docs/route.md](../../docs/route.md).
+
 `index-better.html` and `stability-better.html` are alternative versions of the classic speed test and of the stability
 test, with the same features and a different look. `route-better.html` is a third page that only exists in the better
 pages (see Route page below). The other pages are not changed. The assets are in this folder:
@@ -40,7 +43,7 @@ An entry of `server-list.json` can carry `names`, the name of the server in each
 with the language:
 
 ```json
-{ "name": "Local Server (Vör, Brazil)", "names": { "pt": "Servidor local (Vör, Brasil)", "sv": "Lokal server (Vör, Brasilien)" }, "server": "/backend" }
+{ "name": "Local Server (Example City, Brazil)", "names": { "pt": "Servidor local (Example City, Brasil)", "sv": "Lokal server (Example City, Brasilien)" }, "server": "/backend" }
 ```
 
 ## Route page
