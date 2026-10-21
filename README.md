@@ -1,4 +1,7 @@
-![LibreSpeed Logo](.logo/logo3.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="frontend/images/logo.svg">
+  <img alt="LibreSpeed" src="docs/images/logo-light.svg" width="306">
+</picture>
 
 # LibreSpeed, better pages
 
