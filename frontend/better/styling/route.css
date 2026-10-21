@@ -546,8 +546,15 @@ html.high-contrast .route-map-landing.route-map-landing-other {
 }
 
 html.high-contrast .route-map-arrow.route-map-leg-other,
-html.high-contrast .route-map-via.route-map-via-other,
+html.high-contrast .route-map-via.route-map-via-other {
+  fill: var(--primary);
+}
+
 html.high-contrast .route-map-dot-other {
+  stroke: var(--primary);
+}
+
+html.high-contrast .route-map-dot-group text {
   fill: var(--primary);
 }
 
@@ -698,12 +705,25 @@ html.high-contrast .route-map-dot-other {
   stroke: var(--secondary);
 }
 
-.route-map-via.route-map-via-other,
-.route-map-dot-other {
+.route-map-via.route-map-via-other {
   fill: var(--secondary);
   stroke: var(--surface);
   stroke-width: 1.5px;
   vector-effect: non-scaling-stroke;
+}
+
+/* A network that is only in the other direction: a hollow point of the colour of that direction, with its letter */
+.route-map-dot-other {
+  fill: var(--surface);
+  stroke: var(--secondary);
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+}
+
+.route-map-dot-group text {
+  fill: var(--secondary);
+  font-family: inherit;
+  font-weight: 700;
 }
 
 .route-showing {
@@ -947,23 +967,39 @@ p.route-hint code {
 }
 
 .route-compare-mark {
-  margin-right: 0.3em;
+  display: inline-block;
+  width: 1.2em;
   color: var(--primary);
 }
 
-/* The letter of a network: the same in both directions (the number is the order in that direction) */
+/* The letter of a network, in a round badge like the circles of the map: the same letter in both directions. The internal network has a dot
+   and a network that is not known a question mark, dashed like their circles of the map */
 .route-letter {
-  display: inline-block;
-  min-width: 1.3em;
-  margin-right: 0.35em;
-  padding: 0 0.2em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5em;
+  height: 1.5em;
+  margin-right: 0.45em;
   font-size: 0.8em;
   font-weight: 700;
-  line-height: 1.4;
-  color: var(--primary);
-  text-align: center;
-  border: 0.0625rem solid currentColor;
-  border-radius: 0.3em;
+  line-height: 1;
+  color: var(--surface);
+  vertical-align: 0.05em;
+  background: var(--text);
+  border-radius: 50%;
+}
+
+.route-letter.route-letter-none {
+  color: var(--muted);
+  background: none;
+  border: 0.0625rem dashed var(--muted);
+}
+
+.route-letters-list {
+  padding: 0;
+  margin: 0;
+  list-style: none;
 }
 
 .route-compare-note {

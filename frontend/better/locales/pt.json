@@ -368,5 +368,5 @@
   "route.compare.seas.same": "Os dois sentidos cruzam os mesmos mares: {list}.",
   "route.compare.seas.diff": "Os dois sentidos não cruzam os mesmos mares.",
   "route.compare.seas.note": "Um traceroute mostra o mar, não qual cabo dele levou o tráfego.",
-  "route.letters.note": "Mesma letra, mesma rede nos dois sentidos; o número é a ordem dela naquele sentido."
+  "route.letters.note": "Mesma letra, mesma rede nos dois sentidos."
 }

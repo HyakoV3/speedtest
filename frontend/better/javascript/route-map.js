@@ -1,14 +1,14 @@
 /* global LibreSpeedWorld, LibreSpeedRouteCrossings */
 /* exported LibreSpeedRouteMap */
 /**
- * Map of the route: the networks it goes through, each one a numbered point in the country where the database places it
+ * Map of the route: the networks it goes through, each one a point with its letter in the country where the database places it
  *
  * Loaded by route.js only when the map is chosen (with the shapes of vendor/world-110m.js), so nothing here runs before. It does
  * not listen to events and does not write texts of the page: route.js builds the data (LibreSpeedRouteView.mapData), the list and the
  * key, and calls render again when the language changes. The colors come from the CSS (the SVG is part of the page), so a theme
  * or contrast change needs no redrawing.
  *
- * A point is a network of the list "Networks on the way", with the number it has there. It is drawn in the country of its routers
+ * A point is a network of the list "Networks on the way", with the letter it has there. It is drawn in the country of its routers
  * as the database says, which is not where the routers are. The networks of one country go on a short line through its middle, in
  * order, and then the ones that still touch are pushed apart: inside a country the place of a point only keeps the points apart.
  * The line links the points in order (a curve between countries, a straight piece inside one). Nothing is a pin or a city.
@@ -41,11 +41,11 @@ var LibreSpeedRouteMap = (function () {
   var FONT = 9.5;
   var SPACING = 20;
   // The least distance between the dots of the other way and the points near them
-  var DOT_SPACING = 12;
+  var DOT_SPACING = 16;
 
   var host = null;
   var data = null;
-  // The other way of the route (mapData of it), drawn under the one of data: a dashed line of another colour, no numbers
+  // The other way of the route (mapData of it), drawn under the one of data: a dashed line of another colour; the networks that are only in it are hollow points with their letter
   var second = null;
   var observer = null;
   var onResize = null;
@@ -497,6 +497,15 @@ var LibreSpeedRouteMap = (function () {
     return list;
   }
 
+  // What is written in the circle of a network: its letter (md.letters, from route.js, the same in both directions); a dot for the internal
+  // network and a question mark for a network that is not known. With no letters given the place in the list, which is what the circle
+  // said before the letters
+  function labelOf(data, node) {
+    if (!data.letters) return String(node.n);
+    if (node.kind === "as" && data.letters[node.asn]) return data.letters[node.asn];
+    return node.kind === "internal" ? "\u2022" : "?";
+  }
+
   // Where the networks are drawn at a scale of scale (units per px). The ones of md as layout() puts them, and the numbers do not
   // move when there is another way. The ones of the other way (second) that are also in md (joinNodes) are at the place of the
   // one in md; the others are dots, laid out the same way and then pushed away from everything, with the points of md fixed.
@@ -753,9 +762,16 @@ var LibreSpeedRouteMap = (function () {
       placed.dots.forEach(function (n) {
         var place = placed.atOther[n];
         var network = other.nodes[n - 1];
-        group.appendChild(
-          el("circle", { cx: number(place[0]), cy: number(place[1]), r: number(3.5 * unit) }, "route-map-dot-other")
+        var dot = el(
+          "g",
+          { transform: "translate(" + number(place[0]) + " " + number(place[1]) + ")" },
+          "route-map-dot-group"
         );
+        dot.appendChild(el("circle", { r: number(RADIUS * unit) }, "route-map-dot-other"));
+        var dotLabel = el("text", { "text-anchor": "middle", dy: "0.35em", "font-size": number(FONT * unit) });
+        dotLabel.appendChild(document.createTextNode(labelOf(other, network)));
+        dot.appendChild(dotLabel);
+        group.appendChild(dot);
         dots.push({ n: n, code: network.country, x: number(place[0]), y: number(place[1]) });
       });
       otherState = {
@@ -779,7 +795,7 @@ var LibreSpeedRouteMap = (function () {
       );
       marker.appendChild(el("circle", { r: number(RADIUS * unit) }));
       var label = el("text", { "text-anchor": "middle", dy: "0.35em", "font-size": number(FONT * unit) });
-      label.appendChild(document.createTextNode(String(node.n)));
+      label.appendChild(document.createTextNode(labelOf(md, node)));
       marker.appendChild(label);
       group.appendChild(marker);
       shown.push({ n: node.n, code: node.country, kind: kind, x: number(at[node.n][0]), y: number(at[node.n][1]) });

@@ -294,7 +294,9 @@
     }
     row.appendChild(time);
 
-    row.appendChild(cell("td", networkText(hop), "route-network"));
+    var network = cell("td", networkText(hop), "route-network");
+    if (hop.scope === "public" && hop.asn) network.setAttribute("data-asn", hop.asn);
+    row.appendChild(network);
 
     var country = cell("td", "", "route-country");
     if (hop.scope === "public" && hop.country) {
@@ -309,17 +311,33 @@
     return row;
   }
 
-  // The letter of each network when the two directions are known, the same in both; nothing when there is only one, where there is
-  // no network to tell from the other direction
+  // The letter of each network (AS) of the route, the same in the two directions when both are known: the networks are told by their letter
+  // everywhere (lists, table, map), never by a number, and the order is the one of the lists
   function lettersOf() {
     var there = thereOf();
     var back = backOf();
-    if (!there || !back || !(there.hops || []).length || !(back.hops || []).length) return {};
-    return view.networkLetters(there, back);
+    if (!there && !back) there = shownData();
+    return view.networkLetters(there || null, back || null);
   }
 
-  function letterBadge(letter) {
-    return cell("span", letter, "route-letter");
+  // The round badge of a network: its letter, a dot for the internal network and a question mark for a network that is not known
+  function letterBadge(letter, kind) {
+    var badge = cell("span", letter || (kind === "internal" ? "\u2022" : "?"), "route-letter");
+    if (!letter) badge.className += " route-letter-none";
+    return badge;
+  }
+
+  // The letters in the table: the network of each hop that has one (the data-asn of its cell). The letters of the two directions are known
+  // only when the other route arrives, so this is done again every time the lists of the networks are drawn
+  function paintTableLetters() {
+    var letters = lettersOf();
+    var cells = document.querySelectorAll("#routeResults td.route-network[data-asn]");
+    for (var i = 0; i < cells.length; i++) {
+      var old = cells[i].querySelector(".route-letter");
+      if (old) cells[i].removeChild(old);
+      var letter = letters[cells[i].getAttribute("data-asn")];
+      if (letter) cells[i].insertBefore(letterBadge(letter), cells[i].firstChild);
+    }
   }
 
   // The networks on the way: of the route on the screen, and, with both directions on, of the other one too (each under its own direction)
@@ -346,6 +364,8 @@
         );
       }
       var items = document.createElement("ol");
+      items.className = "route-letters-list";
+      items.setAttribute("role", "list");
       list.forEach(function (group) {
         var name =
           group.kind === "as"
@@ -355,13 +375,13 @@
               : t("route.unknown-network");
         var key = group.from === group.to ? "route.group-one" : "route.group";
         var item = cell("li", t(key, { name: name, from: group.from, to: group.to }));
-        if (group.kind === "as" && letters[group.asn])
-          item.insertBefore(letterBadge(letters[group.asn]), item.firstChild);
+        item.insertBefore(letterBadge(group.kind === "as" ? letters[group.asn] : null, group.kind), item.firstChild);
         items.appendChild(item);
       });
       groupBox.appendChild(items);
     });
     if (added) groupBox.hidden = false;
+    paintTableLetters();
   }
 
   // The strip over a saved route that is shown: its date, and the way back to the route just traced
@@ -476,6 +496,7 @@
     fillTable(table, data);
     table.hidden = false;
     drawOtherTable();
+    paintTableLetters();
 
     var text = back
       ? t(
@@ -566,22 +587,24 @@
     if (listed) {
       var letters = lettersOf();
       [
-        { title: "route.direction.there", list: result.there, numbers: result.thereN, only: result.onlyThere },
-        { title: "route.direction.back", list: result.back, numbers: result.backN, only: result.onlyBack }
+        { title: "route.direction.there", list: result.there, only: result.onlyThere },
+        { title: "route.direction.back", list: result.back, only: result.onlyBack }
       ].forEach(function (column) {
         var box = document.createElement("div");
         box.appendChild(cell("h4", t(column.title)));
         var items = document.createElement("ol");
-        column.list.forEach(function (asn, index) {
+        items.className = "route-letters-list";
+        items.setAttribute("role", "list");
+        column.list.forEach(function (asn) {
           var item = cell("li", name(asn));
-          // The number of the list "Networks on the way", not the count of this list, which leaves some networks out
-          item.value = column.numbers[index];
           if (letters[asn]) item.insertBefore(letterBadge(letters[asn]), item.firstChild);
+          // A column for the mark, empty when the network is in both: the letters line up
+          var mark = cell("span", "", "route-compare-mark");
+          mark.setAttribute("aria-hidden", "true");
+          item.insertBefore(mark, item.firstChild);
           if (column.only.indexOf(asn) >= 0) {
             item.className = "route-compare-only";
-            var mark = cell("span", "◆", "route-compare-mark");
-            mark.setAttribute("aria-hidden", "true");
-            item.insertBefore(mark, item.firstChild);
+            mark.textContent = "◆";
             // The mark is only a picture: the same is said, for whoever does not see it, after the name
             item.appendChild(cell("span", " (" + t("route.compare.only-mark") + ")", "route-visually-hidden"));
           }
@@ -864,6 +887,10 @@
     var second = otherData();
     var other = second ? view.mapData(second, window.LibreSpeedRouteCrossings) : null;
     if (other && !other.countries.length) other = null;
+    // The circles say the letter of the network, the same in both directions
+    var letters = lettersOf();
+    md.letters = letters;
+    if (other) other.letters = letters;
     var host = document.getElementById("routeMapHost");
     var zoom = document.getElementById("routeMapZoom");
     var none = document.getElementById("routeMapNone");
@@ -1107,6 +1134,7 @@
     groupBox.hidden = true;
     drawGroups(shownData());
     drawOtherTable();
+    paintTableLetters();
     markShown();
     if (current === "chart" && chartReady()) renderChart();
     if (current === "map" && mapFiles.ready()) renderMap();

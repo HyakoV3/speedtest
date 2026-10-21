@@ -9,7 +9,7 @@
  * LibreSpeedRouteView.mapData(data) is the countries and the networks (as points) of the route, for the map.
  * LibreSpeedRouteView.mtuText(pmtu, drops) is { key, params } of the text about the MTU of the path.
  * LibreSpeedRouteView.countryName(code, language) is the name of a country in the language of the page.
- * LibreSpeedRouteView.pathNumbers(data) is the number of each network of asPath(data) in the list "Networks on the way"; networkLetters(there, back) is the letter of each network, the same in both directions.
+ * LibreSpeedRouteView.networkLetters(there, back) is the letter of each network (AS), the same in both directions: the way from the server first.
  */
 (function () {
   "use strict";
@@ -457,29 +457,6 @@
     return list;
   }
 
-  // The number each entry of asPath(data) has in the list "Networks on the way" (groups) of the same route, in the same order as asPath. It is
-  // the place of the entry, not of its AS: asPath joins a network through an internal or an unknown one that groups keeps apart, and
-  // leaves out the internal network, the unknown ones and the end of the route, so counting its entries would not give the numbers of the list
-  function pathNumbers(data) {
-    var hops = (data && data.hops) || [];
-    var list = groups(hops);
-    var numbers = [];
-    var last = null;
-    for (var i = 0; i < hops.length; i++) {
-      var hop = hops[i];
-      if (hop.scope !== "public" || hop.is_target === true || !hop.asn) continue;
-      if (last !== null && last === hop.asn) continue;
-      last = hop.asn;
-      for (var g = 0; g < list.length; g++) {
-        if (list[g].from <= hop.ttl && hop.ttl <= list[g].to) {
-          numbers.push(g + 1);
-          break;
-        }
-      }
-    }
-    return numbers;
-  }
-
   // "A" to "Z", then "AA", "AB"...
   function letterOf(index) {
     var text = "";
@@ -505,8 +482,7 @@
     return letters;
   }
 
-  // The two directions side by side: { state, there, back, thereN, backN, onlyThere, onlyBack, a, b } (thereN and backN: the numbers of there and back in
-  // the list "Networks on the way")
+  // The two directions side by side: { state, there, back, onlyThere, onlyBack, a, b }
   //   state "need-both": one of them is missing; "family": not the same IP version; "unknown": too few networks in one of them;
   //   "same": the same networks in the same order (the way back read from its end); "order": the same networks, in another order;
   //   "different": a network that is in only one of them
@@ -515,8 +491,6 @@
       state: "need-both",
       there: [],
       back: [],
-      thereN: [],
-      backN: [],
       onlyThere: [],
       onlyBack: [],
       a: null,
@@ -531,8 +505,6 @@
     }
     result.there = asPath(there);
     result.back = asPath(back);
-    result.thereN = pathNumbers(there);
-    result.backN = pathNumbers(back);
     if (result.there.length < 2 || result.back.length < 2) {
       result.state = "unknown";
       return result;
@@ -633,7 +605,6 @@
     nodesOf: nodesOf,
     niceMax: niceMax,
     asPath: asPath,
-    pathNumbers: pathNumbers,
     networkLetters: networkLetters,
     compareDirections: compareDirections,
     compareSeas: compareSeas,

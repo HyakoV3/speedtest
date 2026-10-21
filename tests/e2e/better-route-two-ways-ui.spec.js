@@ -237,9 +237,11 @@ test("U7 in high contrast the two lines are not the same colour", async ({ page 
       return {
         first: stroke("#routeMapHost path.route-map-leg:not(.route-map-leg-other)"),
         other: stroke("#routeMapHost path.route-map-leg-other"),
-        dot: getComputedStyle(
-          document.querySelector("#routeMapHost .route-map-via-other, #routeMapHost .route-map-dot-other")
-        ).fill,
+        // A waypoint of the other direction is filled with its colour; a network that is only in it is a hollow point with that colour as stroke
+        dot: (element => {
+          const style = getComputedStyle(element);
+          return element.matches(".route-map-dot-other") ? style.stroke : style.fill;
+        })(document.querySelector("#routeMapHost .route-map-via-other, #routeMapHost .route-map-dot-other")),
         text: getComputedStyle(document.querySelector("#routeMapHost .route-map-node circle")).fill
       };
     });

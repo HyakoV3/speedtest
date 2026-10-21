@@ -152,7 +152,7 @@ test("T5 no table, no corridor or strange data: no crossing and nothing else cha
   expect(md.crossings[0]).toMatchObject({ from: 1, to: 3 });
 });
 
-test("T6 the map draws land, sea and land, with two marks that have no number, in the right regions", async ({
+test("T6 the map draws land, sea and land, with two marks that have no letter, in the right regions", async ({
   page
 }) => {
   await openRoute(page, { post: route(example(), { target_reached: false, target_country: "BR" }) });
@@ -166,7 +166,8 @@ test("T6 the map draws land, sea and land, with two marks that have no number, i
   await expect(page.locator("#routeMapHost rect.route-map-landing")).toHaveCount(2);
   await expect(page.locator("#routeMapHost path.route-map-leg-sea")).toHaveCount(1);
   await expect(page.locator("#routeMapHost path.route-map-leg-land")).toHaveCount(2);
-  expect(await page.locator("#routeMapHost text").allTextContents()).toEqual(["1", "2", "3", "4"]);
+  // The circles say the letter of the network (a dot for the internal network), never a number
+  expect(await page.locator("#routeMapHost text").allTextContents()).toEqual(["A", "B", "C", "\u2022"]);
 });
 
 test("T7 at 360 px the whole crossing fits in the frame and the numbers keep their distance", async ({ page }) => {

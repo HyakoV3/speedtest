@@ -377,10 +377,10 @@ test("a country that is not a country is never run: no HTML gets into the map", 
   await expect(page.locator('#routeMapHost [data-code="BR"]')).toHaveCount(1);
   expect(await page.evaluate(() => window.__x)).toBeUndefined();
   await expect(page.locator("#routeMap img")).toHaveCount(0);
-  // What is written on the map is only the numbers; the first hop has a junk country, so it is drawn with the BR of the second
+  // What is written on the map is only the letters of the networks; the first hop has a junk country, so it is drawn with the BR of the second
   const texts = await page.locator("#routeMapHost text").allTextContents();
   expect(texts.length).toBeGreaterThan(0);
-  texts.forEach(text => expect(text).toMatch(/^\d+$/));
+  texts.forEach(text => expect(text).toMatch(/^[A-Z\u2022?]+$/));
   expect(node(await info(page), 1).kind).toBe("borrowed");
   await button(page, "table").click();
   await expect(page.locator("#routeTable")).toContainText("<img src=x onerror=window.__x=1>");
@@ -414,7 +414,7 @@ test("the route of the example: four networks, two countries, the visitor ringed
   await trace(page);
   await expect(page.locator("#routeMapHost svg")).toBeVisible();
   await expect(page.locator("#routeGroups ol li")).toHaveCount(4);
-  expect(await page.locator("#routeMapHost text").allTextContents()).toEqual(["1", "2", "3", "4"]);
+  expect(await page.locator("#routeMapHost text").allTextContents()).toEqual(["A", "B", "C", "\u2022"]);
   const map = await info(page);
   expect(map.nodes.map(item => `${item.n}:${item.code}:${item.kind}`)).toEqual([
     "1:US:firm",
