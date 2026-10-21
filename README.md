@@ -1,6 +1,6 @@
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="frontend/images/logo.svg">
-  <img alt="LibreSpeed" src="docs/images/logo-light.svg" width="306">
+  <img alt="LibreSpeed" src="docs/images/logo-light.svg" width="560">
 </picture>
 
 # LibreSpeed, better pages
