@@ -9,6 +9,7 @@
  * LibreSpeedRouteView.mapData(data) is the countries and the networks (as points) of the route, for the map.
  * LibreSpeedRouteView.mtuText(pmtu, drops) is { key, params } of the text about the MTU of the path.
  * LibreSpeedRouteView.countryName(code, language) is the name of a country in the language of the page.
+ * LibreSpeedRouteView.pathNumbers(data) is the number of each network of asPath(data) in the list "Networks on the way"; networkLetters(there, back) is the letter of each network, the same in both directions.
  */
 (function () {
   "use strict";
@@ -456,12 +457,71 @@
     return list;
   }
 
-  // The two directions side by side: { state, there, back, onlyThere, onlyBack, a, b }
+  // The number each entry of asPath(data) has in the list "Networks on the way" (groups) of the same route, in the same order as asPath. It is
+  // the place of the entry, not of its AS: asPath joins a network through an internal or an unknown one that groups keeps apart, and
+  // leaves out the internal network, the unknown ones and the end of the route, so counting its entries would not give the numbers of the list
+  function pathNumbers(data) {
+    var hops = (data && data.hops) || [];
+    var list = groups(hops);
+    var numbers = [];
+    var last = null;
+    for (var i = 0; i < hops.length; i++) {
+      var hop = hops[i];
+      if (hop.scope !== "public" || hop.is_target === true || !hop.asn) continue;
+      if (last !== null && last === hop.asn) continue;
+      last = hop.asn;
+      for (var g = 0; g < list.length; g++) {
+        if (list[g].from <= hop.ttl && hop.ttl <= list[g].to) {
+          numbers.push(g + 1);
+          break;
+        }
+      }
+    }
+    return numbers;
+  }
+
+  // "A" to "Z", then "AA", "AB"...
+  function letterOf(index) {
+    var text = "";
+    for (var n = index + 1; n > 0; n = Math.floor((n - 1) / 26)) {
+      text = String.fromCharCode(65 + ((n - 1) % 26)) + text;
+    }
+    return text;
+  }
+
+  // A letter for each network (AS) of the two directions, the same in both: { "AS64498": "C", ... }. The networks of the way from the server
+  // come first, in their order, so their letters never change when the way back arrives; the ones that are only in the way back go on from
+  // there, in the order the way back shows them. The networks of the groups (the end of the route too), not the internal or the unknown ones
+  function networkLetters(there, back) {
+    var letters = {};
+    var count = 0;
+    [there, back].forEach(function (data) {
+      groups((data && data.hops) || []).forEach(function (group) {
+        if (group.kind !== "as" || letters[group.asn]) return;
+        letters[group.asn] = letterOf(count);
+        count++;
+      });
+    });
+    return letters;
+  }
+
+  // The two directions side by side: { state, there, back, thereN, backN, onlyThere, onlyBack, a, b } (thereN and backN: the numbers of there and back in
+  // the list "Networks on the way")
   //   state "need-both": one of them is missing; "family": not the same IP version; "unknown": too few networks in one of them;
   //   "same": the same networks in the same order (the way back read from its end); "order": the same networks, in another order;
   //   "different": a network that is in only one of them
   function compareDirections(there, back) {
-    var result = { state: "need-both", there: [], back: [], onlyThere: [], onlyBack: [], a: null, b: null };
+    var result = {
+      state: "need-both",
+      there: [],
+      back: [],
+      thereN: [],
+      backN: [],
+      onlyThere: [],
+      onlyBack: [],
+      a: null,
+      b: null
+    };
     if (!there || !back) return result;
     if (there.family !== back.family) {
       result.state = "family";
@@ -471,6 +531,8 @@
     }
     result.there = asPath(there);
     result.back = asPath(back);
+    result.thereN = pathNumbers(there);
+    result.backN = pathNumbers(back);
     if (result.there.length < 2 || result.back.length < 2) {
       result.state = "unknown";
       return result;
@@ -571,6 +633,8 @@
     nodesOf: nodesOf,
     niceMax: niceMax,
     asPath: asPath,
+    pathNumbers: pathNumbers,
+    networkLetters: networkLetters,
     compareDirections: compareDirections,
     compareSeas: compareSeas,
     joinNodes: joinNodes,

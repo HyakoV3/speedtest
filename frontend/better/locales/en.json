@@ -367,5 +367,6 @@
   "route.compare.seas.title": "Seas crossed by submarine cable",
   "route.compare.seas.same": "Both directions cross the same seas: {list}.",
   "route.compare.seas.diff": "The two directions do not cross the same seas.",
-  "route.compare.seas.note": "A traceroute shows the sea, not which cable of it carried the traffic."
+  "route.compare.seas.note": "A traceroute shows the sea, not which cable of it carried the traffic.",
+  "route.letters.note": "Same letter, same network in both directions; the number is its order in that direction."
 }

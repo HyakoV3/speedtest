@@ -367,5 +367,6 @@
   "route.compare.seas.title": "Hav som korsas med sjökabel",
   "route.compare.seas.same": "Båda riktningarna korsar samma hav: {list}.",
   "route.compare.seas.diff": "De två riktningarna korsar inte samma hav.",
-  "route.compare.seas.note": "En traceroute visar havet, inte vilken av dess kablar som bar trafiken."
+  "route.compare.seas.note": "En traceroute visar havet, inte vilken av dess kablar som bar trafiken.",
+  "route.letters.note": "Samma bokstav, samma nätverk i båda riktningarna; numret är dess ordning i den riktningen."
 }

@@ -951,6 +951,26 @@ p.route-hint code {
   color: var(--primary);
 }
 
+/* The letter of a network: the same in both directions (the number is the order in that direction) */
+.route-letter {
+  display: inline-block;
+  min-width: 1.3em;
+  margin-right: 0.35em;
+  padding: 0 0.2em;
+  font-size: 0.8em;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--primary);
+  text-align: center;
+  border: 0.0625rem solid currentColor;
+  border-radius: 0.3em;
+}
+
+.route-compare-note {
+  color: var(--muted);
+  font-size: 0.85em;
+}
+
 /* "Save to history" while it cannot be pressed: it looks off but stays a button the keyboard can stay on */
 .route-back-secondary .history-action[aria-disabled="true"],
 .route-back-secondary .history-action[aria-disabled="true"]:hover {
