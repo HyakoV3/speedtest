@@ -1,7 +1,7 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="frontend/images/logo.svg">
-  <img alt="LibreSpeed" src="docs/images/logo-light.svg" width="560">
-</picture>
+<p align="center">
+  <img alt="LibreSpeed" src="frontend/images/logo.svg#gh-dark-mode-only" width="560">
+  <img alt="LibreSpeed" src="docs/images/logo-light.svg#gh-light-mode-only" width="560">
+</p>
 
 # LibreSpeed, better pages
 
