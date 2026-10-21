@@ -21,10 +21,11 @@ No Flash, No Java, No Websocket, No Bullshit.
 | :--------: | :------------: |
 | ![The better speed test running](docs/images/speed.gif) | ![The better stability test running](docs/images/stability.gif) |
 
-![The route page, map view, with an example route](docs/images/route.png)
+![The route page in map view: the way to you crosses the Atlantic by the Brazil to United States cable, the way back goes through Portugal and the United Kingdom](docs/images/route.png)
 
-*The animations were recorded on a local test server with a limited, simulated connection, and the route is an example made of
-documentation addresses (`192.0.2.0/24`, `198.51.100.0/24`, `203.0.113.0/24`), not a real network.*
+*The animations were recorded on a local test server with a limited, simulated connection. The route image is an example: both routes
+are made up and the networks are fictional (`Example ...`); it shows the server to you route, and a way back pasted from your own
+device that returns through other countries, with the seas each direction crosses.*
 
 Common to the three: English, Portuguese, Spanish and Swedish; light, dark and high-contrast modes, colours, fonts, icon sets and
 backgrounds that you pick in a panel; text size; and no request to a third party when the page loads, because the fonts, the chart
