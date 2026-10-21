@@ -1,10 +1,92 @@
-![LibreSpeed Logo](https://github.com/librespeed/speedtest/blob/master/.logo/logo3.png?raw=true)
+![LibreSpeed Logo](.logo/logo3.png)
 
-# LibreSpeed
+# LibreSpeed, better pages
+
+A fork of [LibreSpeed](https://github.com/librespeed/speedtest), the free and open source speed test, with three new pages
+(**better** pages: speed test, stability test and a route page), a history of your results, four languages, and a way to see the path
+between your device and the server. It keeps everything of upstream: the classic and modern pages, the test engine and the backends
+still work as before, and everything new is optional.
 
 No Flash, No Java, No Websocket, No Bullshit.
 
-This is a very lightweight speed test implemented in Javascript, using XMLHttpRequest and Web Workers.
+## What this fork adds
+
+| Page | What it does |
+| ---- | ------------ |
+| `index-better.html` | The speed test (download, upload, ping, jitter, IP and ISP), with a history of results by period, a share image and the options panel |
+| `stability-better.html` | A connection stability test: latency chart, loss, threshold alerts, history and CSV export; targets are this server, the configured test points, or Google, Cloudflare and Apple |
+| `route-better.html` | The route from the server to you (routers, time, network, approximate country, path MTU) as a table, a chart or a map, plus the way back that you trace on your own device. **Off by default** |
+
+| Speed test | Stability test |
+| :--------: | :------------: |
+| ![The better speed test running](docs/images/speed.gif) | ![The better stability test running](docs/images/stability.gif) |
+
+![The route page in map view: the way to you crosses the Atlantic by the Brazil to United States cable, the way back goes through Portugal and the United Kingdom](docs/images/route.png)
+
+*The animations were recorded on a local test server with a limited, simulated connection. The route image is an example: both routes
+are made up and the networks are fictional (`Example ...`); it shows the server to you route, and a way back pasted from your own
+device that returns through other countries, with the seas each direction crosses.*
+
+Common to the three: English, Portuguese, Spanish and Swedish; light, dark and high-contrast modes, colours, fonts, icon sets and
+backgrounds that you pick in a panel; text size; and no request to a third party when the page loads, because the fonts, the chart
+library and the map data are served by your own server. The options and URL parameters are in [frontend/better/README.md](frontend/better/README.md). The better
+pages are reached by their own address (for example `/index-better.html`), not by the `?design=` switch of the other pages.
+
+## Quick start
+
+With Docker, from the source of this repository:
+
+```shell
+docker build -t librespeed-better .
+docker run --rm -p 80:8080 librespeed-better
+```
+
+Then open `http://localhost/index-better.html`. The image is also published as `ghcr.io/hyakov3/speedtest` (the upstream image, `ghcr.io/librespeed/speedtest`, does not have the
+better pages); whether you can pull it depends on the visibility of the package. The route page is off in the image. Turning it on
+(`-e ENABLE_ROUTE=true`) lets visitors make your server run `traceroute` towards their own address; read
+[docs/route.md](docs/route.md) and [SECURITY.md](SECURITY.md) first. The other variables are in [doc_docker.md](doc_docker.md).
+
+Without Docker, follow Installation below: the better pages are in the same folder as the other pages, so copying the repository
+layout as it is already installs them (the route page also needs `backend/route_settings.php` edited, see [docs/route.md](docs/route.md)).
+
+## Privacy at a glance
+
+- **In your browser** (`localStorage`, never sent anywhere): the history of speed tests (with your IP address), a summary of results
+  (no address), the history of stability tests, the history of routes (with the addresses of the routers) and your choices in the
+  options panel.
+- **On the server**: nothing about you unless the operator turns telemetry on (then each result is a row in their database), and, if the
+  route page is on, a keyed hash of your address and the time of your requests, for the rate limits.
+- **To third parties**: nothing by default. If the operator sets an ipinfo.io key, your address goes to ipinfo.io for the ISP lookup. If you pick Google, Cloudflare or Apple as the target of the stability test, your browser contacts that company directly.
+
+Details, and what an operator should do about it, are in [SECURITY.md](SECURITY.md).
+
+## Documentation
+
+| File | For |
+| ---- | --- |
+| [docs/route.md](docs/route.md) | running the route page: proxies, IPv6, limits, what is kept |
+| [doc_docker.md](doc_docker.md) | the Docker image and all its variables |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | how the repository and the pages are put together |
+| [SECURITY.md](SECURITY.md) | how to report a problem, and what to protect |
+| [CONTRIBUTING.md](CONTRIBUTING.md), [DEVELOPMENT.md](DEVELOPMENT.md) | working on the code, tests |
+| [DESIGN_SWITCH.md](DESIGN_SWITCH.md) | the classic/modern switch |
+| [doc.md](doc.md) | the speed test engine (upstream) |
+
+The way back of the route page can use [`librespeed-route`](https://github.com/HyakoV3/librespeed-route), a small command line
+program with a browser extension (separate repository, MIT OR Apache-2.0).
+
+## Third-party material
+
+Fonts (SIL Open Font License, with their licence files in `frontend/better/fonts/licenses/` except Inter), uPlot (MIT), country shapes
+from [Natural Earth](https://www.naturalearthdata.com/) (public domain), the offline database of networks and countries from
+[ipinfo.io](https://ipinfo.io) (CC BY-SA 4.0) and `geoip2.phar` from MaxMind (Apache-2.0). Where they come from is in the README
+of each folder under `frontend/better/`.
+
+---
+
+# Upstream LibreSpeed
+
+What follows is the README of LibreSpeed, kept as it was, except where it says it only applies to the classic page.
 
 ## Try it
 
@@ -12,8 +94,8 @@ This is a very lightweight speed test implemented in Javascript, using XMLHttpRe
 
 ## Compatibility
 
-All modern browsers are supported: IE11, latest Edge, latest Chrome, latest Firefox, latest Safari.
-Works with mobile versions too.
+All modern browsers are supported by the classic page: IE11, latest Edge, latest Chrome, latest Firefox, latest Safari.
+Works with mobile versions too. The better pages use newer browser features (for example `fetch`) and do not support old browsers.
 
 ## Features
 

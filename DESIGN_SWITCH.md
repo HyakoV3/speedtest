@@ -96,3 +96,10 @@ The modern design references assets from the `frontend/` subdirectory (e.g., `fr
 
 ### Docker
 In Docker deployments, `frontend/` is copied into the web root as it stands during container startup, so the container serves the same layout the repository has and the same paths `index-modern.html` asks for.
+
+## The better pages are not part of the switch
+
+This fork also has `index-better.html`, `stability-better.html` and `route-better.html` (see [frontend/better/README.md](frontend/better/README.md)).
+They are not reachable through `?design=` or `config.json`: `design-switch.js` only knows `new`, `old` and `classic`. Open them by
+their own address. In Docker the three are copied into the web root by `docker/entrypoint.sh`; the route page only works when
+`ENABLE_ROUTE=true` (see [docs/route.md](docs/route.md)).
