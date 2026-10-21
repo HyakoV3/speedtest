@@ -28,7 +28,8 @@ No Flash, No Java, No Websocket, No Bullshit.
 
 *The animations were recorded on a local test server with a limited, simulated connection. The route image is an example: both routes
 are made up and the networks are fictional (`Example ...`); it shows the server to you route, and a way back pasted from your own
-device that returns through other countries, with the seas each direction crosses.*
+device that returns through other countries, with the seas each direction crosses. A letter marks the same network in both
+directions; the number is its order in that direction.*
 
 Common to the three: English, Portuguese, Spanish and Swedish; light, dark and high-contrast modes, colours, fonts, icon sets and
 backgrounds that you pick in a panel; text size; and no request to a third party when the page loads, because the fonts, the chart
