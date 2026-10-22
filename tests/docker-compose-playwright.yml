@@ -50,6 +50,7 @@ services:
       - MODE=standalone
       - WEBPORT=8080
       - USE_NEW_DESIGN=true
+      - DESIGN_SWITCH=false
       - "TAGLINE=It'd rather be fast!"
     ports:
       - "18186:8080"

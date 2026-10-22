@@ -64,6 +64,7 @@ header {
 footer {
   margin: auto auto 0 auto;
   padding: 5rem;
+  text-align: center;
 
   & > p.source a {
     font-size: 1.6rem;
