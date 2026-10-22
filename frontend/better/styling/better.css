@@ -951,9 +951,26 @@ html[data-footer="bar"] .footer {
   color: var(--muted);
 }
 
+.footer .design-switch a {
+  display: inline-flex;
+  vertical-align: middle;
+  margin: 0 0.15em;
+  padding: 0.25em;
+  border-radius: var(--radius-button);
+}
+
+html .footer .design-switch a + a::before {
+  content: none;
+}
+
+.footer .design-switch svg {
+  width: 1.5rem;
+  height: 1.5rem;
+  fill: currentColor;
+}
+
 .footer .design-switch a[aria-current="page"] {
-  color: var(--text);
-  font-weight: 600;
+  color: var(--primary);
 }
 
 html[data-footer="chips"] .footer .design-switch {
@@ -963,10 +980,6 @@ html[data-footer="chips"] .footer .design-switch {
 html[data-footer="bar"] .footer .design-switch {
   flex-basis: 100%;
   margin: 0;
-}
-
-html[data-footer="bar"] .footer .design-switch a + a {
-  margin-left: 1.4em;
 }
 
 /* Privacy policy */
