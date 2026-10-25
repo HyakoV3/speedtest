@@ -39,7 +39,7 @@ html {
 The variables that change the look are the ones in `styling/colors.css`: the accent colors (`--theme-green`,
 `--theme-pink`), the texts (`--primary-text-color`, `--secondary-text-color`, `--tagline-text-color`, and the disabled
 ones), the background (`--background-backup-color`, `--background-overlay-color`), the start button
-(`--button-*`), the server selector (`--server-selector-*`), the gauges (`--gauge-background-color`,
+(`--button-*`), the server selector (`--server-selector-*`, which includes the text of the options), the gauges (`--gauge-background-color`,
 `--gauge-pointer-green`, `--gauge-pointer-pink`), ping and jitter (`--ping-and-jitter-*`) and the popups
 (`--popup-background-color`). `--gauge-progress-color` and `--popup-shadow-color` are declared but not used by the
 page, so changing them has no effect.
@@ -73,7 +73,7 @@ COPY theme.css /speedtest/frontend/styling/theme.css
 COPY logo.svg /speedtest/frontend/images/logo.svg
 ```
 
-The modern design is only served when `USE_NEW_DESIGN=true`. A change to a mounted file needs a restart of the
+`USE_NEW_DESIGN=true` makes the modern design the default; `index-modern.html` and `?design=new` work without it. A change to a mounted file needs a restart of the
 container, because the files are copied at start.
 
 ## Notes
