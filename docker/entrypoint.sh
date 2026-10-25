@@ -139,7 +139,10 @@ if [[ "$MODE" == "frontend" || "$MODE" == "dual" ||  "$MODE" == "standalone" ]];
     if [ "$TITLE_ONE_LINE" != "LibreSpeed" ]; then
       sed -i "s/<h1 data-i18n=\"brand.title\">Free and Open Source Speedtest\\.<\\/h1>/<h1>$TITLE_ESCAPED<\\/h1>/g" /var/www/html/index-better.html /var/www/html/stability-better.html /var/www/html/route-better.html
     fi
-    sed -i "s/<title>LibreSpeed - Free and Open Source Speedtest<\\/title>/<title>$TITLE_ESCAPED - Free and Open Source Speedtest<\\/title>/g; s/<h1>Free and Open Source Speedtest\\.<\\/h1>/<h1>$TITLE_ESCAPED<\\/h1>/g" /var/www/html/index-modern.html
+    # The modern page keeps its translated title and heading unless TITLE is something other than the default
+    if [ "$TITLE_ONE_LINE" != "LibreSpeed" ]; then
+      sed -i "s/<title data-i18n=\"page.title\">LibreSpeed - Free and Open Source Speedtest<\\/title>/<title>$TITLE_ESCAPED - Free and Open Source Speedtest<\\/title>/g; s/<h1 data-i18n=\"brand.title\">Free and Open Source Speedtest\\.<\\/h1>/<h1>$TITLE_ESCAPED<\\/h1>/g" /var/www/html/index-modern.html
+    fi
   fi
 
   # Replace modern page tagline if TAGLINE is set
@@ -148,10 +151,13 @@ if [[ "$MODE" == "frontend" || "$MODE" == "dual" ||  "$MODE" == "standalone" ]];
     TAGLINE_ONE_LINE=${TAGLINE_ONE_LINE//$'\n'/ }
     TAGLINE_HTML_ESCAPED=$(html_escape "$TAGLINE_ONE_LINE")
     TAGLINE_ESCAPED=$(sed_escape "$TAGLINE_HTML_ESCAPED")
-    sed -i "s/<p class=\"tagline\">No Flash, No Java, No Websockets, No Bullsh\\*t<\\/p>/<p class=\"tagline\">$TAGLINE_ESCAPED<\\/p>/g" /var/www/html/index-modern.html
     # The better pages keep their translated tagline unless TAGLINE is something other than the default
     if [ "$TAGLINE_ONE_LINE" != "No Flash, No Java, No Websockets, No Bullsh*t" ]; then
       sed -i "s/<p class=\"tagline\" data-i18n=\"brand.tagline\">No Flash, No Java, No Websockets, No Bullsh\\*t<\\/p>/<p class=\"tagline\">$TAGLINE_ESCAPED<\\/p>/g" /var/www/html/index-better.html /var/www/html/stability-better.html /var/www/html/route-better.html
+    fi
+    # The modern page keeps its translated tagline unless TAGLINE is something other than the default
+    if [ "$TAGLINE_ONE_LINE" != "No Flash, No Java, No Websockets, No Bullsh*t" ]; then
+      sed -i "s/<p class=\"tagline\" data-i18n=\"brand.tagline\">No Flash, No Java, No Websockets, No Bullsh\\*t<\\/p>/<p class=\"tagline\">$TAGLINE_ESCAPED<\\/p>/g" /var/www/html/index-modern.html
     fi
   fi
 
