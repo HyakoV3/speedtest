@@ -30,7 +30,7 @@ browser.
 - Texts written by `javascript/index.js` go through `LibreSpeedI18n.t(key, fallback, { name: value })`.
 - To add a language, copy `locales/en.json` to `locales/<id>.json`, translate it and add `{ id, name }` to `LANGUAGES` in
   `javascript/i18n.js`. `tests/e2e/i18n.spec.js` checks that every catalog has the same keys as the English one.
-- Setting `TITLE` or `TAGLINE` in the Docker image replaces the translated title, heading and tagline with that text.
+- In the Docker image, a `TITLE` or `TAGLINE` other than the default replaces the translated title, heading and tagline with that text; the defaults keep them translated.
 
 ## Notes
 

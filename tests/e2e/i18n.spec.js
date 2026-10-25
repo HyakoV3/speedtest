@@ -1,6 +1,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { test, expect } = require("@playwright/test");
+const { baseUrls } = require("./helpers/env");
 
 const staticRepositoryUrl = "http://127.0.0.1:18184";
 const pageUrl = `${staticRepositoryUrl}/index-modern.html`;
@@ -86,6 +87,56 @@ test.describe("Localization of the modern page", () => {
     });
   });
 
+  test.describe("English browser, catalogs that misbehave", () => {
+    test.use({ locale: "en-US" });
+
+    test("the latest choice wins when the catalogs arrive out of order", async ({ page }) => {
+      await page.route("**/frontend/locales/sv.json", async route => {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        await route.continue();
+      });
+      await openPage(page);
+      const select = page.locator("[data-language-select]");
+      const swedishArrived = page.waitForResponse("**/frontend/locales/sv.json");
+      await select.selectOption("sv");
+      await select.selectOption("pt");
+      await expect(page.locator("main > h1")).toHaveText("Teste de velocidade livre e de código aberto.");
+      await swedishArrived;
+      await page.waitForTimeout(200);
+      await expect(page.locator("main > h1")).toHaveText("Teste de velocidade livre e de código aberto.");
+      await expect(select).toHaveValue("pt");
+      expect(await page.evaluate(() => localStorage.getItem("librespeed-language"))).toBe("pt");
+    });
+
+    test("the selector goes back to the language shown when a change fails", async ({ page }) => {
+      await openPage(page);
+      const select = page.locator("[data-language-select]");
+      await select.selectOption("pt");
+      await expect(page.locator("main > h1")).toHaveText("Teste de velocidade livre e de código aberto.");
+
+      await page.route("**/frontend/locales/en.json", route => route.abort());
+      await select.selectOption("en");
+      await expect(select).toHaveValue("pt");
+      await expect(page.locator("main > h1")).toHaveText("Teste de velocidade livre e de código aberto.");
+    });
+
+    test("a key missing from a catalog falls back to the English text, not to the previous language", async ({
+      page
+    }) => {
+      await page.route("**/frontend/locales/sv.json", route =>
+        route.fulfill({ json: { "brand.title": "Svensk rubrik" } })
+      );
+      await openPage(page);
+      const select = page.locator("[data-language-select]");
+      await select.selectOption("pt");
+      await expect(page.locator("main > p.tagline")).toContainText("Sem Flash");
+      await select.selectOption("sv");
+      await expect(page.locator("main > h1")).toHaveText("Svensk rubrik");
+      await expect(page.locator("main > p.tagline")).toHaveText("No Flash, No Java, No Websockets, No Bullsh*t");
+      await expect(page.locator("#start-button")).toHaveText("Let's start");
+    });
+  });
+
   test.describe("Swedish browser", () => {
     test.use({ locale: "sv-SE" });
 
@@ -96,6 +147,19 @@ test.describe("Localization of the modern page", () => {
       await expect(page.locator("html")).not.toHaveAttribute("data-i18n-pending", "");
       await expect(page.locator("#start-button")).toHaveText("Låt oss börja");
       await expect(page.locator("[data-language-select]")).toHaveValue("sv");
+    });
+
+    test("shows the page in English when the catalog stalls, and translates it when the catalog arrives", async ({
+      page
+    }) => {
+      await page.route("**/frontend/locales/sv.json", async route => {
+        await new Promise(resolve => setTimeout(resolve, 4500));
+        await route.continue();
+      });
+      await openPage(page);
+      await expect(page.locator("main > h1")).toBeVisible();
+      await expect(page.locator("main > h1")).toHaveText("Free and Open Source Speedtest.");
+      await expect(page.locator("main > h1")).toHaveText("Gratis hastighetstest med öppen källkod.");
     });
 
     test("translates the alert when no server can be reached", async ({ page }) => {
@@ -127,6 +191,17 @@ test.describe("Localization of the modern page", () => {
       await expect(page.locator("main > h1")).toHaveText("Free and Open Source Speedtest.");
       await expect(page.locator("html")).toHaveAttribute("lang", "en");
       await expect(page.locator("[data-language-select]")).toHaveValue("en");
+    });
+  });
+
+  test.describe("Docker image with the default TITLE and TAGLINE", () => {
+    test.use({ locale: "pt-BR" });
+
+    test("translates the title, the heading and the tagline", async ({ page }) => {
+      await page.goto(`${baseUrls.standalone}/index-modern.html`);
+      await expect(page.locator("main > h1")).toHaveText("Teste de velocidade livre e de código aberto.");
+      await expect(page.locator("main > p.tagline")).toHaveText("Sem Flash, sem Java, sem Websockets, sem enrolação");
+      await expect(page).toHaveTitle(/código aberto/);
     });
   });
 

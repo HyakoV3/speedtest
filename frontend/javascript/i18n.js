@@ -20,9 +20,15 @@
     { id: "es", name: "Español" }
   ];
   const STORAGE_KEY = "librespeed-language";
+  // How long the page stays hidden while the first catalog loads; a late catalog is still applied
+  const PENDING_MS = 3000;
   const localesURL = new URL("../locales/", document.currentScript.src);
   let language = DEFAULT_LANGUAGE;
   let messages = {};
+  // The latest change of language wins, whatever the order in which the catalogs arrive
+  let request = 0;
+  // The English text and attributes of the page, kept before the first translation as the fallback of missing keys
+  const originals = new WeakMap();
 
   const supported = id => LANGUAGES.some(item => item.id === id);
   const normalize = value =>
@@ -47,29 +53,42 @@
     );
   }
 
-  function translateDocument() {
-    document.querySelectorAll("[data-i18n]").forEach(element => {
-      element.textContent = translate(element.dataset.i18n, element.textContent.trim());
-    });
-    document.querySelectorAll("[data-i18n-attr]").forEach(element => {
-      element.dataset.i18nAttr.split(",").forEach(binding => {
-        const [attribute, key] = binding.split(":");
-        element.setAttribute(attribute, translate(key, element.getAttribute(attribute)));
-      });
-    });
+  function original(element, name, current) {
+    const saved = originals.get(element) || {};
+    if (!(name in saved)) saved[name] = current;
+    originals.set(element, saved);
+    return saved[name];
+  }
+
+  function showLanguage() {
     document.querySelectorAll("[data-language-select]").forEach(select => {
       select.value = language;
     });
   }
 
+  function translateDocument() {
+    document.querySelectorAll("[data-i18n]").forEach(element => {
+      element.textContent = translate(element.dataset.i18n, original(element, "", element.textContent.trim()));
+    });
+    document.querySelectorAll("[data-i18n-attr]").forEach(element => {
+      element.dataset.i18nAttr.split(",").forEach(binding => {
+        const [attribute, key] = binding.split(":");
+        element.setAttribute(attribute, translate(key, original(element, attribute, element.getAttribute(attribute))));
+      });
+    });
+    showLanguage();
+  }
+
   function set(id, save) {
     if (!supported(id)) return Promise.resolve();
+    const mine = ++request;
     return fetch(new URL(`${id}.json`, localesURL))
       .then(response => {
         if (!response.ok) throw new Error(`Unable to load the ${id} translations`);
         return response.json();
       })
       .then(catalog => {
+        if (mine !== request) return;
         language = id;
         messages = catalog;
         if (save) {
@@ -83,13 +102,20 @@
         translateDocument();
         window.dispatchEvent(new Event("i18nchange"));
       })
-      .catch(error => console.warn("LibreSpeed localization unavailable:", error))
+      .catch(error => {
+        console.warn("LibreSpeed localization unavailable:", error);
+        // The page stays in the language it shows, and so does the selector
+        if (mine === request) showLanguage();
+      })
       .finally(() => document.documentElement.removeAttribute("data-i18n-pending"));
   }
 
   const initial = initialLanguage();
   // The page waits for a catalog other than English, so it does not flash in English first
-  if (initial !== DEFAULT_LANGUAGE) document.documentElement.setAttribute("data-i18n-pending", "");
+  if (initial !== DEFAULT_LANGUAGE) {
+    document.documentElement.setAttribute("data-i18n-pending", "");
+    setTimeout(() => document.documentElement.removeAttribute("data-i18n-pending"), PENDING_MS);
+  }
 
   document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll("[data-language-select]").forEach(select => {
