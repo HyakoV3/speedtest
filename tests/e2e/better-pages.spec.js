@@ -545,7 +545,7 @@ test("speed test: a result with an id has a share icon that opens its link and p
 
   await bar.locator(".history-share-btn").click();
   await expect(page.locator("#shareDialog")).toBeVisible();
-  await expect(page.locator("#shareImage")).toHaveAttribute("src", /\/results\/\?id=42&style=classic$/);
+  await expect(page.locator("#shareImage")).toHaveAttribute("src", /\/results\/\?id=42&style=modern$/);
   await page.locator("#shareDialog .privacy-close").click();
   await expect(page.locator("#shareDialog")).toBeHidden();
 
