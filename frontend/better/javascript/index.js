@@ -29,10 +29,11 @@ function selectServer(index) {
 // Whether settings.json turns the telemetry on: it decides the privacy consent, the sending of the result and the sharing
 var telemetryEnabled = false;
 
-// The link of the result and its picture come from the server, which only gives a test an id with telemetry
+// The link of the result and its picture come from the server, which only gives a test an id with telemetry. The picture is
+// drawn in the modern style, which is the one that reads best (results/index.php also draws a classic one)
 function resultUrl(entry) {
   var base = window.location.href.substring(0, window.location.href.lastIndexOf("/"));
-  return base + "/results/?id=" + entry.testId + "&style=classic";
+  return base + "/results/?id=" + entry.testId + "&style=modern";
 }
 
 // The icon of a button of the pill. Without icons the button shows its text.
